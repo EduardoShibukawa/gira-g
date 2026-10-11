@@ -1,0 +1,18 @@
+[tools]
+go = "1.24.0"
+bun = "1.2.4"
+golangci-lint = "1.64.5"
+goreleaser = "2.7.0"
+lefthook = "1.10.10"
+
+[tasks.check]
+description = "Execute complete quality checks (Go tests, linting)"
+run = "go test -race ./..."
+
+[tasks.build]
+description = "Compile the standalone gira binary"
+run = "go build -o bin/gira ./cmd/gira"
+
+[tasks.test]
+description = "Run unit tests with race detection"
+run = "go test -v -race ./..."

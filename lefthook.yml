@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: true
+  commands:
+    gofmt:
+      glob: "*.go"
+      run: gofmt -w {staged_files}
+    tests:
+      run: go test -race ./...
+
+pre-push:
+  commands:
+    quality-suite:
+      run: go test -race ./...
