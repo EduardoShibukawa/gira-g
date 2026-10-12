@@ -25,12 +25,14 @@ func NewPipeline(extractors ...Extractor) *Pipeline {
 	return p
 }
 
-// DefaultPipeline initializes a Pipeline with Wave 1 extractors pre-registered.
+// DefaultPipeline initializes a Pipeline with Wave 1 and Layer 3 extractors pre-registered.
 func DefaultPipeline() *Pipeline {
 	return NewPipeline(
 		NewDataFormatExtractor(),
 		NewComposeExtractor(),
 		NewHelmExtractor(),
+		NewProtobufExtractor(),
+		NewGoASTExtractor(),
 	)
 }
 
