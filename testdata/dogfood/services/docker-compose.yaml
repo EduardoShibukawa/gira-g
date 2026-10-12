@@ -1,0 +1,19 @@
+version: '3.8'
+services:
+  frontend:
+    image: dogfood/frontend:v1.0.0
+    ports:
+      - "8080:8080"
+    depends_on:
+      - order
+      - redis
+  order:
+    image: dogfood/order-service:v1.0.0
+    ports:
+      - "50051:50051"
+    depends_on:
+      - postgres
+  redis:
+    image: redis:7-alpine
+  postgres:
+    image: postgres:15-alpine

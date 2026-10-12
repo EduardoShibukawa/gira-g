@@ -1,0 +1,5 @@
+apiVersion: v2
+name: dogfood-chart
+description: Helm chart for Gira-G dogfood architecture
+version: 0.1.0
+appVersion: "1.0.0"

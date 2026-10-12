@@ -1,0 +1,12 @@
+global:
+  environment: dogfood
+frontend:
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 8080
+order:
+  replicaCount: 2
+  service:
+    type: ClusterIP
+    port: 50051
