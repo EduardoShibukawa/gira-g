@@ -265,4 +265,96 @@ func TestCLI_ErrorHandling(t *testing.T) {
 	if err := Run([]string{"impact", "service:order", "--index", "/nonexistent/index.json"}, nil, &stdout, &stderr); err == nil {
 		t.Error("expected error for nonexistent index file, got nil")
 	}
+
+	// Invalid export format
+	if err := Run([]string{"export", "--format", "invalid_fmt"}, nil, &stdout, &stderr); err == nil {
+		t.Error("expected error for invalid export format, got nil")
+	}
+}
+
+func TestCLI_Export(t *testing.T) {
+	indexPath := createTestIndex(t)
+
+	// 1. Export Markdown to stdout (default format md)
+	var stdout, stderr bytes.Buffer
+	err := Run([]string{"export", "--index", indexPath}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("export md failed: %v", err)
+	}
+	outMD := stdout.String()
+	if !strings.Contains(outMD, "# Target System Architecture: test-corpus") {
+		t.Errorf("expected Target System Architecture in export md output, got:\n%s", outMD)
+	}
+	if !strings.Contains(outMD, "## Services (1)") {
+		t.Errorf("expected Services (1) in export md output")
+	}
+	if !strings.Contains(outMD, "## Unsupported Boundaries & Known Unknowns (1)") {
+		t.Errorf("expected Unsupported Boundaries section in export md output")
+	}
+
+	// 2. Export HTML to stdout
+	stdout.Reset()
+	err = Run([]string{"export", "--format", "html", "--index", indexPath}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("export html failed: %v", err)
+	}
+	outHTML := stdout.String()
+	if !strings.Contains(outHTML, "<!DOCTYPE html>") {
+		t.Errorf("expected DOCTYPE in export html output")
+	}
+	if !strings.Contains(outHTML, "<svg viewBox=") {
+		t.Errorf("expected SVG in export html output")
+	}
+	if !strings.Contains(outHTML, "badge-extracted") {
+		t.Errorf("expected origin badge in export html output")
+	}
+
+	// 3. Export to file via --output
+	tmpOutFile := filepath.Join(t.TempDir(), "sub", "export.html")
+	stdout.Reset()
+	err = Run([]string{"export", "--format", "html", "--output", tmpOutFile, "--index", indexPath}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("export --output failed: %v", err)
+	}
+	data, err := os.ReadFile(tmpOutFile)
+	if err != nil {
+		t.Fatalf("failed to read output file: %v", err)
+	}
+	if !strings.Contains(string(data), "<!DOCTYPE html>") {
+		t.Errorf("expected DOCTYPE in written export file")
+	}
+}
+
+func TestCLI_View(t *testing.T) {
+	indexPath := createTestIndex(t)
+
+	// 1. View with default temporary directory
+	var stdout, stderr bytes.Buffer
+	err := Run([]string{"view", "--index", indexPath}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("view failed: %v", err)
+	}
+	viewOut := stdout.String()
+	if !strings.Contains(viewOut, "Exported HTML view to: file://") {
+		t.Errorf("expected file:// URI in view output, got: %s", viewOut)
+	}
+
+	// 2. View with specified --output directory
+	customDir := filepath.Join(t.TempDir(), "custom-view")
+	stdout.Reset()
+	err = Run([]string{"view", "--output", customDir, "--index", indexPath}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("view with custom output dir failed: %v", err)
+	}
+	expectedFile := filepath.Join(customDir, "index.html")
+	if fi, err := os.Stat(expectedFile); err != nil || fi.IsDir() {
+		t.Fatalf("expected view index.html at %s", expectedFile)
+	}
+	data, err := os.ReadFile(expectedFile)
+	if err != nil {
+		t.Fatalf("failed to read view index.html: %v", err)
+	}
+	if !strings.Contains(string(data), "Gira-G Architecture Export: test-corpus") {
+		t.Errorf("expected title in view index.html")
+	}
 }

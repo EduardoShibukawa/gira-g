@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"labs/gira-g/internal/domain"
@@ -62,6 +64,12 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "locate":
 		return runLocate(rest, stdout, stderr)
 
+	case "export":
+		return runExport(rest, stdout, stderr)
+
+	case "view":
+		return runView(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -79,6 +87,8 @@ Commands:
   slice <node_id> [--tier <tier>] [--index <path>]          Extract bounded context slice (tier: summary|contracts|deep)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
+  export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
+  view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   version                                                   Show harness version
 
 Global Flags:
@@ -362,3 +372,131 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	return nil
 }
+
+func runExport(args []string, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("export", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var format string
+	var outputPath string
+	var indexPath string
+
+	fs.StringVar(&format, "format", "md", "Export format (md|html)")
+	fs.StringVar(&outputPath, "output", "", "Output file path (default stdout)")
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+
+	var content string
+	switch strings.ToLower(format) {
+	case "md", "markdown":
+		content = slices.ExportMarkdown(mm)
+	case "html":
+		content = slices.ExportHTML(mm)
+	default:
+		return fmt.Errorf("unsupported export format %q. Supported formats: md, html", format)
+	}
+
+	if outputPath != "" {
+		if dir := filepath.Dir(outputPath); dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("failed to create output directory: %w", err)
+			}
+		}
+		if err := os.WriteFile(outputPath, []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to write export file: %w", err)
+		}
+		return nil
+	}
+
+	fmt.Fprint(stdout, content)
+	return nil
+}
+
+func runView(args []string, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("view", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var outputDir string
+	var indexPath string
+
+	fs.StringVar(&outputDir, "output", "", "Directory to generate HTML artifact (default temp dir)")
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+
+	htmlContent := slices.ExportHTML(mm)
+
+	var targetDir string
+	if outputDir != "" {
+		if err := os.MkdirAll(outputDir, 0755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+		targetDir = outputDir
+	} else {
+		tmpDir, err := os.MkdirTemp("", "gira-view-*")
+		if err != nil {
+			return fmt.Errorf("failed to create temp directory: %w", err)
+		}
+		targetDir = tmpDir
+	}
+
+	artifactPath := filepath.Join(targetDir, "index.html")
+	if err := os.WriteFile(artifactPath, []byte(htmlContent), 0644); err != nil {
+		return fmt.Errorf("failed to write HTML view artifact: %w", err)
+	}
+
+	absPath, err := filepath.Abs(artifactPath)
+	if err != nil {
+		absPath = artifactPath
+	}
+
+	fileURI := "file://" + filepath.ToSlash(absPath)
+	fmt.Fprintf(stdout, "Exported HTML view to: %s\n", fileURI)
+
+	// Attempt non-blocking browser open if not in headless/CI environment
+	openInBrowser(absPath)
+
+	return nil
+}
+
+func openInBrowser(filePath string) {
+	// If CI or NO_BROWSER environment variable is set, avoid launching external process
+	if os.Getenv("CI") != "" || os.Getenv("NO_BROWSER") != "" {
+		return
+	}
+
+	var cmd *exec.Cmd
+	switch runtime.GOOS {
+	case "linux":
+		// Only try xdg-open if DISPLAY or WAYLAND_DISPLAY is set (interactive desktop)
+		if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
+			return
+		}
+		cmd = exec.Command("xdg-open", filePath)
+	case "darwin":
+		cmd = exec.Command("open", filePath)
+	case "windows":
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", filePath)
+	default:
+		return
+	}
+
+	// Non-blocking fire-and-forget; do not block or fail command if browser fails
+	_ = cmd.Start()
+}
+
