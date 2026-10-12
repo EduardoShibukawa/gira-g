@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"labs/gira-g/internal/domain"
+	"labs/gira-g/internal/manifest"
 )
 
 // Pipeline manages extractors ordered by layer and processes target files.
@@ -195,4 +198,140 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	}
 
 	return macroMap, nil
+}
+
+// OriginDeclaredOverride identifies provenance from declarative YAML overlays.
+const OriginDeclaredOverride domain.DerivationOrigin = "declared:override"
+
+// ApplyOverrides applies declarative manifest overrides to the given MacroMap.
+// Relationships added or updated receive origin "declared:override" and a Locator pointing to manifestPath.
+// Metadata for existing nodes is updated without opaque mutation (with explicit provenance evidence).
+func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaration, manifestPath string) error {
+	if mm == nil {
+		return fmt.Errorf("macro map cannot be nil")
+	}
+	if overrides == nil {
+		return nil
+	}
+	if strings.TrimSpace(manifestPath) == "" {
+		manifestPath = "gira.yaml"
+	}
+
+	now := time.Now()
+
+	// 1. Apply metadata overrides to existing nodes
+	for nodeID, meta := range overrides.Metadata {
+		var targetNode *domain.Node
+		for i := range mm.Nodes {
+			if mm.Nodes[i].ID == nodeID {
+				targetNode = &mm.Nodes[i]
+				break
+			}
+		}
+
+		if targetNode != nil {
+			if targetNode.Metadata == nil {
+				targetNode.Metadata = make(map[string]any)
+			}
+			for k, v := range meta {
+				targetNode.Metadata[k] = v
+			}
+			targetNode.Evidence = append(targetNode.Evidence, domain.EvidenceRecord{
+				Locator: domain.Locator{
+					Path: manifestPath,
+				},
+				Origin:       OriginDeclaredOverride,
+				Status:       domain.StatusCurrent,
+				DiscoveredAt: now,
+			})
+		}
+	}
+
+	// 2. Apply relationship overrides
+	for _, relOverride := range overrides.Relationships {
+		overrideEvidence := domain.EvidenceRecord{
+			Locator: domain.Locator{
+				Path: manifestPath,
+			},
+			Origin:       OriginDeclaredOverride,
+			Status:       domain.StatusCurrent,
+			DiscoveredAt: now,
+		}
+
+		// Ensure source and target nodes exist in MacroMap so AddRelationship succeeds
+		ensureNodeExists(mm, relOverride.SourceID, manifestPath, now)
+		ensureNodeExists(mm, relOverride.TargetID, manifestPath, now)
+
+		// Check if a relationship between source and target already exists
+		var matchedRel *domain.Relationship
+		for i := range mm.Relationships {
+			if mm.Relationships[i].SourceID == relOverride.SourceID && mm.Relationships[i].TargetID == relOverride.TargetID {
+				matchedRel = &mm.Relationships[i]
+				break
+			}
+		}
+
+		if matchedRel != nil {
+			matchedRel.Verb = domain.RelationVerb(relOverride.Verb)
+			matchedRel.Evidence = append(matchedRel.Evidence, overrideEvidence)
+		} else {
+			relID := fmt.Sprintf("rel:%s-%s-%s", relOverride.SourceID, relOverride.Verb, relOverride.TargetID)
+			newRel := domain.Relationship{
+				ID:       relID,
+				SourceID: relOverride.SourceID,
+				TargetID: relOverride.TargetID,
+				Verb:     domain.RelationVerb(relOverride.Verb),
+				Evidence: []domain.EvidenceRecord{overrideEvidence},
+			}
+			if err := mm.AddRelationship(newRel); err != nil {
+				return fmt.Errorf("failed to add override relationship %s: %w", relID, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func ensureNodeExists(mm *domain.MacroMap, nodeID, manifestPath string, now time.Time) {
+	for _, n := range mm.Nodes {
+		if n.ID == nodeID {
+			return
+		}
+	}
+
+	kind := domain.NodeService
+	if strings.HasPrefix(nodeID, "contract:") {
+		kind = domain.NodeContract
+	} else if strings.HasPrefix(nodeID, "infra:") || strings.HasPrefix(nodeID, "infrastructure:") {
+		kind = domain.NodeInfrastructure
+	} else if strings.HasPrefix(nodeID, "lib:") || strings.HasPrefix(nodeID, "library:") {
+		kind = domain.NodeLibrary
+	}
+
+	name := nodeID
+	if idx := strings.Index(nodeID, ":"); idx != -1 {
+		name = nodeID[idx+1:]
+	}
+
+	node := domain.Node{
+		ID:   nodeID,
+		Kind: kind,
+		Name: name,
+		Evidence: []domain.EvidenceRecord{
+			{
+				Locator: domain.Locator{
+					Path: manifestPath,
+				},
+				Origin:       OriginDeclaredOverride,
+				Status:       domain.StatusCurrent,
+				DiscoveredAt: now,
+			},
+		},
+	}
+	_ = mm.AddNode(node)
+}
+
+// ApplyOverrides applies declarative manifest overrides to the given MacroMap.
+func (p *Pipeline) ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaration, manifestPath string) error {
+	return ApplyOverrides(mm, overrides, manifestPath)
 }

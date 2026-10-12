@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -356,5 +357,174 @@ func TestCLI_View(t *testing.T) {
 	}
 	if !strings.Contains(string(data), "Gira-G Architecture Export: test-corpus") {
 		t.Errorf("expected title in view index.html")
+	}
+}
+
+func createGitRepoWithFiles(t *testing.T, files map[string]string) (string, string) {
+	t.Helper()
+	repoDir := t.TempDir()
+
+	runGit := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v, out: %s", args, err, string(out))
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+
+	for relPath, content := range files {
+		fullPath := filepath.Join(repoDir, relPath)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("failed to mkdir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write file %s: %v", relPath, err)
+		}
+	}
+
+	runGit("add", ".")
+	runGit("commit", "-m", "Initial commit")
+	commitSHA := runGit("rev-parse", "HEAD")
+	return repoDir, commitSHA
+}
+
+func TestCLI_Index(t *testing.T) {
+	composeContent := `
+version: '3.8'
+services:
+  frontend:
+    image: otel/demo-frontend:v1.0
+  cartservice:
+    image: otel/demo-cart:v1.0
+`
+	repoDir, sha := createGitRepoWithFiles(t, map[string]string{
+		"docker-compose.yaml": composeContent,
+	})
+
+	cacheDir := t.TempDir()
+	outDir := t.TempDir()
+	outputPath := filepath.Join(outDir, "custom-macro-map.json")
+
+	manifestDir := t.TempDir()
+	manifestPath := filepath.Join(manifestDir, "gira.yaml")
+
+	manifestContent := strings.Join([]string{
+		"version: 1",
+		"target_system:",
+		"  name: index-test-system",
+		"repositories:",
+		"  - id: repo-main",
+		`    url: "` + repoDir + `"`,
+		`    sha: "` + sha + `"`,
+		"    path_scope: .",
+		"overrides:",
+		"  relationships:",
+		`    - source_id: "service:frontend"`,
+		`      target_id: "contract:custom-checkout"`,
+		`      verb: "consumes"`,
+		"  metadata:",
+		`    "service:frontend":`,
+		`      team: "web-core"`,
+	}, "\n")
+
+	if err := os.WriteFile(manifestPath, []byte(manifestContent), 0644); err != nil {
+		t.Fatalf("failed to write manifest: %v", err)
+	}
+
+	// 1. Happy path: index with --output
+	var stdout, stderr bytes.Buffer
+	err := Run([]string{"index", manifestPath, "--output", outputPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("gira index failed: %v, stderr: %s", err, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Indexed") || !strings.Contains(stdout.String(), "index-test-system") {
+		t.Errorf("unexpected stdout: %s", stdout.String())
+	}
+
+	// Verify loaded macro map
+	s := store.NewStore("")
+	mm, err := s.LoadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to load indexed macro map: %v", err)
+	}
+
+	if mm.TargetSystem != "index-test-system" {
+		t.Errorf("expected target system index-test-system, got %s", mm.TargetSystem)
+	}
+
+	var frontendNode, checkoutNode *domain.Node
+	for i := range mm.Nodes {
+		if mm.Nodes[i].ID == "service:frontend" {
+			frontendNode = &mm.Nodes[i]
+		}
+		if mm.Nodes[i].ID == "contract:custom-checkout" {
+			checkoutNode = &mm.Nodes[i]
+		}
+	}
+
+	if frontendNode == nil {
+		t.Fatalf("expected service:frontend node")
+	}
+	if frontendNode.Metadata["team"] != "web-core" {
+		t.Errorf("expected team web-core, got %v", frontendNode.Metadata["team"])
+	}
+
+	if checkoutNode == nil {
+		t.Fatalf("expected contract:custom-checkout node created by override")
+	}
+	if checkoutNode.Kind != domain.NodeContract {
+		t.Errorf("expected NodeContract kind, got %v", checkoutNode.Kind)
+	}
+
+	// Verify override relationship
+	var overrideRel *domain.Relationship
+	for i := range mm.Relationships {
+		if mm.Relationships[i].TargetID == "contract:custom-checkout" {
+			overrideRel = &mm.Relationships[i]
+			break
+		}
+	}
+	if overrideRel == nil {
+		t.Fatalf("expected relationship to contract:custom-checkout")
+	}
+	if overrideRel.Verb != domain.VerbConsumes {
+		t.Errorf("expected consumes verb, got %s", overrideRel.Verb)
+	}
+	if len(overrideRel.Evidence) == 0 || overrideRel.Evidence[0].Origin != "declared:override" {
+		t.Errorf("expected declared:override origin")
+	}
+
+	// 2. Default store persistence (no --output specified)
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"index", manifestPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("gira index without --output failed: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "Indexed") {
+		t.Errorf("expected Indexed in stdout, got %s", stdout.String())
+	}
+
+	// 3. Offline failure when repo not cached
+	emptyCacheDir := t.TempDir()
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"index", manifestPath, "--offline", "--cache-dir", emptyCacheDir}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Errorf("expected error in offline mode with missing cache, got nil")
+	}
+
+	// 4. Missing manifest file error
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"index", "/nonexistent/path/gira.yaml"}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Errorf("expected error for missing manifest, got nil")
 	}
 }

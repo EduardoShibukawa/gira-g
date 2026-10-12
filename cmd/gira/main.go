@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 	"strings"
 
 	"labs/gira-g/internal/domain"
+	"labs/gira-g/internal/extractors"
+	"labs/gira-g/internal/gitcache"
+	"labs/gira-g/internal/manifest"
 	"labs/gira-g/internal/mcp"
 	"labs/gira-g/internal/slices"
 	"labs/gira-g/internal/store"
@@ -49,6 +53,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 		printUsage(stdout)
 		return nil
 
+	case "index":
+		return runIndex(rest, stdout, stderr)
+
 	case "serve":
 		return runServe(rest, stdin, stdout, stderr)
 
@@ -82,6 +89,7 @@ Usage:
   gira <command> [options] [arguments]
 
 Commands:
+  index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--index <path>]       Compute impact briefing for target component
   slice <node_id> [--tier <tier>] [--index <path>]          Extract bounded context slice (tier: summary|contracts|deep)
@@ -115,7 +123,7 @@ func splitArgs(args []string) ([]string, []string) {
 }
 
 func loadIndex(indexPath string) (*domain.MacroMap, error) {
-	candidates := make([]string, 0, 4)
+	candidates := make([]string, 0, 8)
 	if strings.TrimSpace(indexPath) != "" {
 		candidates = append(candidates, indexPath)
 	} else {
@@ -126,6 +134,18 @@ func loadIndex(indexPath string) (*domain.MacroMap, error) {
 		// Look in user cache directory default index
 		if home, err := os.UserHomeDir(); err == nil && home != "" {
 			candidates = append(candidates, filepath.Join(home, ".cache", "gira", "indexes", "default", "macro-map.json"))
+			sHome := store.NewStore(filepath.Join(home, ".cache", "gira", "indexes"))
+			if systems, err := sHome.List(); err == nil {
+				for _, sys := range systems {
+					candidates = append(candidates, filepath.Join(home, ".cache", "gira", "indexes", sys, "macro-map.json"))
+				}
+			}
+		}
+		sLocal := store.NewStore(filepath.Join(".gira", "indexes"))
+		if systems, err := sLocal.List(); err == nil {
+			for _, sys := range systems {
+				candidates = append(candidates, filepath.Join(".gira", "indexes", sys, "macro-map.json"))
+			}
 		}
 	}
 
@@ -143,6 +163,122 @@ func loadIndex(indexPath string) (*domain.MacroMap, error) {
 
 	// Default fallback: return empty MacroMap
 	return domain.NewMacroMap("default"), nil
+}
+
+func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("index", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var outputPath string
+	var offline bool
+	var cacheDir string
+	var manifestFlag string
+
+	fs.StringVar(&outputPath, "output", "", "Path to write output macro-map.json")
+	fs.BoolVar(&offline, "offline", false, "Disable network egress and use local cache exclusively")
+	fs.StringVar(&cacheDir, "cache-dir", "", "Local repository cache directory")
+	fs.StringVar(&manifestFlag, "manifest", "", "Path to gira.yaml manifest")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	manifestPath := "gira.yaml"
+	allPositionals := append(positionals, fs.Args()...)
+	if len(allPositionals) > 0 && strings.TrimSpace(allPositionals[0]) != "" {
+		manifestPath = allPositionals[0]
+	} else if strings.TrimSpace(manifestFlag) != "" {
+		manifestPath = manifestFlag
+	}
+
+	// 1. Read manifest
+	m, err := manifest.ParseFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+	}
+
+	// 2. Initialize CacheManager
+	cm, err := gitcache.NewCacheManager(cacheDir)
+	if err != nil {
+		return fmt.Errorf("failed to initialize cache manager: %w", err)
+	}
+
+	ctx := context.Background()
+
+	// 3. Ensure repos & iterate files based on path_scopes
+	var targetFiles []extractors.TargetFile
+	for _, repo := range m.Repositories {
+		if err := cm.EnsureRepo(ctx, repo, offline); err != nil {
+			return fmt.Errorf("failed to ensure repository %q: %w", repo.ID, err)
+		}
+
+		entries, err := cm.ListTree(ctx, repo)
+		if err != nil {
+			return fmt.Errorf("failed to list tree for repository %q: %w", repo.ID, err)
+		}
+
+		for _, entry := range entries {
+			content, err := cm.ReadFile(ctx, repo, entry.Path)
+			if err != nil {
+				return fmt.Errorf("failed to read file %q from repository %q: %w", entry.Path, repo.ID, err)
+			}
+
+			targetFiles = append(targetFiles, extractors.TargetFile{
+				Repo:      repo.ID,
+				CommitSHA: repo.SHA,
+				Path:      entry.Path,
+				Content:   content,
+			})
+		}
+	}
+
+	// 4. Run 3-layer extraction pipeline
+	pipe := extractors.DefaultPipeline()
+	mm, err := pipe.ProcessFiles(ctx, m.TargetSystem.Name, targetFiles)
+	if err != nil {
+		return fmt.Errorf("failed to extract files: %w", err)
+	}
+
+	// 5. Apply declarative overrides from manifest
+	if m.Overrides != nil {
+		if err := pipe.ApplyOverrides(mm, m.Overrides, manifestPath); err != nil {
+			return fmt.Errorf("failed to apply overrides: %w", err)
+		}
+	}
+
+	// 6. Persist generated MacroMap
+	if outputPath != "" {
+		data, err := mm.CanonicalJSON()
+		if err != nil {
+			return fmt.Errorf("failed to serialize macro map: %w", err)
+		}
+		if dir := filepath.Dir(outputPath); dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return fmt.Errorf("failed to create output directory: %w", err)
+			}
+		}
+		if err := os.WriteFile(outputPath, data, 0644); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+		fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
+			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, outputPath)
+	} else {
+		storeDir := filepath.Join(".gira", "indexes")
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			storeDir = filepath.Join(home, ".cache", "gira", "indexes")
+		}
+		s := store.NewStore(storeDir)
+		if err := s.Save(m.TargetSystem.Name, mm); err != nil {
+			return fmt.Errorf("failed to persist macro map: %w", err)
+		}
+		dest := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
+		fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
+			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, dest)
+	}
+
+	return nil
 }
 
 func runServe(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {

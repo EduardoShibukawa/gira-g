@@ -197,6 +197,185 @@ repositories:
 	}
 }
 
+func TestParse_WithOverrides(t *testing.T) {
+	yamlData := `
+version: 1
+target_system:
+  name: opentelemetry-demo
+  description: "OpenTelemetry Demo with overrides"
+repositories:
+  - id: demo
+    url: "https://github.com/open-telemetry/opentelemetry-demo.git"
+    sha: "dedc0178918e260823323b8d95005a8cb924b007"
+overrides:
+  relationships:
+    - source_id: "service:frontend"
+      target_id: "contract:custom"
+      verb: "consumes"
+  metadata:
+    "service:frontend":
+      team: "web-core"
+`
+
+	m, err := manifest.Parse([]byte(yamlData))
+	if err != nil {
+		t.Fatalf("unexpected error parsing manifest with overrides: %v", err)
+	}
+
+	if m.Overrides == nil {
+		t.Fatalf("expected Overrides to be non-nil")
+	}
+
+	if len(m.Overrides.Relationships) != 1 {
+		t.Fatalf("expected 1 relationship override, got %d", len(m.Overrides.Relationships))
+	}
+
+	rel := m.Overrides.Relationships[0]
+	if rel.SourceID != "service:frontend" || rel.TargetID != "contract:custom" || rel.Verb != "consumes" {
+		t.Errorf("unexpected relationship override values: %+v", rel)
+	}
+
+	if m.Overrides.Metadata == nil || m.Overrides.Metadata["service:frontend"]["team"] != "web-core" {
+		t.Errorf("unexpected metadata overrides: %+v", m.Overrides.Metadata)
+	}
+
+	// Also test overrides inside target_system
+	nestedYaml := `
+version: 1
+target_system:
+  name: opentelemetry-demo
+  overrides:
+    relationships:
+      - source_id: "service:a"
+        target_id: "service:b"
+        verb: "accesses"
+repositories:
+  - id: demo
+    url: "file:///tmp/repo"
+    sha: "1111222233334444555566667777888899990000"
+`
+	m2, err := manifest.Parse([]byte(nestedYaml))
+	if err != nil {
+		t.Fatalf("unexpected error with nested overrides: %v", err)
+	}
+	if m2.Overrides == nil || len(m2.Overrides.Relationships) != 1 {
+		t.Fatalf("expected normalized overrides from target_system")
+	}
+	if m2.Overrides.Relationships[0].Verb != "accesses" {
+		t.Errorf("expected verb accesses, got %s", m2.Overrides.Relationships[0].Verb)
+	}
+}
+
+func TestParse_InvalidOverrides(t *testing.T) {
+	tests := []struct {
+		name    string
+		yaml    string
+		wantErr string
+	}{
+		{
+			name: "empty source_id",
+			yaml: `
+version: 1
+target_system:
+  name: test
+repositories:
+  - id: repo1
+    url: "file:///tmp/r"
+    sha: "1111222233334444555566667777888899990000"
+overrides:
+  relationships:
+    - source_id: ""
+      target_id: "contract:c"
+      verb: "consumes"
+`,
+			wantErr: "has empty source_id",
+		},
+		{
+			name: "empty target_id",
+			yaml: `
+version: 1
+target_system:
+  name: test
+repositories:
+  - id: repo1
+    url: "file:///tmp/r"
+    sha: "1111222233334444555566667777888899990000"
+overrides:
+  relationships:
+    - source_id: "service:a"
+      target_id: ""
+      verb: "consumes"
+`,
+			wantErr: "has empty target_id",
+		},
+		{
+			name: "empty verb",
+			yaml: `
+version: 1
+target_system:
+  name: test
+repositories:
+  - id: repo1
+    url: "file:///tmp/r"
+    sha: "1111222233334444555566667777888899990000"
+overrides:
+  relationships:
+    - source_id: "service:a"
+      target_id: "service:b"
+      verb: ""
+`,
+			wantErr: "has empty verb",
+		},
+		{
+			name: "invalid verb",
+			yaml: `
+version: 1
+target_system:
+  name: test
+repositories:
+  - id: repo1
+    url: "file:///tmp/r"
+    sha: "1111222233334444555566667777888899990000"
+overrides:
+  relationships:
+    - source_id: "service:a"
+      target_id: "service:b"
+      verb: "kills"
+`,
+			wantErr: "has invalid verb \"kills\"",
+		},
+		{
+			name: "empty metadata node id",
+			yaml: `
+version: 1
+target_system:
+  name: test
+repositories:
+  - id: repo1
+    url: "file:///tmp/r"
+    sha: "1111222233334444555566667777888899990000"
+overrides:
+  metadata:
+    "":
+      team: "web"
+`,
+			wantErr: "empty node id",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := manifest.Parse([]byte(tc.yaml))
+			if err == nil {
+				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
+			}
+			if !contains(err.Error(), tc.wantErr) {
+				t.Errorf("expected error containing %q, got %q", tc.wantErr, err.Error())
+			}
+		})
+	}
+}
+
 func TestParseFile(t *testing.T) {
 	tmpDir := t.TempDir()
 	filePath := filepath.Join(tmpDir, "gira.yaml")

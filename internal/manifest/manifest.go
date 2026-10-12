@@ -19,12 +19,27 @@ type Manifest struct {
 	Version      int                     `yaml:"version"`
 	TargetSystem TargetSystemMeta        `yaml:"target_system"`
 	Repositories []RepositoryDeclaration `yaml:"repositories"`
+	Overrides    *OverridesDeclaration   `yaml:"overrides,omitempty"`
 }
 
 // TargetSystemMeta describes the target system identity and context.
 type TargetSystemMeta struct {
-	Name        string `yaml:"name"`
-	Description string `yaml:"description,omitempty"`
+	Name        string                `yaml:"name"`
+	Description string                `yaml:"description,omitempty"`
+	Overrides   *OverridesDeclaration `yaml:"overrides,omitempty"`
+}
+
+// RelationshipOverride declares an explicit relationship correction or addition.
+type RelationshipOverride struct {
+	SourceID string `yaml:"source_id"`
+	TargetID string `yaml:"target_id"`
+	Verb     string `yaml:"verb"`
+}
+
+// OverridesDeclaration defines declarative human corrections for relationships and metadata.
+type OverridesDeclaration struct {
+	Relationships []RelationshipOverride    `yaml:"relationships,omitempty"`
+	Metadata      map[string]map[string]any `yaml:"metadata,omitempty"`
 }
 
 // RepositoryDeclaration defines a Git repository belonging to the target system.
@@ -106,6 +121,54 @@ func (m *Manifest) Validate() error {
 				return fmt.Errorf("repository %q has unsafe path_scope %q", repo.ID, repo.PathScope)
 			}
 			repo.PathScope = filepath.ToSlash(cleanScope)
+		}
+	}
+
+	// Normalize overrides if declared under target_system
+	if m.Overrides == nil && m.TargetSystem.Overrides != nil {
+		m.Overrides = m.TargetSystem.Overrides
+	} else if m.Overrides != nil && m.TargetSystem.Overrides == nil {
+		m.TargetSystem.Overrides = m.Overrides
+	}
+
+	if m.Overrides != nil {
+		if err := m.Overrides.Validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Validate performs validation on declarative overrides.
+func (o *OverridesDeclaration) Validate() error {
+	for i := range o.Relationships {
+		rel := &o.Relationships[i]
+		rel.SourceID = strings.TrimSpace(rel.SourceID)
+		if rel.SourceID == "" {
+			return fmt.Errorf("override relationship at index %d has empty source_id", i)
+		}
+		rel.TargetID = strings.TrimSpace(rel.TargetID)
+		if rel.TargetID == "" {
+			return fmt.Errorf("override relationship at index %d has empty target_id", i)
+		}
+		rel.Verb = strings.TrimSpace(rel.Verb)
+		if rel.Verb == "" {
+			return fmt.Errorf("override relationship at index %d has empty verb", i)
+		}
+		switch rel.Verb {
+		case "provides", "consumes", "imports", "accesses":
+		default:
+			return fmt.Errorf("override relationship at index %d has invalid verb %q", i, rel.Verb)
+		}
+	}
+
+	for nodeID, meta := range o.Metadata {
+		if strings.TrimSpace(nodeID) == "" {
+			return fmt.Errorf("override metadata has empty node id")
+		}
+		if meta == nil {
+			return fmt.Errorf("override metadata for node %q cannot be nil", nodeID)
 		}
 	}
 
