@@ -3,6 +3,8 @@ go = "1.24.0"
 bun = "1.2.4"
 golangci-lint = "1.64.5"
 goreleaser = "2.7.0"
+syft = "1.54.1"
+cosign = "3.1.3"
 lefthook = "1.10.10"
 
 [tasks.check]
@@ -16,3 +18,15 @@ run = "go build -o bin/gira ./cmd/gira"
 [tasks.test]
 description = "Run unit tests with race detection"
 run = "go test -v -race ./..."
+
+[tasks.lint]
+description = "Run static analysis with golangci-lint"
+run = "golangci-lint run"
+
+[tasks.release-check]
+description = "Validate GoReleaser configuration"
+run = "goreleaser check"
+
+[tasks.release]
+description = "Build snapshot release artifacts using GoReleaser"
+run = "goreleaser release --snapshot --clean"

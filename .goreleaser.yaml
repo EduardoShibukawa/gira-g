@@ -1,0 +1,68 @@
+# GoReleaser configuration for Gira-G (ADR 0010)
+# Supports native compilation across matrix runners for CGO (Tree-Sitter seam)
+version: 2
+
+project_name: gira
+
+release:
+  github:
+    owner: duh-org
+    name: duh-homelab
+  draft: false
+  prerelease: auto
+
+builds:
+  - id: gira
+    main: ./cmd/gira
+    binary: gira
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - README.md
+      - LICENSE*
+
+sboms:
+  - id: archive-sbom
+    artifacts: archive
+    documents:
+      - "${artifact}.spdx.sbom.json"
+    cmd: syft
+    args:
+      - "$artifact"
+      - "--output"
+      - "spdx-json=$document"
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
