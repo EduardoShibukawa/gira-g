@@ -1,0 +1,36 @@
+# G-Ingá merge gate for target repositories (V1 spec SC7). Delivered in the bundle as
+# tools/validate/ci-template.yml and covered by manifest.json. To adopt it, copy it to
+# .github/workflows/g-inga.yml in the target repository and commit it; that copy belongs to the
+# target and the bundle update procedure never writes it (docs/bundle.md in G-Ingá).
+#
+# Honest enforcement (SC7): this job blocks merges only when branch protection (or a ruleset) lists
+# "g-inga-gate / validate-harness" as a required status check. Without that setting it only reports,
+# and session reports must say that merges are not enforced.
+
+name: g-inga-gate
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          # The task/spec history walk is blocked (exit 2) in a shallow clone.
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run the G-Ingá standalone validator (offline, no node_modules)
+        run: node tools/validate/validate.js
