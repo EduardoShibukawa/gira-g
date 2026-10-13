@@ -37,6 +37,13 @@
     {"path": "compose.yaml", "find": "      currency:\n        condition: service_healthy\n      email:\n", "replace": "      email:\n"},
     {"path": "src/checkout/kafka/producer.go", "find": "return \"orders\"", "replace": "return \"order-events\""}
   ],
+  "index_changes": {
+    "note": "Architectural changes the edits above declare, in published ids. Every other difference between the two indexes must be a rename (SC9).",
+    "removed_edges": [
+      {"source": "service:checkout", "verb": "consumes", "target": "service:currency"},
+      {"source": "service:checkout", "verb": "consumes", "target": "contract:CurrencyService"}
+    ]
+  },
   "ground_truth": {
     "id_renames": [
       {"from": "contract:kafka:orders", "to": "contract:kafka:order-events"}

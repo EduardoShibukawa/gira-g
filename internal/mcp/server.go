@@ -12,8 +12,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request or notification.
@@ -353,6 +355,24 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 			},
 		},
 		{
+			Name:        "diff_maps",
+			Description: "Architecture diff between two index files: renamed, added and removed nodes, added and removed edges, changed contracts, newly unsupported paths, and (informational) moved evidence. Renames are detected from structure.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"index_a": {
+						Type:        "string",
+						Description: "Path to the earlier macro-map.json.",
+					},
+					"index_b": {
+						Type:        "string",
+						Description: "Path to the later macro-map.json.",
+					},
+				},
+				Required: []string{"index_a", "index_b"},
+			},
+		},
+		{
 			Name:        "get_context_slice",
 			Description: "Retrieves a bounded context slice around node_id across summary, contracts, or deep disclosure tiers.",
 			InputSchema: InputSchema{
@@ -547,6 +567,32 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		out, err := tour.CanonicalJSON()
 		if err != nil {
 			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
+		}
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+
+	case "diff_maps":
+		var args struct {
+			IndexA string `json:"index_a"`
+			IndexB string `json:"index_b"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return errorResult(fmt.Sprintf("Invalid arguments for diff_maps: %v", err))
+		}
+		if args.IndexA == "" || args.IndexB == "" {
+			return errorResult("Missing required arguments 'index_a' and 'index_b'")
+		}
+		st := store.NewStore("")
+		a, err := st.LoadFile(args.IndexA)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to load index_a: %v", err))
+		}
+		b, err := st.LoadFile(args.IndexB)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to load index_b: %v", err))
+		}
+		out, err := archdiff.Compare(a, b).CanonicalJSON()
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to render diff: %v", err))
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 

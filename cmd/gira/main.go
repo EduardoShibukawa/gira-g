@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
@@ -72,6 +73,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "tour":
 		return runTour(rest, stdout, stderr)
 
+	case "diff":
+		return runDiff(rest, stdout, stderr)
+
 	case "flows":
 		return runFlows(rest, stdout, stderr)
 
@@ -103,6 +107,7 @@ Commands:
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
+  diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
@@ -683,6 +688,41 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 	data, err := flows.CanonicalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = stdout.Write(data)
+	return err
+}
+
+func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var format string
+	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+	all := append(positionals, fs.Args()...)
+	if len(all) != 2 {
+		return fmt.Errorf("want two index paths. Usage: gira diff <index-a> <index-b> [--format json|md]")
+	}
+	s := store.NewStore("")
+	a, err := s.LoadFile(all[0])
+	if err != nil {
+		return fmt.Errorf("failed to load %s: %w", all[0], err)
+	}
+	b, err := s.LoadFile(all[1])
+	if err != nil {
+		return fmt.Errorf("failed to load %s: %w", all[1], err)
+	}
+	d := archdiff.Compare(a, b)
+	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
+		_, err = fmt.Fprintln(stdout, d.RenderMarkdown())
+		return err
+	}
+	data, err := d.CanonicalJSON()
 	if err != nil {
 		return err
 	}

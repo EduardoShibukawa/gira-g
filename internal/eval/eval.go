@@ -122,6 +122,15 @@ func LoadGroundTruth(path string) (*GroundTruth, error) {
 // ground-truth changes, kept in one file so they cannot drift apart.
 type Recipe struct {
 	corpus.Perturbation
+	// IndexChanges declares the architectural changes the edits make, in published
+	// ids. SC9 checks an architecture diff reports exactly these plus the renames.
+	IndexChanges struct {
+		RemovedEdges []struct {
+			Source string `json:"source"`
+			Verb   string `json:"verb"`
+			Target string `json:"target"`
+		} `json:"removed_edges"`
+	} `json:"index_changes"`
 	GroundTruth struct {
 		IDRenames []corpus.Rename `json:"id_renames"`
 		Remove    []struct {
