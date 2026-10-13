@@ -1,0 +1,2 @@
+# Raw tool output, transcripts and images stay out of version control (ADR 0012 rule 4).
+out/

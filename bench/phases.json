@@ -1,0 +1,43 @@
+{
+  "schema": "gira-bench-phases/1",
+  "note": "Two-phase runs per ADR 0012. Build phase: the tool indexes a copy of the corpus. Query phase: networking is disabled; the Layer 1 runner on the host is the only party that talks to a model endpoint, over the arm's stdio. Containers mount only the corpus copy (read-only) and the arm's output directory, and get no credentials.",
+  "corpus": {
+    "name": "opentelemetry-demo",
+    "upstream_url": "https://github.com/open-telemetry/opentelemetry-demo.git",
+    "upstream_sha": "dedc0178918e260823323b8d95005a8cb924b007",
+    "strip": ["README*", "AGENTS.md", "docs/"]
+  },
+  "output_dir": "out",
+  "arms": [
+    {
+      "id": "A",
+      "tool": "none",
+      "note": "No harness: read-only grep, glob, read and bash over the corpus copy."
+    },
+    {
+      "id": "B",
+      "tool": "gira",
+      "build": {"container": false, "network": "none", "command": ["gira", "index", "manifest.yaml", "--offline", "--output", "out/B/macro-map.json"]},
+      "query": {"container": false, "network": "none", "command": ["gira", "serve", "mcp", "--index", "out/B/macro-map.json"]}
+    },
+    {
+      "id": "C",
+      "tool": "graphify",
+      "version": "v0.9.82",
+      "source_commit": "5b74d7d74911cf435c8f1636b6f96ea202cc6246",
+      "recipe": "containers/graphify/Dockerfile",
+      "build": {"container": true, "network": "default", "mounts": [{"source": "corpus", "target": "/corpus", "read_only": true}, {"source": "out/C", "target": "/out", "read_only": false}], "command": ["graphify", "update", "/corpus"], "note": "code-only re-extraction, no LLM (docs/prior-art/graphify.md section 7); confirm the output path against the pinned commit on the first build"},
+      "query": {"container": true, "network": "none", "mounts": [{"source": "corpus", "target": "/corpus", "read_only": true}, {"source": "out/C", "target": "/out", "read_only": false}], "command": ["graphify-mcp", "/out/graph.json"]}
+    },
+    {
+      "id": "D",
+      "tool": "understand-anything",
+      "version": "2.9.7",
+      "source_commit": "ffa2f0a84a85525623e9f94f7a6b560e39ae43ce",
+      "recipe": "containers/understand-anything/Dockerfile",
+      "paid_indexing": true,
+      "build": {"container": true, "network": "default", "mounts": [{"source": "corpus", "target": "/corpus", "read_only": true}, {"source": "out/D", "target": "/out", "read_only": false}], "command": ["node", "/src/understand-anything-plugin/skills/understand/scan-project.mjs", "/corpus"]},
+      "query": {"container": true, "network": "none", "mounts": [{"source": "out/D", "target": "/out", "read_only": true}], "command": ["cat", "/out/knowledge-graph.json"]}
+    }
+  ]
+}
