@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "42ba885"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 ---
@@ -32,14 +33,14 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 6dacb25 | baseline before any edit (code unchanged through 41fd67b) |
-| AC1 | `go test -race ./internal/eval -run EndToEnd and -run Mutation` | not run | | the evaluator indexes a git repo through indexer.Build; removing Go AST lowers contract recall 0.33 → 0.17 |
-| AC2 | `go test -race ./internal/eval -run Baseline` | not run | | baseline measured on the corpus; the constants are gone |
-| AC3 | `go test -race ./internal/eval -run UnsupportedSafety` | not run | | |
-| AC4 | `go test -race ./internal/indexer ./internal/eval -run Deterministic and -run EndToEnd` | not run | | |
-| AC5 | `go test -race ./internal/eval -run GateSemantics` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against AC1–AC5 | not run | | |
+| AC1 | `go test -race ./internal/eval -run EndToEnd and -run Mutation` | pass | 42ba885 | the evaluator indexes a git repo through indexer.Build; removing Go AST lowers contract recall 0.33 → 0.17 |
+| AC2 | `go test -race ./internal/eval -run Baseline` | pass | 42ba885 | baseline measured on the corpus; the constants are gone |
+| AC3 | `go test -race ./internal/eval -run UnsupportedSafety` | pass | 42ba885 | |
+| AC4 | `go test -race ./internal/indexer ./internal/eval -run Deterministic and -run EndToEnd` | pass | 42ba885 | |
+| AC5 | `go test -race ./internal/eval -run GateSemantics` | pass | 42ba885 | |
+| R1 | `go test -race ./...` | pass | 42ba885 | |
+| R2 | `node tools/validate/validate.js` | pass | 42ba885 | |
+| V1 | read the diff against AC1–AC5 | pass | 42ba885 | scope: eval, corpus, indexer, tokens, cmd/gira index, fixtures, testdata |
 
 ## Outcome
 
