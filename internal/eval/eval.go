@@ -72,15 +72,24 @@ type CorpusRef struct {
 
 // GroundTruth is the v2 fixture: expected Impact Sets only, never a MacroMap.
 type GroundTruth struct {
-	Schema     string          `json:"schema"`
-	Variant    string          `json:"variant"`
-	Reviewed   bool            `json:"reviewed"`
-	ReviewNote string          `json:"review_note,omitempty"`
-	Corpus     CorpusRef       `json:"corpus"`
-	Ignore     []string        `json:"ignore,omitempty"`
-	IgnoreNote string          `json:"ignore_note,omitempty"`
-	Flows      []FlowTruth     `json:"flows,omitempty"`
-	Tasks      []BenchmarkTask `json:"tasks"`
+	Schema     string      `json:"schema"`
+	Variant    string      `json:"variant"`
+	Reviewed   bool        `json:"reviewed"`
+	ReviewNote string      `json:"review_note,omitempty"`
+	Corpus     CorpusRef   `json:"corpus"`
+	Ignore     []string    `json:"ignore,omitempty"`
+	IgnoreNote string      `json:"ignore_note,omitempty"`
+	Flows      []FlowTruth `json:"flows,omitempty"`
+	// ComponentPaths is the path to Component table Layer 0 lifts every tool's
+	// file and symbol nodes with. The internal evaluator does not use it.
+	ComponentPaths []ComponentPath `json:"component_paths,omitempty"`
+	Tasks          []BenchmarkTask `json:"tasks"`
+}
+
+// ComponentPath assigns the files under PathPrefix to Component.
+type ComponentPath struct {
+	PathPrefix string `json:"path_prefix"`
+	Component  string `json:"component"`
 }
 
 // FlowTruth is a critical path a human reader should be walked through, in order.
@@ -200,6 +209,10 @@ func (gt *GroundTruth) Perturbed(r *Recipe) (*GroundTruth, error) {
 		}
 	}
 	renameAll(out.Ignore)
+	for ci := range out.ComponentPaths {
+		out.ComponentPaths[ci].PathPrefix = rename(out.ComponentPaths[ci].PathPrefix)
+		out.ComponentPaths[ci].Component = rename(out.ComponentPaths[ci].Component)
+	}
 	for fi := range out.Flows {
 		f := &out.Flows[fi]
 		f.Entry = rename(f.Entry)

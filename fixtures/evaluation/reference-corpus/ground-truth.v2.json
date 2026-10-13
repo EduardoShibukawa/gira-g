@@ -17,6 +17,27 @@
     "service:load-generator"
   ],
   "ignore_note": "Ambient dependencies (feature flags, telemetry sink) and the synthetic load generator touch nearly every Component; they are neither credited nor penalised.",
+  "component_paths": [
+    {"path_prefix": "src/accounting/", "component": "service:accounting"},
+    {"path_prefix": "src/ad/", "component": "service:ad"},
+    {"path_prefix": "src/cart/", "component": "service:cart"},
+    {"path_prefix": "src/checkout/", "component": "service:checkout"},
+    {"path_prefix": "src/currency/", "component": "service:currency"},
+    {"path_prefix": "src/email/", "component": "service:email"},
+    {"path_prefix": "src/flagd-ui/", "component": "service:flagd-ui"},
+    {"path_prefix": "src/fraud-detection/", "component": "service:fraud-detection"},
+    {"path_prefix": "src/frontend/", "component": "service:frontend"},
+    {"path_prefix": "src/frontend-proxy/", "component": "service:frontend-proxy"},
+    {"path_prefix": "src/image-provider/", "component": "service:image-provider"},
+    {"path_prefix": "src/kafka/", "component": "service:kafka"},
+    {"path_prefix": "src/load-generator/", "component": "service:load-generator"},
+    {"path_prefix": "src/payment/", "component": "service:payment"},
+    {"path_prefix": "src/product-catalog/", "component": "service:product-catalog"},
+    {"path_prefix": "src/quote/", "component": "service:quote"},
+    {"path_prefix": "src/recommendation/", "component": "service:recommendation"},
+    {"path_prefix": "src/shipping/", "component": "service:shipping"}
+  ],
+  "component_paths_note": "Path to Component table shared by every tool in Layer 0 (spec B). A file belongs to the Component of its longest matching prefix; files under no prefix (shared proto, compose files) belong to none.",
   "flows": [
     {
       "id": "order-flow",

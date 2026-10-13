@@ -1,0 +1,52 @@
+{
+  "tool": "gira",
+  "commit": "c0ffee0000000000000000000000000000000000",
+  "components": [
+    "service:cart",
+    "service:checkout",
+    "service:frontend",
+    "service:valkey-cart"
+  ],
+  "contracts": [
+    "contract:CartService"
+  ],
+  "edges": [
+    {
+      "source": "service:cart",
+      "target": "service:valkey-cart",
+      "verb": "accesses",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "start": 80,
+          "end": 80
+        }
+      ]
+    },
+    {
+      "source": "service:checkout",
+      "target": "service:cart",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "path": "src/checkout/main.go",
+          "start": 157,
+          "end": 157
+        }
+      ]
+    },
+    {
+      "source": "service:frontend",
+      "target": "service:checkout",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "path": "compose.yaml",
+          "start": 253,
+          "end": 253
+        }
+      ]
+    }
+  ],
+  "projected": false
+}

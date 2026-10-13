@@ -1,0 +1,22 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {"schema_version": 1, "graphify_version": "0.9.82"},
+  "built_at_commit": "c0ffee0000000000000000000000000000000000",
+  "nodes": [
+    {"id": "src_frontend_gateways_rpc_checkout_gateway_placeorder", "label": "placeOrder", "file_type": "code", "source_file": "src/frontend/gateways/rpc/Checkout.gateway.ts", "source_location": "L18"},
+    {"id": "src_checkout_main_placeorder", "label": "PlaceOrder", "file_type": "code", "source_file": "src/checkout/main.go", "source_location": "L306"},
+    {"id": "src_checkout_money_sum", "label": "Sum", "file_type": "code", "source_file": "src/checkout/money/money.go", "source_location": "L40"},
+    {"id": "src_cart_src_program", "label": "Program", "file_type": "code", "source_file": "src/cart/src/Program.cs", "source_location": "L1"},
+    {"id": "pb_demo_cartservice", "label": "CartService", "file_type": "code", "source_file": "pb/demo.proto", "source_location": "L23"},
+    {"id": "ext_uuid", "label": "uuid", "file_type": "code", "source_file": "", "type": "external"}
+  ],
+  "links": [
+    {"source": "src_frontend_gateways_rpc_checkout_gateway_placeorder", "target": "src_checkout_main_placeorder", "relation": "calls", "confidence": "INFERRED", "source_file": "src/frontend/gateways/rpc/Checkout.gateway.ts", "source_location": "L20"},
+    {"source": "src_checkout_main_placeorder", "target": "src_checkout_money_sum", "relation": "calls", "confidence": "EXTRACTED", "source_file": "src/checkout/main.go", "source_location": "L350"},
+    {"source": "src_checkout_main_placeorder", "target": "src_cart_src_program", "relation": "imports_from", "confidence": "EXTRACTED", "source_file": "src/checkout/main.go", "source_location": "L22"},
+    {"source": "src_checkout_main_placeorder", "target": "ext_uuid", "relation": "imports", "confidence": "EXTRACTED", "source_file": "src/checkout/main.go", "source_location": "L30"},
+    {"source": "src_cart_src_program", "target": "pb_demo_cartservice", "relation": "implements", "confidence": "INFERRED", "source_file": "src/cart/src/Program.cs"}
+  ],
+  "hyperedges": []
+}

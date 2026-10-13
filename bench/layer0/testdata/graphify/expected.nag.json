@@ -1,0 +1,40 @@
+{
+  "tool": "graphify",
+  "version": "0.9.82",
+  "commit": "c0ffee0000000000000000000000000000000000",
+  "components": [
+    "service:cart",
+    "service:checkout",
+    "service:frontend"
+  ],
+  "contracts": [
+    "contract:CartService"
+  ],
+  "edges": [
+    {
+      "source": "service:checkout",
+      "target": "service:cart",
+      "verb": "imports",
+      "evidence": [
+        {
+          "path": "src/checkout/main.go",
+          "start": 22,
+          "end": 22
+        }
+      ]
+    },
+    {
+      "source": "service:frontend",
+      "target": "service:checkout",
+      "verb": "unknown",
+      "evidence": [
+        {
+          "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+          "start": 20,
+          "end": 20
+        }
+      ]
+    }
+  ],
+  "projected": true
+}

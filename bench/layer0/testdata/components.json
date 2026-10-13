@@ -1,0 +1,5 @@
+[
+  {"path_prefix": "src/frontend/", "component": "service:frontend"},
+  {"path_prefix": "src/checkout/", "component": "service:checkout"},
+  {"path_prefix": "src/cart/", "component": "service:cart"}
+]

@@ -1,0 +1,22 @@
+{
+  "version": "2.9.7",
+  "kind": "codebase",
+  "project": {"name": "sample", "languages": ["go", "typescript", "csharp"], "frameworks": [], "description": "", "analyzedAt": "2026-01-01T00:00:00Z", "gitCommitHash": "c0ffee0000000000000000000000000000000000"},
+  "nodes": [
+    {"id": "file:src/frontend/gateways/rpc/Checkout.gateway.ts", "type": "file", "name": "Checkout.gateway.ts", "filePath": "src/frontend/gateways/rpc/Checkout.gateway.ts", "lineRange": [1, 40], "summary": "", "tags": [], "complexity": "simple"},
+    {"id": "file:src/checkout/main.go", "type": "file", "name": "main.go", "filePath": "src/checkout/main.go", "lineRange": [1, 600], "summary": "", "tags": [], "complexity": "complex"},
+    {"id": "function:src/checkout/main.go:PlaceOrder", "type": "function", "name": "PlaceOrder", "filePath": "src/checkout/main.go", "lineRange": [306, 420], "summary": "", "tags": [], "complexity": "complex"},
+    {"id": "file:src/cart/src/Program.cs", "type": "file", "name": "Program.cs", "filePath": "src/cart/src/Program.cs", "lineRange": [1, 80], "summary": "", "tags": [], "complexity": "moderate"},
+    {"id": "file:pb/demo.proto", "type": "file", "name": "demo.proto", "filePath": "pb/demo.proto", "summary": "", "tags": [], "complexity": "simple"},
+    {"id": "service:compose.yaml", "type": "service", "name": "compose.yaml", "filePath": "compose.yaml", "summary": "", "tags": [], "complexity": "simple"}
+  ],
+  "edges": [
+    {"source": "file:src/frontend/gateways/rpc/Checkout.gateway.ts", "target": "function:src/checkout/main.go:PlaceOrder", "type": "calls", "direction": "forward", "weight": 0.8},
+    {"source": "file:src/checkout/main.go", "target": "file:src/cart/src/Program.cs", "type": "imports", "direction": "forward", "weight": 0.7},
+    {"source": "file:src/cart/src/Program.cs", "target": "file:src/checkout/main.go", "type": "depends_on", "direction": "backward", "weight": 0.6},
+    {"source": "file:src/checkout/main.go", "target": "function:src/checkout/main.go:PlaceOrder", "type": "contains", "direction": "forward", "weight": 1},
+    {"source": "service:compose.yaml", "target": "file:src/cart/src/Program.cs", "type": "deploys", "direction": "bidirectional", "weight": 0.5}
+  ],
+  "layers": [],
+  "tour": []
+}

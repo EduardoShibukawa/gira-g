@@ -1,0 +1,32 @@
+{
+  "tool": "understand-anything",
+  "version": "2.9.7",
+  "commit": "c0ffee0000000000000000000000000000000000",
+  "components": [
+    "service:cart",
+    "service:checkout",
+    "service:frontend"
+  ],
+  "contracts": [],
+  "edges": [
+    {
+      "source": "service:checkout",
+      "target": "service:cart",
+      "verb": "imports",
+      "evidence": []
+    },
+    {
+      "source": "service:checkout",
+      "target": "service:cart",
+      "verb": "unknown",
+      "evidence": []
+    },
+    {
+      "source": "service:frontend",
+      "target": "service:checkout",
+      "verb": "unknown",
+      "evidence": []
+    }
+  ],
+  "projected": true
+}
