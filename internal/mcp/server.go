@@ -310,6 +310,11 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Description: "Context slice disclosure tier: 'summary', 'contracts', or 'deep' (default 'summary').",
 						Enum:        []string{"summary", "contracts", "deep"},
 					},
+					"view": {
+						Type:        "string",
+						Description: "Context slice architectural view: 'full', 'architecture', or 'governance' (default 'full').",
+						Enum:        []string{"full", "architecture", "governance"},
+					},
 				},
 				Required: []string{"node_id"},
 			},
@@ -426,6 +431,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			NodeID string `json:"node_id"`
 			Tier   string `json:"tier"`
+			View   string `json:"view"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -449,7 +455,12 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			tier = slices.TierSummary
 		}
 
-		slice, err := s.Engine.GetContextSlice(args.NodeID, tier)
+		view := slices.GraphView(args.View)
+		if view == "" {
+			view = slices.ViewFull
+		}
+
+		slice, err := s.Engine.GetContextSliceWithView(args.NodeID, tier, view)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,

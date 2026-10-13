@@ -92,7 +92,7 @@ Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--index <path>]       Compute impact briefing for target component
-  slice <node_id> [--tier <tier>] [--index <path>]          Extract bounded context slice (tier: summary|contracts|deep)
+  slice <node_id> [--tier <tier>] [--view <view>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
@@ -365,10 +365,12 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 
 	var tier string
+	var view string
 	var indexPath string
 	var format string
 
 	fs.StringVar(&tier, "tier", "summary", "Context slice tier (summary|contracts|deep)")
+	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 
@@ -378,7 +380,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	allPositionals := append(positionals, fs.Args()...)
 	if len(allPositionals) == 0 {
-		return fmt.Errorf("missing node_id argument. Usage: gira slice <node_id> [--tier summary|contracts|deep] [--format json|md]")
+		return fmt.Errorf("missing node_id argument. Usage: gira slice <node_id> [--tier summary|contracts|deep] [--view full|architecture|governance] [--format json|md]")
 	}
 	nodeID := allPositionals[0]
 
@@ -388,7 +390,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	engine := slices.NewEngine(mm)
-	slice, err := engine.GetContextSlice(nodeID, slices.SliceTier(tier))
+	slice, err := engine.GetContextSliceWithView(nodeID, slices.SliceTier(tier), slices.GraphView(view))
 	if err != nil {
 		return err
 	}

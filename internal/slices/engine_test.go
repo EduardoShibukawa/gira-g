@@ -950,3 +950,79 @@ func TestLocateBoundary(t *testing.T) {
 		t.Fatal("expected error on empty query")
 	}
 }
+
+func TestEngine_GetContextSliceWithView(t *testing.T) {
+	m := domain.NewMacroMap("test-views")
+
+	// Service node
+	_ = m.AddNode(domain.Node{
+		ID:   "service:api",
+		Kind: domain.NodeService,
+		Name: "api",
+	})
+
+	// Infrastructure node (neighbor 1)
+	_ = m.AddNode(domain.Node{
+		ID:   "infra:redis",
+		Kind: domain.NodeInfrastructure,
+		Name: "redis",
+	})
+	_ = m.AddRelationship(domain.Relationship{
+		ID:       "rel:api-consumes-redis",
+		SourceID: "service:api",
+		TargetID: "infra:redis",
+		Verb:     domain.VerbConsumes,
+	})
+
+	// Policy node (neighbor 2)
+	_ = m.AddNode(domain.Node{
+		ID:   "policy:adr-001",
+		Kind: domain.NodePolicy,
+		Name: "ADR 001",
+	})
+	_ = m.AddRelationship(domain.Relationship{
+		ID:       "rel:adr-governs-api",
+		SourceID: "policy:adr-001",
+		TargetID: "service:api",
+		Verb:     domain.VerbGoverns,
+	})
+
+	engine := slices.NewEngine(m)
+
+	// 1. ViewFull: should see both infra:redis and policy:adr-001
+	sliceFull, err := engine.GetContextSliceWithView("service:api", slices.TierSummary, slices.ViewFull)
+	if err != nil {
+		t.Fatalf("GetContextSliceWithView full failed: %v", err)
+	}
+	if len(sliceFull.Neighbors) != 2 {
+		t.Errorf("expected 2 neighbors in ViewFull, got %d", len(sliceFull.Neighbors))
+	}
+	if len(sliceFull.Relationships) != 2 {
+		t.Errorf("expected 2 relationships in ViewFull, got %d", len(sliceFull.Relationships))
+	}
+
+	// 2. ViewArchitecture: should ONLY see infra:redis
+	sliceArch, err := engine.GetContextSliceWithView("service:api", slices.TierSummary, slices.ViewArchitecture)
+	if err != nil {
+		t.Fatalf("GetContextSliceWithView architecture failed: %v", err)
+	}
+	if len(sliceArch.Neighbors) != 1 || sliceArch.Neighbors[0].ID != "infra:redis" {
+		t.Errorf("expected 1 neighbor (infra:redis) in ViewArchitecture, got %+v", sliceArch.Neighbors)
+	}
+	if len(sliceArch.Relationships) != 1 || sliceArch.Relationships[0].ID != "rel:api-consumes-redis" {
+		t.Errorf("expected 1 relationship in ViewArchitecture, got %+v", sliceArch.Relationships)
+	}
+
+	// 3. ViewGovernance: should ONLY see policy:adr-001
+	sliceGov, err := engine.GetContextSliceWithView("service:api", slices.TierSummary, slices.ViewGovernance)
+	if err != nil {
+		t.Fatalf("GetContextSliceWithView governance failed: %v", err)
+	}
+	if len(sliceGov.Neighbors) != 1 || sliceGov.Neighbors[0].ID != "policy:adr-001" {
+		t.Errorf("expected 1 neighbor (policy:adr-001) in ViewGovernance, got %+v", sliceGov.Neighbors)
+	}
+	if len(sliceGov.Relationships) != 1 || sliceGov.Relationships[0].ID != "rel:adr-governs-api" {
+		t.Errorf("expected 1 relationship in ViewGovernance, got %+v", sliceGov.Relationships)
+	}
+}
+

@@ -247,10 +247,31 @@ func TestServer_ToolCalls(t *testing.T) {
 	})
 	res = resp["result"].(map[string]any)
 	content = res["content"].([]any)
-	c0 = content[0].(map[string]any)
 	text = c0["text"].(string)
 	if !strings.Contains(text, "service:frontend") {
 		t.Errorf("expected context slice to contain focal node, got %s", text)
+	}
+
+	// 2b. get_context_slice with view="architecture"
+	resp = sendRequest(t, server, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1012,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "get_context_slice",
+			"arguments": map[string]any{
+				"node_id": "service:frontend",
+				"tier":    "summary",
+				"view":    "architecture",
+			},
+		},
+	})
+	res = resp["result"].(map[string]any)
+	content = res["content"].([]any)
+	c0 = content[0].(map[string]any)
+	text = c0["text"].(string)
+	if !strings.Contains(text, "service:frontend") {
+		t.Errorf("expected context slice with view to contain focal node, got %s", text)
 	}
 
 	// 3. explain_evidence

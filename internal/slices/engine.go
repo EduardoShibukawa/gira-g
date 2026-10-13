@@ -18,6 +18,15 @@ const (
 	TierDeep      SliceTier = "deep"
 )
 
+// GraphView defines the architectural projection filter for context slices.
+type GraphView string
+
+const (
+	ViewFull         GraphView = "full"
+	ViewArchitecture GraphView = "architecture"
+	ViewGovernance   GraphView = "governance"
+)
+
 // ImpactBriefing documents affected services, contracts, and mediation edges
 // when an architectural change occurs at a given service or contract.
 type ImpactBriefing struct {
@@ -435,11 +444,32 @@ func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing,
 	}, nil
 }
 
-// GetContextSlice extracts a bounded subgraph around nodeID for a given SliceTier.
+// GetContextSlice extracts a bounded subgraph around nodeID for a given SliceTier and default ViewFull.
 func (e *Engine) GetContextSlice(nodeID string, tier SliceTier) (*ContextSlice, error) {
+	return e.GetContextSliceWithView(nodeID, tier, ViewFull)
+}
+
+// isNodeAllowedInView checks if a node kind is eligible for the specified GraphView.
+func isNodeAllowedInView(kind domain.NodeType, view GraphView) bool {
+	switch view {
+	case ViewArchitecture:
+		return kind == domain.NodeService || kind == domain.NodeContract || kind == domain.NodeInfrastructure || kind == domain.NodeLibrary
+	case ViewGovernance:
+		return kind == domain.NodePolicy || kind == domain.NodeTask || kind == domain.NodeSkill
+	default:
+		return true
+	}
+}
+
+// GetContextSliceWithView extracts a bounded subgraph around nodeID for a given SliceTier and GraphView.
+func (e *Engine) GetContextSliceWithView(nodeID string, tier SliceTier, view GraphView) (*ContextSlice, error) {
 	node, ok := e.nodesByID[nodeID]
 	if !ok {
 		return nil, fmt.Errorf("node not found: %s", nodeID)
+	}
+
+	if view == "" {
+		view = ViewFull
 	}
 
 	neighborsMap := make(map[string]domain.Node)
@@ -450,9 +480,16 @@ func (e *Engine) GetContextSlice(nodeID string, tier SliceTier) (*ContextSlice, 
 		if neighborID == nodeID {
 			neighborID = rel.SourceID
 		}
-		if neighbor, found := e.nodesByID[neighborID]; found {
-			neighborsMap[neighborID] = neighbor
+		neighbor, found := e.nodesByID[neighborID]
+		if !found {
+			continue
 		}
+
+		if !isNodeAllowedInView(neighbor.Kind, view) {
+			continue
+		}
+
+		neighborsMap[neighborID] = neighbor
 		relsMap[rel.ID] = rel
 	}
 
