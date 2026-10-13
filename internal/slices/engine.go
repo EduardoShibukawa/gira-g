@@ -38,6 +38,7 @@ type ImpactBriefing struct {
 	AffectedContracts     []domain.Node                `json:"affected_contracts"`
 	MediationEdges        []domain.Relationship        `json:"mediation_edges"`
 	UnsupportedBoundaries []domain.UnsupportedBoundary `json:"unsupported_boundaries,omitempty"`
+	Budget                *Budget                      `json:"budget,omitempty"`
 }
 
 // ContextSlice encapsulates a bounded architectural subgraph around a focal node.
@@ -47,6 +48,7 @@ type ContextSlice struct {
 	Neighbors             []domain.Node                `json:"neighbors"`
 	Relationships         []domain.Relationship        `json:"relationships"`
 	UnsupportedBoundaries []domain.UnsupportedBoundary `json:"unsupported_boundaries,omitempty"`
+	Budget                *Budget                      `json:"budget,omitempty"`
 }
 
 // EvidenceReport details provenance, deployment profiles, and freshness for a node or edge.

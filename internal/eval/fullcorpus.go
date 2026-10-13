@@ -83,3 +83,14 @@ func CheckAnchors(tasks []BenchmarkTask, read FileReader) (checked int, violatio
 	sort.Strings(violations)
 	return checked, violations
 }
+
+// Hermetic loads the published ground truth under repoRoot and its vendored
+// corpus, for tests outside this package that need a real index.
+func Hermetic(repoRoot string) (*GroundTruth, Corpus, error) {
+	gt, err := LoadGroundTruth(filepath.Join(repoRoot, "fixtures", "evaluation", "reference-corpus", "ground-truth.v2.json"))
+	if err != nil {
+		return nil, Corpus{}, err
+	}
+	c := Corpus{Dir: filepath.Join(repoRoot, filepath.FromSlash(gt.Corpus.Snapshot)), RepoID: gt.Corpus.RepoID, TargetSystem: gt.Corpus.Name}
+	return gt, c, nil
+}

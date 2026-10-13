@@ -291,6 +291,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "integer",
 						Description: "Multi-hop graph traversal depth (default 1).",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 				Required: []string{"target_id"},
 			},
@@ -314,6 +318,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Context slice architectural view: 'full', 'architecture', or 'governance' (default 'full').",
 						Enum:        []string{"full", "architecture", "governance"},
+					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 					},
 				},
 				Required: []string{"node_id"},
@@ -383,6 +391,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			TargetID string `json:"target_id"`
 			Depth    int    `json:"depth"`
+			Budget   int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -411,12 +420,12 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 
-		outJSON, err := briefing.CanonicalJSON()
+		outJSON, err := briefing.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
 				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to serialize canonical JSON: %v", err)},
+					{Type: "text", Text: fmt.Sprintf("Failed to render impact briefing: %v", err)},
 				},
 			}
 		}
@@ -432,6 +441,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			NodeID string `json:"node_id"`
 			Tier   string `json:"tier"`
 			View   string `json:"view"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -470,12 +480,12 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 
-		outJSON, err := slice.CanonicalJSON()
+		outJSON, err := slice.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
 				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to serialize canonical JSON: %v", err)},
+					{Type: "text", Text: fmt.Sprintf("Failed to render context slice: %v", err)},
 				},
 			}
 		}

@@ -91,8 +91,8 @@ Usage:
 Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
-  impact <target_id> [--depth <int>] [--index <path>]       Compute impact briefing for target component
-  slice <node_id> [--tier <tier>] [--view <view>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
+  impact <target_id> [--depth <int>] [--budget <tokens>] [--index <path>] Compute impact briefing for target component
+  slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
@@ -281,7 +281,9 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	var depth int
 	var indexPath string
 	var format string
+	var budget int
 
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; briefing default 1500)")
 	fs.IntVar(&depth, "depth", 1, "Graph traversal depth")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
@@ -307,18 +309,12 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	switch strings.ToLower(format) {
-	case "md", "markdown":
-		fmt.Fprintln(stdout, briefing.RenderMarkdown())
-	default:
-		data, err := briefing.CanonicalJSON()
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(stdout, string(data))
+	data, err := briefing.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	_, err = stdout.Write(data)
+	return err
 }
 
 func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -331,6 +327,9 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	var view string
 	var indexPath string
 	var format string
+	var budget int
+
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; tier defaults 500/1500/3500)")
 
 	fs.StringVar(&tier, "tier", "summary", "Context slice tier (summary|contracts|deep)")
 	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance)")
@@ -358,18 +357,12 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	switch strings.ToLower(format) {
-	case "md", "markdown":
-		fmt.Fprintln(stdout, slice.RenderMarkdown())
-	default:
-		data, err := slice.CanonicalJSON()
-		if err != nil {
-			return err
-		}
-		fmt.Fprint(stdout, string(data))
+	data, err := slice.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	if err != nil {
+		return err
 	}
-
-	return nil
+	_, err = stdout.Write(data)
+	return err
 }
 
 func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {

@@ -30,6 +30,7 @@ func (cs *ContextSlice) CanonicalJSON() ([]byte, error) {
 		Neighbors:             sortedNeighbors,
 		Relationships:         sortedRels,
 		UnsupportedBoundaries: sortedUnsupported,
+		Budget:                cs.Budget,
 	}
 
 	var buf bytes.Buffer
@@ -73,6 +74,7 @@ func (ib *ImpactBriefing) CanonicalJSON() ([]byte, error) {
 		AffectedContracts:     sortedContracts,
 		MediationEdges:        sortedMediation,
 		UnsupportedBoundaries: sortedUnsupported,
+		Budget:                ib.Budget,
 	}
 
 	var buf bytes.Buffer
@@ -235,6 +237,7 @@ func (cs *ContextSlice) RenderMarkdown() string {
 		}
 	}
 
+	renderBudgetMarkdown(&sb, cs.Budget)
 	return sb.String()
 }
 
@@ -313,6 +316,7 @@ func (ib *ImpactBriefing) RenderMarkdown() string {
 		}
 	}
 
+	renderBudgetMarkdown(&sb, ib.Budget)
 	return sb.String()
 }
 
@@ -448,5 +452,17 @@ func renderContractMarkdown(sb *strings.Builder, c domain.Node) {
 	// Render messages if present
 	if msgs, ok := c.Metadata["messages"].([]string); ok && len(msgs) > 0 {
 		sb.WriteString(fmt.Sprintf("  - Messages: %s\n", strings.Join(msgs, ", ")))
+	}
+}
+
+// renderBudgetMarkdown writes the budget marker. It is never truncated.
+func renderBudgetMarkdown(sb *strings.Builder, b *Budget) {
+	if b == nil {
+		return
+	}
+	sb.WriteString(fmt.Sprintf("\n## Budget\n- limit: %d, estimated: %d, truncated: %t\n- dropped: nodes %d, relationships %d, evidence %d\n",
+		b.Limit, b.Estimated, b.Truncated, b.Dropped.Nodes, b.Dropped.Relationships, b.Dropped.Evidence))
+	if b.EscalateHint != "" {
+		sb.WriteString(fmt.Sprintf("- escalate: %s\n", b.EscalateHint))
 	}
 }
