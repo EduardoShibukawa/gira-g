@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "ddc4920"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-04-impact-from-diff, 2026-10-13-gira-agent-skills-and-eval-05-tours-and-flows, 2026-10-13-gira-agent-skills-and-eval-06-arch-diff]
@@ -30,11 +31,11 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | bace0dc | all packages ok before any edit |
-| AC1 | `go test -race ./internal/skills -v` (catalog contract, install idempotent and marker-scoped for claude, cursor, agents; opt-in hook) | not run | | |
-| AC2 | `go test -race ./cmd/gira -run SC11 and -run GiraQuerySkill -v` (golden, MCP path and CLI path) | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./internal/skills -v` (catalog contract, install idempotent and marker-scoped for claude, cursor, agents; opt-in hook) | pass | ddc4920 | 6 skills declare trigger, operations, contract, budget; 3 hosts generated; second run unchanged; outside-marker and other JSON bytes kept; hook opt-in and append-only |
+| AC2 | `go test -race ./cmd/gira -run SC11 and -run GiraQuerySkill -v` (golden, MCP path and CLI path) | pass | ddc4920 | 10 questions byte-identical via MCP and CLI and equal to goldens; error vocabulary covered |
+| R1 | `go test -race ./...` | pass | ddc4920 | all packages ok |
+| R2 | `node tools/validate/validate.js` | pass | ddc4920 | overall pass |
+| V1 | read the diff against the ACs | pass | ddc4920 | scope: internal/skills, CLI skills install and nudge, cmd/gira goldens, docs/skills/work-integration.md, go.mod yaml direct |
 
 ## Plan
 
