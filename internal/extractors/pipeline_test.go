@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 func TestDataFormatExtractor(t *testing.T) {

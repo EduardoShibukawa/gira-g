@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
 )
 
 // ScenarioCategory represents benchmark categories defined in ADR 0007.

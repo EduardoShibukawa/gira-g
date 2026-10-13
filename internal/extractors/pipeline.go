@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 // Pipeline manages extractors ordered by layer and processes target files.

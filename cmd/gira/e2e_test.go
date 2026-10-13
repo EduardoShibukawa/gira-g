@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/gitcache"
-	"labs/gira-g/internal/manifest"
-	"labs/gira-g/internal/slices"
-	"labs/gira-g/internal/store"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
 // setupDeterministicBareRepo initializes a git repo from sourceDir and clones it as a bare repo

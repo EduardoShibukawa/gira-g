@@ -1,4 +1,4 @@
-module labs/gira-g
+module github.com/EduardoShibukawa/gira-g
 
 go 1.24.0
 

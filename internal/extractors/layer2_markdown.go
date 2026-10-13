@@ -12,7 +12,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // MarkdownExtractor extracts structured documentation, tasks, skills, ADRs, and policies.

@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/mcp"
-	"labs/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/mcp"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
 )
 
 func buildTestMacroMap() *domain.MacroMap {

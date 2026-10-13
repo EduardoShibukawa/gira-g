@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // DockerfileExtractor extracts services, base image libraries/infrastructures, and build stages from Dockerfiles.

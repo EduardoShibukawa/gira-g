@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 func TestGitHubActionsExtractor_MetadataAndCanExtract(t *testing.T) {

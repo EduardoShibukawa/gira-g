@@ -3,7 +3,7 @@ package extractors
 import (
 	"context"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // Layer defines the 3-layer extractor classification.

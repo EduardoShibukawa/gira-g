@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
 )
 
 // buildSyntheticOTelDemoMap constructs a representative MacroMap fixture modeled after OpenTelemetry Demo.

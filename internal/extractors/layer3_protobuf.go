@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // ProtobufExtractor extracts Contract nodes and RPC methods from .proto files.

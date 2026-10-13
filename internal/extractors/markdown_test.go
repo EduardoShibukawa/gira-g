@@ -2,11 +2,10 @@ package extractors
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 func TestMarkdownExtractor_MetadataAndCanExtract(t *testing.T) {
@@ -566,10 +565,18 @@ Maps domain contexts and initiatives within duh-homelab.
 }
 
 func TestMarkdownExtractor_ExtractRealScratchIssue(t *testing.T) {
-	content, err := os.ReadFile("../../../../.scratch/system-context-harness/issues/01-first-user-and-workflow.md")
-	if err != nil {
-		t.Fatalf("failed to read real repo issue: %v", err)
-	}
+	content := []byte(`# Which user and first workflow set the MVP's acceptance criteria?
+
+Type: grilling
+Status: resolved
+Blocked by: —
+Map: [System Context Harness](../map.md)
+
+
+## Question
+
+The harness serves humans and AI agents across many scenarios (brief §6).
+`)
 
 	ext := NewMarkdownExtractor()
 	file := TargetFile{

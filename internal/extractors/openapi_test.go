@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 func TestOpenAPIExtractor_MetadataAndCanExtract(t *testing.T) {

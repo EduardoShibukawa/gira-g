@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 func TestMiseExtractor_MetadataAndCanExtract(t *testing.T) {

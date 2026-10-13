@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // CanonicalJSON serializes a ContextSlice to byte-deterministic JSON with sorted keys.

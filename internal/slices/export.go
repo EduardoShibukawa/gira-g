@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // ExportMarkdown produces a complete, standalone architectural Markdown document

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // GoModExtractor extracts module declarations and library dependencies from go.mod files.

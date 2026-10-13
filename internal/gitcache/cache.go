@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"labs/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 // FileEntry represents an extracted file entry from git tree.

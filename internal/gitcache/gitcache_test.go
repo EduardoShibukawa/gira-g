@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"labs/gira-g/internal/gitcache"
-	"labs/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 // helper to init a local git repo with a commit

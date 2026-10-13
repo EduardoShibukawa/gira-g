@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"labs/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 func TestParse_ValidManifest(t *testing.T) {

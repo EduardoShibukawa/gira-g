@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // Store handles persistence and retrieval of canonical MacroMap indexes.

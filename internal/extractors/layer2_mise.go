@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // MiseExtractor extracts toolchain definitions, environments, and tasks from mise configuration files.

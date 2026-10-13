@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"labs/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // GoASTExtractor extracts Service, Library, and Contract relationships from Go code.

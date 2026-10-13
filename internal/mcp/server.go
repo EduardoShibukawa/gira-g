@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"labs/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
 )
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request or notification.

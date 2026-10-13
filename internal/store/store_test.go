@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"labs/gira-g/internal/domain"
-	"labs/gira-g/internal/store"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
 func createTestMacroMap(targetSystem string) *domain.MacroMap {
