@@ -17,6 +17,20 @@
     "service:load-generator"
   ],
   "ignore_note": "Ambient dependencies (feature flags, telemetry sink) and the synthetic load generator touch nearly every Component; they are neither credited nor penalised.",
+  "flows": [
+    {
+      "id": "order-flow",
+      "title": "How an order flows from the cart to shipping",
+      "entry": "service:frontend",
+      "steps": ["service:frontend", "service:checkout", "service:cart", "service:product-catalog", "service:currency", "service:payment", "service:shipping", "service:email", "service:kafka", "service:accounting", "service:fraud-detection"],
+      "anchors": [
+        {"path": "src/checkout/main.go", "contains": "func (cs *checkout) PlaceOrder("},
+        {"path": "src/checkout/main.go", "contains": "/send_order_confirmation"},
+        {"path": "src/checkout/kafka/producer.go", "contains": "return \"orders\""}
+      ],
+      "notes": "Read from checkout PlaceOrder: get the cart, price items in the catalog, convert currency, charge payment, ship, send the confirmation email, publish to the orders topic, which accounting and fraud-detection consume."
+    }
+  ],
   "tasks": [
     {
       "id": "task-01-checkout-placeorder",

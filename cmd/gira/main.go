@@ -69,6 +69,12 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "explain":
 		return runExplain(rest, stdout, stderr)
 
+	case "tour":
+		return runTour(rest, stdout, stderr)
+
+	case "flows":
+		return runFlows(rest, stdout, stderr)
+
 	case "locate":
 		return runLocate(rest, stdout, stderr)
 
@@ -96,6 +102,8 @@ Commands:
   impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>] Impact briefing of the nodes a git diff touches
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
+  tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
+  flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
@@ -614,4 +622,70 @@ func openInBrowser(filePath string) {
 
 	// Non-blocking fire-and-forget; do not block or fail command if browser fails
 	_ = cmd.Start()
+}
+
+func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("tour", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var focus, indexPath, format string
+	var maxSteps int
+	fs.StringVar(&focus, "focus", "", "Start the tour at this node instead of the entry points")
+	fs.IntVar(&maxSteps, "max-steps", slices.DefaultTourSteps, "Maximum number of tour steps")
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+	tour, err := slices.NewEngine(mm).GetTour(focus, maxSteps)
+	if err != nil {
+		return err
+	}
+	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
+		_, err = fmt.Fprintln(stdout, tour.RenderMarkdown())
+		return err
+	}
+	data, err := tour.CanonicalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = stdout.Write(data)
+	return err
+}
+
+func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+	fs := flag.NewFlagSet("flows", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var indexPath, format string
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+	all := append(positionals, fs.Args()...)
+	if len(all) == 0 {
+		return fmt.Errorf("missing entry argument. Usage: gira flows <entry> [--format json|md]")
+	}
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+	flows, err := slices.NewEngine(mm).GetFlows(all[0])
+	if err != nil {
+		return err
+	}
+	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
+		_, err = fmt.Fprintln(stdout, flows.RenderMarkdown())
+		return err
+	}
+	data, err := flows.CanonicalJSON()
+	if err != nil {
+		return err
+	}
+	_, err = stdout.Write(data)
+	return err
 }

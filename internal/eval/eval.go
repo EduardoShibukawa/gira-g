@@ -79,7 +79,19 @@ type GroundTruth struct {
 	Corpus     CorpusRef       `json:"corpus"`
 	Ignore     []string        `json:"ignore,omitempty"`
 	IgnoreNote string          `json:"ignore_note,omitempty"`
+	Flows      []FlowTruth     `json:"flows,omitempty"`
 	Tasks      []BenchmarkTask `json:"tasks"`
+}
+
+// FlowTruth is a critical path a human reader should be walked through, in order.
+// Layer 2 and SC8 measure how much of it a tour visits.
+type FlowTruth struct {
+	ID      string   `json:"id"`
+	Title   string   `json:"title"`
+	Entry   string   `json:"entry"`
+	Steps   []string `json:"steps"`
+	Anchors []Anchor `json:"anchors,omitempty"`
+	Notes   string   `json:"notes,omitempty"`
 }
 
 // LoadGroundTruth reads a v2 ground-truth fixture. A fixture that still carries a
@@ -179,6 +191,15 @@ func (gt *GroundTruth) Perturbed(r *Recipe) (*GroundTruth, error) {
 		}
 	}
 	renameAll(out.Ignore)
+	for fi := range out.Flows {
+		f := &out.Flows[fi]
+		f.Entry = rename(f.Entry)
+		renameAll(f.Steps)
+		for ai := range f.Anchors {
+			f.Anchors[ai].Path = rename(f.Anchors[ai].Path)
+			f.Anchors[ai].Contains = rename(f.Anchors[ai].Contains)
+		}
+	}
 	for ti := range out.Tasks {
 		t := &out.Tasks[ti]
 		t.TargetID = rename(t.TargetID)

@@ -336,6 +336,23 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 			},
 		},
 		{
+			Name:        "get_tour",
+			Description: "Deterministic guided reading tour: from entry points (services with declared ports) or a focus node, walks consumes/provides/accesses edges breadth-first. Each step has order, title, node_ids, read (locators) and a templated why.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"focus": {
+						Type:        "string",
+						Description: "Optional node to start the tour at.",
+					},
+					"max_steps": {
+						Type:        "integer",
+						Description: "Maximum number of steps (default 20).",
+					},
+				},
+			},
+		},
+		{
 			Name:        "get_context_slice",
 			Description: "Retrieves a bounded context slice around node_id across summary, contracts, or deep disclosure tiers.",
 			InputSchema: InputSchema{
@@ -510,6 +527,26 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		out, err := briefing.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return errorResult(fmt.Sprintf("Failed to render PR impact: %v", err))
+		}
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+
+	case "get_tour":
+		var args struct {
+			Focus    string `json:"focus"`
+			MaxSteps int    `json:"max_steps"`
+		}
+		if len(params.Arguments) > 0 {
+			if err := json.Unmarshal(params.Arguments, &args); err != nil {
+				return errorResult(fmt.Sprintf("Invalid arguments for get_tour: %v", err))
+			}
+		}
+		tour, err := s.Engine.GetTour(args.Focus, args.MaxSteps)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to get tour: %v", err))
+		}
+		out, err := tour.CanonicalJSON()
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 

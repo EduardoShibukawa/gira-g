@@ -67,17 +67,45 @@ func CommitReader(ctx context.Context, cm *gitcache.CacheManager, repo manifest.
 // exist and contain the anchor string. It returns one
 // violation per anchor that does not resolve, sorted.
 func CheckAnchors(tasks []BenchmarkTask, read FileReader) (checked int, violations []string) {
+	return checkAnchors(taskAnchors(tasks), read)
+}
+
+// CheckFlowAnchors is CheckAnchors for the anchors of ground-truth flows.
+func CheckFlowAnchors(flows []FlowTruth, read FileReader) (int, []string) {
+	var owned []ownedAnchor
+	for _, f := range flows {
+		for _, a := range f.Anchors {
+			owned = append(owned, ownedAnchor{f.ID, a})
+		}
+	}
+	return checkAnchors(owned, read)
+}
+
+type ownedAnchor struct {
+	owner string
+	Anchor
+}
+
+func taskAnchors(tasks []BenchmarkTask) []ownedAnchor {
+	var out []ownedAnchor
 	for _, t := range tasks {
 		for _, a := range t.GroundTruth.Anchors {
-			checked++
-			data, err := read(a.Path)
-			if err != nil {
-				violations = append(violations, fmt.Sprintf("%s: %s: file does not resolve", t.ID, a.Path))
-				continue
-			}
-			if !strings.Contains(string(data), a.Contains) {
-				violations = append(violations, fmt.Sprintf("%s: %s: anchor %q not found", t.ID, a.Path, a.Contains))
-			}
+			out = append(out, ownedAnchor{t.ID, a})
+		}
+	}
+	return out
+}
+
+func checkAnchors(anchors []ownedAnchor, read FileReader) (checked int, violations []string) {
+	for _, a := range anchors {
+		checked++
+		data, err := read(a.Path)
+		if err != nil {
+			violations = append(violations, fmt.Sprintf("%s: %s: file does not resolve", a.owner, a.Path))
+			continue
+		}
+		if !strings.Contains(string(data), a.Contains) {
+			violations = append(violations, fmt.Sprintf("%s: %s: anchor %q not found", a.owner, a.Path, a.Contains))
 		}
 	}
 	sort.Strings(violations)
