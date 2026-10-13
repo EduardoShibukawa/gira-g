@@ -429,3 +429,95 @@ func TestPipeline_ApplyOverrides_NilAndEdgeCases(t *testing.T) {
 		t.Errorf("expected nil error for nil overrides, got %v", err)
 	}
 }
+
+func TestPipeline_Wave2Extractors(t *testing.T) {
+	pipe := DefaultPipeline()
+
+	// Verify all 9 extractors registered (Data, Compose, Helm, GoMod, GHA, OpenAPI, Mise, Proto, GoAST)
+	extractors := pipe.Extractors()
+	if len(extractors) != 9 {
+		t.Fatalf("expected 9 extractors in DefaultPipeline, got %d", len(extractors))
+	}
+
+	ghaYaml := `name: CI
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+`
+
+	openapiYaml := `openapi: 3.0.0
+info:
+  title: Users Service
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      summary: Get users
+`
+
+	miseToml := `[tools]
+go = "1.24.0"
+
+[tasks.test]
+run = "go test ./..."
+`
+
+	files := []TargetFile{
+		{Repo: "repo", CommitSHA: "c1", Path: ".github/workflows/ci.yml", Content: []byte(ghaYaml)},
+		{Repo: "repo", CommitSHA: "c1", Path: "api/users-openapi.yaml", Content: []byte(openapiYaml)},
+		{Repo: "repo", CommitSHA: "c1", Path: "mise.toml", Content: []byte(miseToml)},
+	}
+
+	mm, err := pipe.ProcessFiles(context.Background(), "test-system", files)
+	if err != nil {
+		t.Fatalf("ProcessFiles failed: %v", err)
+	}
+
+	nodeMap := make(map[string]domain.Node)
+	for _, n := range mm.Nodes {
+		nodeMap[n.ID] = n
+	}
+
+	// GitHub Actions nodes
+	if _, ok := nodeMap["service:job:build"]; !ok {
+		t.Errorf("missing service:job:build node")
+	}
+	if _, ok := nodeMap["library:actions/checkout"]; !ok {
+		t.Errorf("missing library:actions/checkout node")
+	}
+
+	// OpenAPI nodes
+	if _, ok := nodeMap["service:users-service"]; !ok {
+		t.Errorf("missing service:users-service node")
+	}
+	if _, ok := nodeMap["contract:/users:get"]; !ok {
+		t.Errorf("missing contract:/users:get node")
+	}
+
+	// Mise nodes
+	if _, ok := nodeMap["library:go"]; !ok {
+		t.Errorf("missing library:go node")
+	}
+	if _, ok := nodeMap["service:task:test"]; !ok {
+		t.Errorf("missing service:task:test node")
+	}
+
+	// Relationships
+	relMap := make(map[string]bool)
+	for _, r := range mm.Relationships {
+		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
+	}
+
+	if !relMap["service:job:build->consumes->library:actions/checkout"] {
+		t.Errorf("missing GHA consumes relationship")
+	}
+	if !relMap["service:users-service->provides->contract:/users:get"] {
+		t.Errorf("missing OpenAPI provides relationship")
+	}
+	if !relMap["service:task:test->consumes->library:go"] {
+		t.Errorf("missing Mise consumes relationship")
+	}
+}
+
