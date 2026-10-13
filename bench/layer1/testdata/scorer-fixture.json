@@ -1,0 +1,22 @@
+{
+  "note": "Hand-computed. Expected set (minus ignore) = {service:a, service:b, service:c, contract:X} (4). Answer set (minus ignore) = {service:a, service:zzz, service:c, service:b, contract:Y} (5). TP = {a, b, c} = 3. Precision 3/5 = 0.6; recall 3/4 = 0.75; F1 = 2*0.6*0.75/1.35 = 0.6666666666666666. Universe lacks service:zzz, so it is hallucinated. Locators: f.go#L1-L2 valid; f.go#L5-L9 out of bounds (f.go has 3 lines); nope.go#L1-L1 missing file; 'bad' unparseable: validity 1/4 = 0.25.",
+  "files": {"f.go": "package f\n\nfunc F() {}\n"},
+  "ignore": ["service:flagd"],
+  "universe": ["service:a", "service:b", "service:c", "contract:X", "contract:Y", "service:flagd"],
+  "task": {
+    "id": "fixture",
+    "target_id": "service:t",
+    "ground_truth": {
+      "expected_upstream_services": ["service:a", "service:b"],
+      "expected_downstream_services": ["service:c"],
+      "expected_affected_contracts": ["contract:X"]
+    }
+  },
+  "answer": {
+    "upstream": ["service:a", "service:flagd", "service:zzz"],
+    "downstream": ["service:c", "service:b"],
+    "contracts": ["contract:Y"],
+    "locators": ["f.go#L1-L2", "f.go#L5-L9", "nope.go#L1-L1", "bad"]
+  },
+  "want": {"precision": 0.6, "recall": 0.75, "f1": 0.6666666666666666, "locator_validity": 0.25, "locators_total": 4, "hallucinated_nodes": ["service:zzz"]}
+}

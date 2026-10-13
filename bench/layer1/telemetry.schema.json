@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "gira-bench/layer1/telemetry/1",
+  "title": "Layer 1 run telemetry",
+  "description": "One record per task x arm x model x repetition (spec B, Layer 1). No prompt, transcript or secret is recorded here; transcripts stay in the ignored output directory.",
+  "type": "object",
+  "required": ["schema", "task_id", "arm", "model_id", "repetition", "corpus_sha", "temperature", "tokens_input", "tokens_output", "cache_read_tokens", "tool_calls", "tool_calls_by_tool", "turns", "wall_latency_ms", "precision", "recall", "f1", "locator_validity", "locators_total", "hallucinated_nodes", "answered", "error"],
+  "properties": {
+    "schema": {"type": "string"},
+    "task_id": {"type": "string"},
+    "arm": {"type": "string"},
+    "model_id": {"type": "string"},
+    "repetition": {"type": "integer"},
+    "corpus_sha": {"type": "string"},
+    "temperature": {"type": "number"},
+    "tokens_input": {"type": "integer"},
+    "tokens_output": {"type": "integer"},
+    "cache_read_tokens": {"type": "integer"},
+    "tool_calls": {"type": "integer"},
+    "tool_calls_by_tool": {"type": "object"},
+    "turns": {"type": "integer"},
+    "wall_latency_ms": {"type": "integer"},
+    "precision": {"type": "number"},
+    "recall": {"type": "number"},
+    "f1": {"type": "number"},
+    "locator_validity": {"type": "number"},
+    "locators_total": {"type": "integer"},
+    "hallucinated_nodes": {"type": "array"},
+    "answered": {"type": "boolean"},
+    "error": {"type": "string"}
+  },
+  "additionalProperties": false
+}
