@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "2248e07"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-08-bench-quarantine]
@@ -29,10 +30,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | b1d2af9 | all packages ok before any edit |
-| AC1 | `go test -race ./...` inside `bench/` (layer0 goldens, locator checker; quarantine still holds) | not run | | |
-| R1 | `go test -race ./...` at the repository root | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./...` inside `bench/` (layer0 goldens, locator checker; quarantine still holds) | pass | 2248e07 | 3 adapter goldens byte-identical and deterministic; locator checker accepts valid and rejects out-of-bounds, anchor mismatch and missing file; quarantine holds |
+| R1 | `go test -race ./...` at the repository root | pass | 2248e07 | all root packages ok |
+| R2 | `node tools/validate/validate.js` | pass | 2248e07 | overall pass |
+| V1 | read the diff against the ACs | pass | 2248e07 | scope: bench/layer0, ground-truth component_paths, eval.GroundTruth field |
 
 ## Plan
 
