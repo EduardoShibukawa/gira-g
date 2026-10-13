@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "7d0d65a"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-05-tours-and-flows]
@@ -29,10 +30,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | b30c60f | all packages ok before any edit |
-| AC1 | `go test -race ./...` inside `bench/` (layer2: proxies on GIRA tours from the real binary, hand-checked proxies, UA adapter, protocol document; quarantine still holds) | not run | | |
-| R1 | `go test -race ./...` at the repository root | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./...` inside `bench/` (layer2: proxies on GIRA tours from the real binary, hand-checked proxies, UA adapter, protocol document; quarantine still holds) | pass | 7d0d65a | proxies run on real GIRA tours (focused 100% assertiveness, 81.8% coverage); hand-checked and UA cases pass; protocol has tasks, Latin square, rubric, instruments |
+| R1 | `go test -race ./...` at the repository root | pass | 7d0d65a | all root packages ok |
+| R2 | `node tools/validate/validate.js` | pass | 7d0d65a | overall pass |
+| V1 | read the diff against the ACs | pass | 7d0d65a | scope: bench/layer2, bench/internal/benchtest (layer1 helper moved) |
 
 ## Plan
 
