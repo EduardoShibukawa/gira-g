@@ -1,6 +1,6 @@
 # Quarantined comparative benchmark against prior art
 
-**Status:** proposed (2026-10-13). This ADR amends [ADR 0007](0007-evaluation-design-and-thresholds.md) §1, "Prior Art Isolation", and the matching rejected option. Specified in `specs/gira-agent-skills-and-eval.md`.
+**Status:** accepted (2026-10-13, by owner). This ADR amends [ADR 0007](0007-evaluation-design-and-thresholds.md) §1, "Prior Art Isolation", and the matching rejected option. Specified in `specs/gira-agent-skills-and-eval.md`.
 
 GIRA's product claim is comparative: agent efficiency like Graphify, human clarity like Understand Anything, and determinism on top. ADR 0007 bans both tools from every evaluation pipeline, so the claim can't be tested. We keep the ban where it protects GIRA, and lift it inside a quarantine where it does not:
 

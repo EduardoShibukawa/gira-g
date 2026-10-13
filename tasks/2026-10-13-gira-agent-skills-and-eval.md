@@ -15,6 +15,9 @@ spec: gira-agent-skills-and-eval@1
 - decided: how to handle the ADR 0007 prior-art ban → new ADR 0012 that amends it by owner (2026-10-13, "Novo ADR 0012 (Recommended)")
 - decided: corpus for the end-to-end eval → hermetic mini-corpus, full corpus opt-in by owner (2026-10-13, "Mini-corpus + opt-in (Recommended)")
 - decided: what a No-Go on unreviewed ground truth does → report it and regenerate the ground truth; thresholds asserted only on reviewed ground truth, by owner (2026-10-13, "Reportar e regenerar GT (Recommended)")
+- approved: spec v1 by owner (2026-10-13, "bora? use o /g-inga:drive e bora fazer tudo")
+- approved: ADR 0012 by owner (2026-10-13, "bora? use o /g-inga:drive e bora fazer tudo")
+- decided: manifest-integrity blocked → install the G-Ingá bundle in this repo (recommended option, under "bora fazer tudo") by owner (2026-10-13, "bora fazer tudo")
 
 ## Objective
 
@@ -41,7 +44,7 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 6dacb25 | all 9 packages ok before any edit |
-| B2 | `node ~/Git/duh-homelab/tools/validate/validate.js --root .` | blocked | 6dacb25 | manifest-integrity blocked: the repo has no G-Ingá bundle `manifest.json`; artifact-records not run (no records yet) |
+| B2 | `node tools/validate/validate.js` | blocked | 6dacb25 | manifest-integrity blocked (no bundle); bundle installed in e3645d1, the validator passes there |
 | SC1–SC16 | see spec §Verification | not run | | runs after the children are verified |
 | R1 | `go test -race ./...` on the integrated head | not run | | |
 | V1 | read the integrated diff against spec v1 | not run | | |
@@ -53,7 +56,7 @@ Out of scope:
 
 ## Plan
 
-Children are created only after the spec is approved, at `@1`, in dependency order:
+Children created at `@1` after approval (files `tasks/2026-10-13-gira-agent-skills-and-eval-NN-*.md`), in dependency order:
 
 1. `-01-eval-end-to-end`: shared indexing unit; hermetic mini-corpus and Go perturbation; ground truth v2; measured baseline; real Unsupported Safety; index determinism; gate semantics (SC1–SC5).
 2. `-02-ground-truth-rederivation`: re-derive the ground truth against the full pinned corpus (opt-in run); human review sets `reviewed: true` (depends on 01).

@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:dd4caed0ae65e14b16fbc86b3044ed58e2d256e644ab6fdbdeabacb75787d2c5
 ---
 
 # GIRA Agent & Human Skills Surface and Comparative Evaluation Framework
