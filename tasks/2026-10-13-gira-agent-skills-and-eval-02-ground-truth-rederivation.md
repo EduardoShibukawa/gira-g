@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "7dc2a01"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-01-eval-end-to-end]
@@ -30,12 +31,12 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | d627d93 | all 12 packages ok before any edit; validator pass |
-| AC1 | `go test -race ./internal/eval -run FullCorpus -v` without the opt-in env var | not run | | |
-| AC2 | `go test -race ./internal/eval ./internal/corpus -run Anchor and -run FetchUpstream` (hermetic snapshot) | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| R3 | opt-in `GIRA_EVAL_FULL_CORPUS=1 go test ./internal/eval -run FullCorpus -v` over the upstream pinned SHA | not run | | free run, no models; network fetch from github.com/open-telemetry pinned by SHA |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./internal/eval -run FullCorpus -v` without the opt-in env var | pass | 7dc2a01 | visible skip names GIRA_EVAL_FULL_CORPUS, url and sha |
+| AC2 | `go test -race ./internal/eval ./internal/corpus -run Anchor and -run FetchUpstream` (hermetic snapshot) | pass | 7dc2a01 | hermetic snapshot anchors resolve; drifted anchors rejected; upstream-SHA resolution in R3 |
+| R1 | `go test -race ./...` | pass | 7dc2a01 | all 12 packages ok |
+| R2 | `node tools/validate/validate.js` | pass | 7dc2a01 | overall pass |
+| R3 | opt-in `GIRA_EVAL_FULL_CORPUS=1 go test ./internal/eval -run FullCorpus -v` over the upstream pinned SHA | pass | 7dc2a01 | 596 files at dedc017; anchors resolve upstream; vendored files identical; report No-Go (unreviewed) |
+| V1 | read the diff against the ACs | pass | 7dc2a01 | scope: corpus upstream fetch, eval full-corpus and anchors, ground-truth upstream_url and review_note |
 
 ## Plan
 
