@@ -32,6 +32,7 @@ func NewPipeline(extractors ...Extractor) *Pipeline {
 func DefaultPipeline() *Pipeline {
 	return NewPipeline(
 		NewDataFormatExtractor(),
+		NewDockerfileExtractor(),
 		NewComposeExtractor(),
 		NewHelmExtractor(),
 		NewGoModExtractor(),
