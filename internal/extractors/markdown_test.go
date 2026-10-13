@@ -2,6 +2,7 @@ package extractors
 
 import (
 	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -28,6 +29,13 @@ func TestMarkdownExtractor_MetadataAndCanExtract(t *testing.T) {
 		"CONTEXT.md",
 		"SKILL.md",
 		"sub/dir/tasks/my-task.markdown",
+		".scratch/system-context-harness/issues/01-first-user-and-workflow.md",
+		".scratch/system-context-harness/map.md",
+		".scratch/system-context-harness/brief.md",
+		"CONTEXT-MAP.md",
+		"context-map.md",
+		"README.md",
+		"readme.md",
 	}
 
 	for _, path := range validCases {
@@ -286,5 +294,321 @@ func TestMarkdownExtractor_EdgeCases(t *testing.T) {
 	}
 	if len(nodes) != 1 || nodes[0].Kind != domain.NodeTask || nodes[0].Name != "Plain Task" {
 		t.Fatalf("expected task node with Plain Task, got %+v", nodes)
+	}
+}
+
+func TestMarkdownExtractor_ExtractScratchIssue_Grilling(t *testing.T) {
+	ext := NewMarkdownExtractor()
+
+	content := `# Which user and first workflow set the MVP's acceptance criteria?
+
+Type: grilling
+Status: resolved
+Blocked by: —
+Map: [System Context Harness](../map.md)
+
+
+## Question
+
+The harness serves humans and AI agents across many scenarios.
+`
+
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "abc1234",
+		Path:      ".scratch/system-context-harness/issues/01-first-user-and-workflow.md",
+		Content:   []byte(content),
+	}
+
+	nodes, rels, unsupporteds, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(unsupporteds) != 0 {
+		t.Fatalf("expected 0 unsupporteds, got %d", len(unsupporteds))
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(nodes))
+	}
+
+	node := nodes[0]
+	if node.ID != "task:system-context-harness:01-first-user-and-workflow" {
+		t.Errorf("expected node ID 'task:system-context-harness:01-first-user-and-workflow', got %s", node.ID)
+	}
+	if node.Kind != domain.NodePolicy {
+		t.Errorf("expected NodePolicy for grilling ticket, got %v", node.Kind)
+	}
+	if node.Name != "Which user and first workflow set the MVP's acceptance criteria?" {
+		t.Errorf("unexpected name: %s", node.Name)
+	}
+	if node.Metadata["type"] != "grilling" {
+		t.Errorf("expected type 'grilling', got %v", node.Metadata["type"])
+	}
+	if node.Metadata["status"] != "resolved" {
+		t.Errorf("expected status 'resolved', got %v", node.Metadata["status"])
+	}
+	if node.Metadata["effort"] != "system-context-harness" {
+		t.Errorf("expected effort 'system-context-harness', got %v", node.Metadata["effort"])
+	}
+	if len(node.Evidence) != 1 {
+		t.Fatalf("expected 1 evidence record, got %d", len(node.Evidence))
+	}
+	if node.Evidence[0].Locator.StartLine != 1 || node.Evidence[0].Locator.EndLine < 10 {
+		t.Errorf("unexpected locator range: %d-%d", node.Evidence[0].Locator.StartLine, node.Evidence[0].Locator.EndLine)
+	}
+
+	// Relationships: Map governs issue
+	if len(rels) != 1 {
+		t.Fatalf("expected 1 relationship from Map, got %d", len(rels))
+	}
+	rel := rels[0]
+	if rel.SourceID != "policy:system-context-harness:map" {
+		t.Errorf("expected source 'policy:system-context-harness:map', got %s", rel.SourceID)
+	}
+	if rel.TargetID != "task:system-context-harness:01-first-user-and-workflow" {
+		t.Errorf("expected target 'task:system-context-harness:01-first-user-and-workflow', got %s", rel.TargetID)
+	}
+	if rel.Verb != domain.VerbGoverns {
+		t.Errorf("expected VerbGoverns, got %s", rel.Verb)
+	}
+	if len(rel.Evidence) != 1 {
+		t.Fatalf("expected 1 evidence record for rel, got %d", len(rel.Evidence))
+	}
+	if rel.Evidence[0].Locator.StartLine != 6 || rel.Evidence[0].Locator.EndLine != 6 {
+		t.Errorf("expected locator line 6, got %d-%d", rel.Evidence[0].Locator.StartLine, rel.Evidence[0].Locator.EndLine)
+	}
+}
+
+func TestMarkdownExtractor_ExtractScratchIssue_TaskWithBlocker(t *testing.T) {
+	ext := NewMarkdownExtractor()
+
+	content := `# Prototype Architecture Slice
+
+Type: prototype
+Status: in-progress
+Blocked by: 01-first-user-and-workflow, [Prerequisite Task](tasks/prereq.md)
+Map: [System Context Harness](../map.md)
+
+Detailed implementation plan.
+`
+
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "abc1234",
+		Path:      ".scratch/system-context-harness/issues/15-context-slice.md",
+		Content:   []byte(content),
+	}
+
+	nodes, rels, unsupporteds, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(unsupporteds) != 0 {
+		t.Fatalf("expected 0 unsupporteds, got %d", len(unsupporteds))
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(nodes))
+	}
+
+	node := nodes[0]
+	if node.ID != "task:system-context-harness:15-context-slice" {
+		t.Errorf("expected node ID 'task:system-context-harness:15-context-slice', got %s", node.ID)
+	}
+	if node.Kind != domain.NodeTask {
+		t.Errorf("expected NodeTask for prototype ticket, got %v", node.Kind)
+	}
+	if node.Metadata["type"] != "prototype" {
+		t.Errorf("expected type 'prototype', got %v", node.Metadata["type"])
+	}
+
+	// Relationships: 2 blockers + 1 map = 3 VerbGoverns
+	if len(rels) != 3 {
+		t.Fatalf("expected 3 relationships, got %d", len(rels))
+	}
+
+	relMap := make(map[string]domain.Relationship)
+	for _, r := range rels {
+		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = r
+	}
+
+	if _, ok := relMap["task:system-context-harness:01-first-user-and-workflow->governs->task:system-context-harness:15-context-slice"]; !ok {
+		t.Errorf("missing blocker 01 governs 15 relation")
+	}
+	if _, ok := relMap["task:prereq->governs->task:system-context-harness:15-context-slice"]; !ok {
+		t.Errorf("missing prereq governs 15 relation")
+	}
+	if _, ok := relMap["policy:system-context-harness:map->governs->task:system-context-harness:15-context-slice"]; !ok {
+		t.Errorf("missing map governs 15 relation")
+	}
+}
+
+func TestMarkdownExtractor_ExtractScratchMap(t *testing.T) {
+	ext := NewMarkdownExtractor()
+
+	content := `# Map: System Context Harness
+
+Label: wayfinder:map
+
+## Destination
+
+Harness MVP.
+
+## Notes
+
+- **Original brief:** [brief.md](brief.md).
+
+## Decisions so far
+
+- [Which user and first workflow set the MVP's acceptance criteria?](issues/01-first-user-and-workflow.md)
+- [Trust boundary: what may leave the machine in the MVP?](issues/02-trust-boundary.md) — ... ([ADR 0001](../../labs/gira-g/docs/adr/0001-index-stores-locators-no-model-client.md))
+`
+
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "abc1234",
+		Path:      ".scratch/system-context-harness/map.md",
+		Content:   []byte(content),
+	}
+
+	nodes, rels, _, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("expected 1 map node, got %d", len(nodes))
+	}
+
+	node := nodes[0]
+	if node.ID != "policy:system-context-harness:map" {
+		t.Errorf("expected node ID 'policy:system-context-harness:map', got %s", node.ID)
+	}
+	if node.Kind != domain.NodePolicy {
+		t.Errorf("expected NodePolicy, got %v", node.Kind)
+	}
+	if node.Name != "Map: System Context Harness" {
+		t.Errorf("unexpected name: %s", node.Name)
+	}
+
+	if len(rels) < 4 {
+		t.Fatalf("expected at least 4 relationships, got %d", len(rels))
+	}
+
+	relMap := make(map[string]domain.Relationship)
+	for _, r := range rels {
+		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = r
+	}
+
+	if _, ok := relMap["policy:system-context-harness:map->governs->policy:system-context-harness:brief"]; !ok {
+		t.Errorf("missing map governs brief relation")
+	}
+	if _, ok := relMap["policy:system-context-harness:map->governs->task:system-context-harness:01-first-user-and-workflow"]; !ok {
+		t.Errorf("missing map governs issue 01 relation")
+	}
+	if _, ok := relMap["policy:system-context-harness:map->governs->task:system-context-harness:02-trust-boundary"]; !ok {
+		t.Errorf("missing map governs issue 02 relation")
+	}
+	if _, ok := relMap["policy:system-context-harness:map->governs->policy:0001-index-stores-locators-no-model-client"]; !ok {
+		t.Errorf("missing map governs ADR 0001 relation")
+	}
+}
+
+func TestMarkdownExtractor_ExtractContextMap(t *testing.T) {
+	ext := NewMarkdownExtractor()
+
+	content := `# Context Map
+
+Maps domain contexts and initiatives within duh-homelab.
+
+## Initiatives / Labs
+
+### Gira-G
+- **Project:** Gira-G (CLI: gira)
+- **Location:** labs/gira-g/
+- **Domain Context:** [CONTEXT.md](labs/gira-g/CONTEXT.md)
+- **Decisions:** [docs/adr/](labs/gira-g/docs/adr/)
+- **Effort Map & Issues:** [.scratch/system-context-harness/map.md](.scratch/system-context-harness/map.md)
+`
+
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "abc1234",
+		Path:      "CONTEXT-MAP.md",
+		Content:   []byte(content),
+	}
+
+	nodes, rels, _, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(nodes))
+	}
+
+	node := nodes[0]
+	if node.ID != "policy:context-map" {
+		t.Errorf("expected node ID 'policy:context-map', got %s", node.ID)
+	}
+	if node.Kind != domain.NodePolicy {
+		t.Errorf("expected NodePolicy, got %v", node.Kind)
+	}
+
+	relMap := make(map[string]domain.Relationship)
+	for _, r := range rels {
+		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = r
+	}
+
+	if _, ok := relMap["policy:context-map->governs->policy:context"]; !ok {
+		t.Errorf("missing context-map governs context relation")
+	}
+	if _, ok := relMap["policy:context-map->governs->policy:system-context-harness:map"]; !ok {
+		t.Errorf("missing context-map governs map relation")
+	}
+}
+
+func TestMarkdownExtractor_ExtractRealScratchIssue(t *testing.T) {
+	content, err := os.ReadFile("../../../../.scratch/system-context-harness/issues/01-first-user-and-workflow.md")
+	if err != nil {
+		t.Fatalf("failed to read real repo issue: %v", err)
+	}
+
+	ext := NewMarkdownExtractor()
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "head",
+		Path:      ".scratch/system-context-harness/issues/01-first-user-and-workflow.md",
+		Content:   content,
+	}
+
+	nodes, rels, unsupporteds, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(unsupporteds) != 0 {
+		t.Fatalf("expected 0 unsupporteds, got %d", len(unsupporteds))
+	}
+	if len(nodes) != 1 {
+		t.Fatalf("expected 1 node, got %d", len(nodes))
+	}
+	node := nodes[0]
+	if node.ID != "task:system-context-harness:01-first-user-and-workflow" {
+		t.Errorf("unexpected node ID: %s", node.ID)
+	}
+	if node.Kind != domain.NodePolicy {
+		t.Errorf("expected NodePolicy, got %v", node.Kind)
+	}
+	if len(rels) != 1 {
+		t.Fatalf("expected 1 rel (from Map:), got %d", len(rels))
+	}
+	if rels[0].SourceID != "policy:system-context-harness:map" {
+		t.Errorf("unexpected rel source: %s", rels[0].SourceID)
+	}
+	if rels[0].TargetID != "task:system-context-harness:01-first-user-and-workflow" {
+		t.Errorf("unexpected rel target: %s", rels[0].TargetID)
+	}
+	if rels[0].Verb != domain.VerbGoverns {
+		t.Errorf("expected VerbGoverns, got %s", rels[0].Verb)
+	}
+	if rels[0].Evidence[0].Locator.StartLine != 6 {
+		t.Errorf("expected locator line 6, got %d", rels[0].Evidence[0].Locator.StartLine)
 	}
 }

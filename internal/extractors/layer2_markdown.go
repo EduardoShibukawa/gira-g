@@ -33,7 +33,7 @@ func (e *MarkdownExtractor) Layer() Layer {
 
 // CanExtract determines whether a file qualifies for structured markdown extraction.
 func (e *MarkdownExtractor) CanExtract(path string) bool {
-	normalized := filepath.ToSlash(path)
+	normalized := filepath.Clean(filepath.ToSlash(path))
 	ext := strings.ToLower(filepath.Ext(normalized))
 	if ext != ".md" && ext != ".markdown" {
 		return false
@@ -42,25 +42,138 @@ func (e *MarkdownExtractor) CanExtract(path string) bool {
 	lower := strings.ToLower(normalized)
 	base := strings.ToLower(filepath.Base(normalized))
 
-	// Explicit ADR / Decision paths
+	// 1. .scratch patterns: .scratch/*/issues/*.md, .scratch/*/map.md, .scratch/*/brief.md
+	if strings.HasPrefix(lower, ".scratch/") || strings.Contains(lower, "/.scratch/") {
+		if strings.Contains(lower, "/issues/") || base == "map.md" || base == "brief.md" {
+			return true
+		}
+	}
+
+	// 2. Well-known documentation files (case-insensitive)
+	if base == "context-map.md" || base == "readme.md" || base == "agents.md" ||
+		base == "claude.md" || base == "gemini.md" || base == "context.md" || base == "skill.md" {
+		return true
+	}
+
+	// 3. Explicit ADR / Decision paths
 	if strings.HasPrefix(lower, "docs/decisions/") || strings.Contains(lower, "/docs/decisions/") ||
 		strings.HasPrefix(lower, "docs/adr/") || strings.Contains(lower, "/docs/adr/") {
 		return true
 	}
 
-	// Well-known documentation files
-	if base == "agents.md" || base == "claude.md" || base == "gemini.md" ||
-		base == "context.md" || base == "skill.md" {
-		return true
-	}
-
-	// Task / Spec patterns
+	// 4. Task / Spec patterns
 	if strings.HasPrefix(lower, "tasks/") || strings.Contains(lower, "/tasks/") ||
 		strings.HasPrefix(lower, "specs/") || strings.Contains(lower, "/specs/") {
 		return true
 	}
 
 	return false
+}
+
+// extractEffort extracts the effort name from a path containing .scratch/<effort>/...
+func extractEffort(path string) string {
+	normalized := filepath.Clean(filepath.ToSlash(path))
+	parts := strings.Split(normalized, "/")
+	for i, p := range parts {
+		if strings.ToLower(p) == ".scratch" && i+1 < len(parts) {
+			if strings.ToLower(parts[i+1]) != "issues" {
+				return parts[i+1]
+			}
+		}
+	}
+	return ""
+}
+
+// resolveTargetNodeID determines the canonical target node ID from a relative markdown link.
+func resolveTargetNodeID(currentPath string, targetRef string) (string, bool) {
+	targetRef = strings.TrimSpace(targetRef)
+	if idx := strings.Index(targetRef, "#"); idx != -1 {
+		targetRef = targetRef[:idx]
+	}
+	if idx := strings.Index(targetRef, "?"); idx != -1 {
+		targetRef = targetRef[:idx]
+	}
+	targetRef = strings.Trim(targetRef, "`\"'")
+	targetRef = strings.TrimSpace(targetRef)
+	if targetRef == "" {
+		return "", false
+	}
+
+	// Ignore external URLs
+	lowerRef := strings.ToLower(targetRef)
+	if strings.HasPrefix(lowerRef, "http://") || strings.HasPrefix(lowerRef, "https://") ||
+		strings.HasPrefix(lowerRef, "mailto:") || strings.HasPrefix(lowerRef, "ftp://") {
+		return "", false
+	}
+
+	// Direct repo-relative paths
+	if strings.HasPrefix(lowerRef, "tasks/") {
+		return fmt.Sprintf("task:%s", cleanSlug(filepath.Base(lowerRef))), true
+	}
+	if strings.HasPrefix(lowerRef, "docs/decisions/") || strings.HasPrefix(lowerRef, "docs/adr/") {
+		return fmt.Sprintf("policy:%s", cleanSlug(filepath.Base(lowerRef))), true
+	}
+
+	dir := filepath.Dir(filepath.ToSlash(currentPath))
+	targetPath := filepath.Clean(filepath.Join(dir, targetRef))
+	targetPath = filepath.ToSlash(targetPath)
+	targetLower := strings.ToLower(targetPath)
+	targetBase := strings.ToLower(filepath.Base(targetPath))
+
+	ext := filepath.Ext(targetPath)
+	if ext != ".md" && ext != ".markdown" {
+		return "", false
+	}
+
+	// 1. .scratch: .scratch/<effort>/issues/<file>.md, .scratch/<effort>/map.md, .scratch/<effort>/brief.md
+	if strings.Contains(targetLower, "/.scratch/") || strings.HasPrefix(targetLower, ".scratch/") {
+		parts := strings.Split(targetPath, "/")
+		for i, p := range parts {
+			if strings.ToLower(p) == ".scratch" && i+2 < len(parts) {
+				effort := parts[i+1]
+				if strings.ToLower(parts[i+2]) == "issues" && i+3 == len(parts)-1 {
+					slug := cleanSlug(parts[i+3])
+					return fmt.Sprintf("task:%s:%s", effort, slug), true
+				}
+				if targetBase == "map.md" || targetBase == "map.markdown" {
+					return fmt.Sprintf("policy:%s:map", effort), true
+				}
+				if targetBase == "brief.md" || targetBase == "brief.markdown" {
+					return fmt.Sprintf("policy:%s:brief", effort), true
+				}
+			}
+		}
+	}
+
+	// 2. CONTEXT-MAP.md
+	if targetBase == "context-map.md" || targetBase == "context-map.markdown" {
+		return "policy:context-map", true
+	}
+
+	// 3. README.md
+	if targetBase == "readme.md" || targetBase == "readme.markdown" {
+		return "policy:readme", true
+	}
+
+	// 4. docs/decisions/ or docs/adr/
+	if strings.Contains(targetLower, "/docs/decisions/") || strings.HasPrefix(targetLower, "docs/decisions/") ||
+		strings.Contains(targetLower, "/docs/adr/") || strings.HasPrefix(targetLower, "docs/adr/") {
+		return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
+	}
+
+	// 5. tasks/
+	if strings.Contains(targetLower, "/tasks/") || strings.HasPrefix(targetLower, "tasks/") {
+		return fmt.Sprintf("task:%s", cleanSlug(targetBase)), true
+	}
+
+	// 6. Generic well-known docs
+	if targetBase == "agents.md" || targetBase == "claude.md" || targetBase == "gemini.md" ||
+		targetBase == "context.md" {
+		return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
+	}
+
+	// Default fallback
+	return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
 }
 
 // frontmatterInfo captures parsed YAML frontmatter metadata and line boundaries.
@@ -171,7 +284,367 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 		totalLines = 1
 	}
 
-	// 1. Classification
+	// 1. Specialized Classification for .scratch issues, maps, briefs, and system docs
+	isScratchIssue := (strings.HasPrefix(lower, ".scratch/") || strings.Contains(lower, "/.scratch/")) && strings.Contains(lower, "/issues/")
+	isScratchMap := (strings.HasPrefix(lower, ".scratch/") || strings.Contains(lower, "/.scratch/")) && (base == "map.md" || base == "map.markdown")
+	isScratchBrief := (strings.HasPrefix(lower, ".scratch/") || strings.Contains(lower, "/.scratch/")) && (base == "brief.md" || base == "brief.markdown")
+	isContextMap := base == "context-map.md" || base == "context-map.markdown"
+	isReadme := base == "readme.md" || base == "readme.markdown"
+
+	if isScratchIssue {
+		effort := extractEffort(file.Path)
+		slug := cleanSlug(filepath.Base(file.Path))
+		var nodeID string
+		if effort != "" {
+			nodeID = fmt.Sprintf("task:%s:%s", effort, slug)
+		} else {
+			nodeID = fmt.Sprintf("task:%s", slug)
+		}
+
+		var (
+			issueType     string
+			issueStatus   string
+			blockedByVal  string
+			mapVal        string
+			blockedByLine int
+			mapLine       int
+		)
+
+		scanner := bufio.NewScanner(bytes.NewReader(file.Content))
+		lineNum := 0
+		reType := regexp.MustCompile(`(?i)^Type:\s*(.+)$`)
+		reStatus := regexp.MustCompile(`(?i)^Status:\s*(.+)$`)
+		reBlockedBy := regexp.MustCompile(`(?i)^Blocked\s+by:\s*(.+)$`)
+		reMap := regexp.MustCompile(`(?i)^Map:\s*(.+)$`)
+
+		for scanner.Scan() {
+			lineNum++
+			lineText := scanner.Text()
+			trimmed := strings.TrimSpace(lineText)
+
+			if m := reType.FindStringSubmatch(trimmed); len(m) > 1 && issueType == "" {
+				issueType = strings.TrimSpace(m[1])
+			}
+			if m := reStatus.FindStringSubmatch(trimmed); len(m) > 1 && issueStatus == "" {
+				issueStatus = strings.TrimSpace(m[1])
+			}
+			if m := reBlockedBy.FindStringSubmatch(trimmed); len(m) > 1 && blockedByVal == "" {
+				blockedByVal = strings.TrimSpace(m[1])
+				blockedByLine = lineNum
+			}
+			if m := reMap.FindStringSubmatch(trimmed); len(m) > 1 && mapVal == "" {
+				mapVal = strings.TrimSpace(m[1])
+				mapLine = lineNum
+			}
+		}
+
+		if fm.hasFrontmatter {
+			if t, ok := fm.data["type"].(string); ok && issueType == "" {
+				issueType = strings.TrimSpace(t)
+			}
+			if s, ok := fm.data["status"].(string); ok && issueStatus == "" {
+				issueStatus = strings.TrimSpace(s)
+			}
+			if b, ok := fm.data["blocked_by"].(string); ok && blockedByVal == "" {
+				blockedByVal = strings.TrimSpace(b)
+			}
+			if m, ok := fm.data["map"].(string); ok && mapVal == "" {
+				mapVal = strings.TrimSpace(m)
+			}
+		}
+
+		nodeKind := domain.NodeTask
+		lowerType := strings.ToLower(issueType)
+		if lowerType == "decision" || lowerType == "grilling" {
+			nodeKind = domain.NodePolicy
+		}
+
+		deployProfile := "task"
+		if nodeKind == domain.NodePolicy {
+			deployProfile = "markdown"
+		}
+
+		meta := make(map[string]any)
+		meta["path"] = file.Path
+		meta["title"] = title
+		if effort != "" {
+			meta["effort"] = effort
+		}
+		meta["slug"] = slug
+		if issueType != "" {
+			meta["type"] = issueType
+		}
+		if issueStatus != "" {
+			meta["status"] = issueStatus
+		}
+		if blockedByVal != "" {
+			meta["blocked_by"] = blockedByVal
+		}
+		if mapVal != "" {
+			meta["map"] = mapVal
+		}
+		if fm.hasFrontmatter {
+			for k, v := range fm.data {
+				meta[k] = v
+			}
+		}
+
+		descPrefix := "Task"
+		if nodeKind == domain.NodePolicy {
+			descPrefix = "Policy issue"
+		}
+
+		node := domain.Node{
+			ID:          nodeID,
+			Kind:        nodeKind,
+			Name:        title,
+			Description: fmt.Sprintf("%s: %s", descPrefix, title),
+			Metadata:    meta,
+			Evidence: []domain.EvidenceRecord{
+				{
+					Locator: domain.Locator{
+						Repo:      file.Repo,
+						CommitSHA: file.CommitSHA,
+						Path:      file.Path,
+						StartLine: 1,
+						EndLine:   totalLines,
+					},
+					Origin:            domain.OriginExtracted,
+					DeploymentProfile: deployProfile,
+					Status:            domain.StatusCurrent,
+					DiscoveredAt:      discoveredAt,
+				},
+			},
+		}
+		nodes = append(nodes, node)
+
+		// 1. Blocked by: -> blocker VerbGoverns this issue
+		if blockedByVal != "" && blockedByVal != "—" && blockedByVal != "-" && strings.ToLower(blockedByVal) != "none" {
+			reMarkdownLink := regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+			blockers := strings.Split(blockedByVal, ",")
+			for _, b := range blockers {
+				b = strings.TrimSpace(b)
+				if b == "" || b == "—" || b == "-" || strings.ToLower(b) == "none" {
+					continue
+				}
+				var targetID string
+				if m := reMarkdownLink.FindStringSubmatch(b); len(m) > 2 {
+					linkTarget := m[2]
+					if tid, ok := resolveTargetNodeID(file.Path, linkTarget); ok {
+						targetID = tid
+					} else {
+						targetSlug := cleanSlug(linkTarget)
+						if effort != "" {
+							targetID = fmt.Sprintf("task:%s:%s", effort, targetSlug)
+						} else {
+							targetID = fmt.Sprintf("task:%s", targetSlug)
+						}
+					}
+				} else {
+					targetSlug := cleanSlug(b)
+					if targetSlug != "" && targetSlug != slug {
+						if effort != "" {
+							targetID = fmt.Sprintf("task:%s:%s", effort, targetSlug)
+						} else {
+							targetID = fmt.Sprintf("task:%s", targetSlug)
+						}
+					}
+				}
+
+				if targetID != "" && targetID != nodeID {
+					rel := domain.Relationship{
+						ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(targetID), sanitizeID(nodeID)),
+						SourceID: targetID,
+						TargetID: nodeID,
+						Verb:     domain.VerbGoverns,
+						Evidence: []domain.EvidenceRecord{
+							{
+								Locator: domain.Locator{
+									Repo:      file.Repo,
+									CommitSHA: file.CommitSHA,
+									Path:      file.Path,
+									StartLine: blockedByLine,
+									EndLine:   blockedByLine,
+								},
+								Origin:            domain.OriginExtracted,
+								DeploymentProfile: "task",
+								Status:            domain.StatusCurrent,
+								DiscoveredAt:      discoveredAt,
+							},
+						},
+					}
+					relationships = append(relationships, rel)
+				}
+			}
+		}
+
+		// 2. Map: -> map VerbGoverns this issue
+		if mapVal != "" {
+			reMarkdownLink := regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+			var mapNodeID string
+			if m := reMarkdownLink.FindStringSubmatch(mapVal); len(m) > 2 {
+				linkTarget := m[2]
+				if tid, ok := resolveTargetNodeID(file.Path, linkTarget); ok {
+					mapNodeID = tid
+				}
+			} else {
+				if tid, ok := resolveTargetNodeID(file.Path, mapVal); ok {
+					mapNodeID = tid
+				}
+			}
+			if mapNodeID == "" && effort != "" {
+				mapNodeID = fmt.Sprintf("policy:%s:map", effort)
+			}
+
+			if mapNodeID != "" && mapNodeID != nodeID {
+				rel := domain.Relationship{
+					ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(mapNodeID), sanitizeID(nodeID)),
+					SourceID: mapNodeID,
+					TargetID: nodeID,
+					Verb:     domain.VerbGoverns,
+					Evidence: []domain.EvidenceRecord{
+						{
+							Locator: domain.Locator{
+								Repo:      file.Repo,
+								CommitSHA: file.CommitSHA,
+								Path:      file.Path,
+								StartLine: mapLine,
+								EndLine:   mapLine,
+							},
+							Origin:            domain.OriginExtracted,
+							DeploymentProfile: "task",
+							Status:            domain.StatusCurrent,
+							DiscoveredAt:      discoveredAt,
+						},
+					},
+				}
+				relationships = append(relationships, rel)
+			}
+		}
+
+		return nodes, relationships, nil, nil
+	}
+
+	if isScratchMap || isScratchBrief || isContextMap || isReadme {
+		effort := extractEffort(file.Path)
+		var nodeID string
+		docType := "policy"
+
+		if isScratchMap {
+			if effort != "" {
+				nodeID = fmt.Sprintf("policy:%s:map", effort)
+			} else {
+				nodeID = "policy:map"
+			}
+			docType = "map"
+		} else if isScratchBrief {
+			if effort != "" {
+				nodeID = fmt.Sprintf("policy:%s:brief", effort)
+			} else {
+				nodeID = "policy:brief"
+			}
+			docType = "brief"
+		} else if isContextMap {
+			nodeID = "policy:context-map"
+			docType = "context-map"
+		} else if isReadme {
+			nodeID = "policy:readme"
+			docType = "readme"
+		}
+
+		meta := make(map[string]any)
+		meta["path"] = file.Path
+		meta["title"] = title
+		meta["type"] = docType
+		if effort != "" {
+			meta["effort"] = effort
+		}
+		if fm.hasFrontmatter {
+			for k, v := range fm.data {
+				meta[k] = v
+			}
+		}
+
+		node := domain.Node{
+			ID:          nodeID,
+			Kind:        domain.NodePolicy,
+			Name:        title,
+			Description: fmt.Sprintf("Policy (%s): %s", docType, title),
+			Metadata:    meta,
+			Evidence: []domain.EvidenceRecord{
+				{
+					Locator: domain.Locator{
+						Repo:      file.Repo,
+						CommitSHA: file.CommitSHA,
+						Path:      file.Path,
+						StartLine: 1,
+						EndLine:   totalLines,
+					},
+					Origin:            domain.OriginExtracted,
+					DeploymentProfile: "markdown",
+					Status:            domain.StatusCurrent,
+					DiscoveredAt:      discoveredAt,
+				},
+			},
+		}
+		nodes = append(nodes, node)
+
+		// Scan lines for internal markdown links: [Label](target)
+		scanner := bufio.NewScanner(bytes.NewReader(file.Content))
+		currentLine := 0
+		reMarkdownLink := regexp.MustCompile(`\[([^\]]+)\]\(([^)]+)\)`)
+		relIndexMap := make(map[string]int)
+
+		for scanner.Scan() {
+			currentLine++
+			select {
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			default:
+			}
+
+			lineText := scanner.Text()
+			matches := reMarkdownLink.FindAllStringSubmatch(lineText, -1)
+			for _, m := range matches {
+				if len(m) > 2 {
+					targetRef := m[2]
+					targetID, ok := resolveTargetNodeID(file.Path, targetRef)
+					if ok && targetID != "" && targetID != nodeID {
+						ev := domain.EvidenceRecord{
+							Locator: domain.Locator{
+								Repo:      file.Repo,
+								CommitSHA: file.CommitSHA,
+								Path:      file.Path,
+								StartLine: currentLine,
+								EndLine:   currentLine,
+							},
+							Origin:            domain.OriginExtracted,
+							DeploymentProfile: "markdown",
+							Status:            domain.StatusCurrent,
+							DiscoveredAt:      discoveredAt,
+						}
+						if idx, exists := relIndexMap[targetID]; exists {
+							relationships[idx].Evidence = append(relationships[idx].Evidence, ev)
+						} else {
+							rel := domain.Relationship{
+								ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(nodeID), sanitizeID(targetID)),
+								SourceID: nodeID,
+								TargetID: targetID,
+								Verb:     domain.VerbGoverns,
+								Evidence: []domain.EvidenceRecord{ev},
+							}
+							relIndexMap[targetID] = len(relationships)
+							relationships = append(relationships, rel)
+						}
+					}
+				}
+			}
+		}
+
+		return nodes, relationships, nil, nil
+	}
+
+	// 2. Standard Classification
 	isTask := false
 	isSkill := false
 	isPolicy := false
