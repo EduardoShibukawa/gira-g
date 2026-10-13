@@ -3,17 +3,16 @@ package layer1
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"io/fs"
 	"math"
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/EduardoShibukawa/gira-g/bench/internal/benchtest"
 )
 
 var repoRoot = filepath.Join("..", "..")
@@ -31,60 +30,10 @@ func loadGT(t *testing.T) *GroundTruth {
 	return &gt
 }
 
-func run(t *testing.T, dir string, name string, args ...string) string {
-	t.Helper()
-	cmd := exec.Command(name, args...)
-	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=b", "GIT_AUTHOR_EMAIL=b@b.invalid", "GIT_COMMITTER_NAME=b", "GIT_COMMITTER_EMAIL=b@b.invalid",
-		"GIT_AUTHOR_DATE=2026-01-01T00:00:00Z", "GIT_COMMITTER_DATE=2026-01-01T00:00:00Z", "GIT_CONFIG_GLOBAL=/dev/null")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("%s %v: %v\n%s", name, args, err, out)
-	}
-	return strings.TrimSpace(string(out))
-}
-
-// hermeticCorpus copies the vendored corpus into a git repository, builds the gira
-// binary and indexes the repository with `gira index`, as arm B's build phase does.
+// hermeticCorpus returns the indexed hermetic corpus shared by bench tests.
 func hermeticCorpus(t *testing.T) (repo, sha, gira, index string) {
-	t.Helper()
-	tmp := t.TempDir()
-	repo = filepath.Join(tmp, "corpus")
-	src := filepath.Join(repoRoot, "testdata", "corpus", "otel-demo-3.1.0-mini")
-	err := filepath.WalkDir(src, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		rel, _ := filepath.Rel(src, p)
-		if d.IsDir() {
-			return os.MkdirAll(filepath.Join(repo, rel), 0o755)
-		}
-		data, err := os.ReadFile(p)
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(filepath.Join(repo, rel), data, 0o644)
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	run(t, repo, "git", "init", "-q", "-b", "main")
-	run(t, repo, "git", "add", "-A")
-	run(t, repo, "git", "commit", "-q", "--no-gpg-sign", "-m", "corpus")
-	sha = run(t, repo, "git", "rev-parse", "HEAD")
-
-	abs, _ := filepath.Abs(repoRoot)
-	gira = filepath.Join(tmp, "gira")
-	run(t, abs, "go", "build", "-o", gira, "./cmd/gira")
-
-	manifest := filepath.Join(tmp, "manifest.yaml")
-	m := fmt.Sprintf("version: 1\ntarget_system:\n  name: opentelemetry-demo\nrepositories:\n  - id: opentelemetry-demo\n    url: %q\n    sha: %q\n    path_scope: \".\"\n", repo, sha)
-	if err := os.WriteFile(manifest, []byte(m), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	index = filepath.Join(tmp, "macro-map.json")
-	run(t, tmp, gira, "index", manifest, "--output", index, "--cache-dir", filepath.Join(tmp, "cache"))
-	return repo, sha, gira, index
+	c := benchtest.Hermetic(t)
+	return c.Repo, c.SHA, c.Gira, c.Index
 }
 
 // SC14: in mock-model mode the runner executes all 12 tasks for arms A and B

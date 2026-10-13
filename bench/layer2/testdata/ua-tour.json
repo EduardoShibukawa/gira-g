@@ -1,0 +1,15 @@
+{
+  "version": "2.9.7",
+  "project": {"name": "sample", "gitCommitHash": "c0ffee0000000000000000000000000000000000"},
+  "nodes": [
+    {"id": "file:src/frontend/gateways/rpc/Checkout.gateway.ts", "type": "file", "name": "Checkout.gateway.ts", "filePath": "src/frontend/gateways/rpc/Checkout.gateway.ts"},
+    {"id": "function:src/checkout/main.go:PlaceOrder", "type": "function", "name": "PlaceOrder", "filePath": "src/checkout/main.go"},
+    {"id": "function:src/checkout/main.go:Imaginary", "type": "function", "name": "ChargeTwice", "filePath": "src/checkout/main.go"}
+  ],
+  "edges": [],
+  "tour": [
+    {"order": 1, "title": "Storefront entry", "description": "The frontend submits the order through the checkout gateway.", "nodeIds": ["file:src/frontend/gateways/rpc/Checkout.gateway.ts"]},
+    {"order": 2, "title": "Placing the order", "description": "PlaceOrder orchestrates cart, payment and shipping.", "nodeIds": ["function:src/checkout/main.go:PlaceOrder"]},
+    {"order": 3, "title": "Double charge guard", "description": "ChargeTwice prevents duplicate payments.", "nodeIds": ["function:src/checkout/main.go:Imaginary"]}
+  ]
+}
