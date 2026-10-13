@@ -14,6 +14,7 @@ import (
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
+	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
@@ -92,6 +93,7 @@ Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--budget <tokens>] [--index <path>] Compute impact briefing for target component
+  impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>] Impact briefing of the nodes a git diff touches
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
@@ -283,20 +285,24 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	var format string
 	var budget int
 
+	var fromDiff, repoDir, repoID string
+
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; briefing default 1500)")
 	fs.IntVar(&depth, "depth", 1, "Graph traversal depth")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&fromDiff, "from-diff", "", "Start from a git revision range <base>..<head> instead of a target id")
+	fs.StringVar(&repoDir, "repo", ".", "Repository the --from-diff range is read from")
+	fs.StringVar(&repoID, "repo-id", "", "Only match locators of this repository id (--from-diff)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
 
 	allPositionals := append(positionals, fs.Args()...)
-	if len(allPositionals) == 0 {
-		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md]")
+	if fromDiff == "" && len(allPositionals) == 0 {
+		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md] or gira impact --from-diff <base>..<head>")
 	}
-	targetID := allPositionals[0]
 
 	mm, err := loadIndex(indexPath)
 	if err != nil {
@@ -304,9 +310,25 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	engine := slices.NewEngine(mm)
-	briefing, err := engine.GetImpactBriefing(targetID, depth)
-	if err != nil {
-		return err
+	var briefing *slices.ImpactBriefing
+	if fromDiff != "" {
+		diff, err := gitdiff.Run(context.Background(), repoDir, fromDiff)
+		if err != nil {
+			return err
+		}
+		changes, err := gitdiff.Parse(diff)
+		if err != nil {
+			return err
+		}
+		briefing, err = engine.GetPRImpact(fromDiff, repoID, changes, depth)
+		if err != nil {
+			return err
+		}
+	} else {
+		briefing, err = engine.GetImpactBriefing(allPositionals[0], depth)
+		if err != nil {
+			return err
+		}
 	}
 
 	data, err := briefing.Emit(slices.ParseFormat(strings.ToLower(format)), budget)

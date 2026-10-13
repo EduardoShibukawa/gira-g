@@ -181,8 +181,10 @@ func TestServer_ToolsList(t *testing.T) {
 		t.Fatalf("expected tools list: %v", result)
 	}
 
-	if len(tools) != 4 {
-		t.Fatalf("expected 4 tools, got %d", len(tools))
+	// New tools are additive (spec gira-agent-skills-and-eval): the original four
+	// must stay listed, others may join them.
+	if len(tools) < 4 {
+		t.Fatalf("expected at least 4 tools, got %d", len(tools))
 	}
 
 	toolNames := make(map[string]bool)

@@ -123,7 +123,11 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 			nodes = append(nodes, n.ID)
 		}
 	}
-	order := dropOrder(nodes, hops(ib.TargetID, ib.MediationEdges))
+	roots := []string{ib.TargetID}
+	if ib.Diff != nil {
+		roots = ib.Diff.Targets
+	}
+	order := dropOrder(nodes, hops(roots, ib.MediationEdges))
 	return fit(limit, order, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
 		var d Dropped
 		c := *ib
@@ -281,15 +285,19 @@ func dropOrder(ids []string, dist map[string]int) []string {
 	return out
 }
 
-// hops returns undirected hop counts from root over rels.
-func hops(root string, rels []domain.Relationship) map[string]int {
+// hops returns undirected hop counts from the nearest root over rels.
+func hops(roots []string, rels []domain.Relationship) map[string]int {
 	adj := map[string][]string{}
 	for _, r := range rels {
 		adj[r.SourceID] = append(adj[r.SourceID], r.TargetID)
 		adj[r.TargetID] = append(adj[r.TargetID], r.SourceID)
 	}
-	dist := map[string]int{root: 0}
-	queue := []string{root}
+	dist := map[string]int{}
+	var queue []string
+	for _, r := range roots {
+		dist[r] = 0
+		queue = append(queue, r)
+	}
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]

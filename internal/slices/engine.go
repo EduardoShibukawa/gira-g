@@ -38,6 +38,7 @@ type ImpactBriefing struct {
 	AffectedContracts     []domain.Node                `json:"affected_contracts"`
 	MediationEdges        []domain.Relationship        `json:"mediation_edges"`
 	UnsupportedBoundaries []domain.UnsupportedBoundary `json:"unsupported_boundaries,omitempty"`
+	Diff                  *DiffTargets                 `json:"diff,omitempty"`
 	Budget                *Budget                      `json:"budget,omitempty"`
 }
 

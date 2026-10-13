@@ -3,6 +3,7 @@ package mcp
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 )
 
@@ -300,6 +302,40 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 			},
 		},
 		{
+			Name:        "get_pr_impact",
+			Description: "Impact briefing for a change set: maps the changed line ranges of a git revision range (or a supplied unified diff) to the nodes whose evidence they touch, and merges their impact briefings. Changed files no locator cites are listed as unmatched.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"range": {
+						Type:        "string",
+						Description: "Git revision range <base>..<head>, read from repo_path. Labels the result when diff is given.",
+					},
+					"diff": {
+						Type:        "string",
+						Description: "Optional unified diff text (for example `git diff -U0 base..head`); used instead of running git.",
+					},
+					"repo_path": {
+						Type:        "string",
+						Description: "Repository the range is read from (default: the server's working directory).",
+					},
+					"repo_id": {
+						Type:        "string",
+						Description: "Optional repository id; only locators of this repository are matched.",
+					},
+					"depth": {
+						Type:        "integer",
+						Description: "Multi-hop graph traversal depth (default 1).",
+					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
+				},
+				Required: []string{"range"},
+			},
+		},
+		{
 			Name:        "get_context_slice",
 			Description: "Retrieves a bounded context slice around node_id across summary, contracts, or deep disclosure tiers.",
 			InputSchema: InputSchema{
@@ -435,6 +471,47 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 				{Type: "text", Text: string(outJSON)},
 			},
 		}
+
+	case "get_pr_impact":
+		var args struct {
+			Range    string `json:"range"`
+			Diff     string `json:"diff"`
+			RepoPath string `json:"repo_path"`
+			RepoID   string `json:"repo_id"`
+			Depth    int    `json:"depth"`
+			Budget   int    `json:"budget"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return errorResult(fmt.Sprintf("Invalid arguments for get_pr_impact: %v", err))
+		}
+		if args.Range == "" {
+			return errorResult("Missing required argument 'range'")
+		}
+		diff := args.Diff
+		if diff == "" {
+			dir := args.RepoPath
+			if dir == "" {
+				dir = "."
+			}
+			out, err := gitdiff.Run(context.Background(), dir, args.Range)
+			if err != nil {
+				return errorResult(fmt.Sprintf("Failed to read diff: %v", err))
+			}
+			diff = out
+		}
+		changes, err := gitdiff.Parse(diff)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to parse diff: %v", err))
+		}
+		briefing, err := s.Engine.GetPRImpact(args.Range, args.RepoID, changes, args.Depth)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to get PR impact: %v", err))
+		}
+		out, err := briefing.Emit(slices.FormatJSON, args.Budget)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to render PR impact: %v", err))
+		}
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 
 	case "get_context_slice":
 		var args struct {
@@ -599,4 +676,8 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			},
 		}
 	}
+}
+
+func errorResult(msg string) CallToolResult {
+	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: msg}}}
 }

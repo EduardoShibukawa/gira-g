@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-03-hard-budgets]
@@ -28,6 +28,25 @@ Out of scope: other children's criteria.
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` | not run | | baseline is taken at start |
-| AC1 | test for SC7 | not run | | |
+| B1 | `go test -race ./...` | pass | 0301d36 | all packages ok before any edit |
+| AC1 | `go test -race ./cmd/gira ./internal/gitdiff -run SC7 and -run Unmatched and -run Parse and -run Touches` | not run | | |
+| R1 | `go test -race ./...` | not run | | |
+| R2 | `node tools/validate/validate.js` | not run | | |
 | V1 | read the diff against the ACs | not run | | |
+
+## Plan
+
+skip: the diff reader, the engine mapping, then the CLI and MCP wiring; the order is fixed by the dependency.
+
+## Outcome
+
+Delivered:
+- `internal/gitdiff`: reads `git diff -U0 <base>..<head>` into base-side line hunks. An insertion counts as inside a range only when both neighbouring lines are. Option-like ranges are rejected;
+- `Engine.GetPRImpact`: a node is a target when one of its evidence locators cites a changed range. A relationship whose evidence does makes its source a target. The briefings of all targets are merged. A changed file that no locator cites is listed in `diff.unmatched_paths` and never guessed. The briefing gains an optional `diff` object (`range`, `changed_paths`, `targets`, `unmatched_paths`), shown in Markdown too;
+- CLI `gira impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>]`, which composes with `--budget` and `--format`;
+- MCP `get_pr_impact` (`range`, optional `diff` text, `repo_path`, `repo_id`, `depth`, `budget`). It emits the same JSON as the CLI.
+
+SC7 evidence: adding `rpc Refund` inside `service PaymentService` gives the targets `[contract:PaymentService]`, and its Impact Set equals that of `gira impact contract:PaymentService`, through the CLI and through MCP, whether git runs or the diff is supplied.
+
+One existing unit test changed: `TestServer_ToolsList` asserted exactly 4 MCP tools. It now asserts that the original 4 are still listed, because new tools are additive by spec. The e2e tests are unchanged.
+

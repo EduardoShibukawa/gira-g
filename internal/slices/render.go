@@ -74,6 +74,7 @@ func (ib *ImpactBriefing) CanonicalJSON() ([]byte, error) {
 		AffectedContracts:     sortedContracts,
 		MediationEdges:        sortedMediation,
 		UnsupportedBoundaries: sortedUnsupported,
+		Diff:                  ib.Diff,
 		Budget:                ib.Budget,
 	}
 
@@ -247,6 +248,15 @@ func (ib *ImpactBriefing) RenderMarkdown() string {
 
 	sb.WriteString(fmt.Sprintf("# Impact Briefing: %s (%s)\n", ib.TargetID, ib.TargetKind))
 	sb.WriteString(fmt.Sprintf("- Traversal Depth: %d\n", ib.Depth))
+	if ib.Diff != nil {
+		sb.WriteString(fmt.Sprintf("- Diff: `%s`, %d changed path(s)\n", ib.Diff.Range, len(ib.Diff.ChangedPaths)))
+		for _, id := range ib.Diff.Targets {
+			sb.WriteString(fmt.Sprintf("- Target: `%s`\n", id))
+		}
+		for _, p := range ib.Diff.UnmatchedPaths {
+			sb.WriteString(fmt.Sprintf("- Unknown to the index: `%s`\n", p))
+		}
+	}
 
 	// Upstream Services
 	sb.WriteString(fmt.Sprintf("\n## Upstream Services (%d)\n", len(ib.UpstreamServices)))
