@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "9c324a5"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-03-hard-budgets]
@@ -29,10 +30,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 0301d36 | all packages ok before any edit |
-| AC1 | `go test -race ./cmd/gira ./internal/gitdiff -run SC7 and -run Unmatched and -run Parse and -run Touches` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./cmd/gira ./internal/gitdiff -run SC7 and -run Unmatched and -run Parse and -run Touches` | pass | 9c324a5 | proto PaymentService edit: CLI, MCP (git and supplied diff) impact set equals direct contract target; unmatched paths reported |
+| R1 | `go test -race ./...` | pass | 9c324a5 | all packages ok; e2e unchanged |
+| R2 | `node tools/validate/validate.js` | pass | 9c324a5 | overall pass |
+| V1 | read the diff against the ACs | pass | 9c324a5 | scope: gitdiff package, slices GetPRImpact and diff field, CLI --from-diff, MCP get_pr_impact, tools-list test relaxed to superset |
 
 ## Plan
 
