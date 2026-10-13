@@ -65,6 +65,7 @@ type CorpusRef struct {
 	Name        string `json:"name"`
 	Release     string `json:"release"`
 	UpstreamSHA string `json:"upstream_sha"`
+	UpstreamURL string `json:"upstream_url,omitempty"`
 	RepoID      string `json:"repo_id"`
 	Snapshot    string `json:"snapshot"`
 }

@@ -2,11 +2,12 @@
   "schema": "gira-eval-ground-truth/2",
   "variant": "published",
   "reviewed": false,
-  "review_note": "Derived on 2026-10-13 by reading the vendored 3.1.0 sources (call sites, env wiring, compose depends_on), independently of gira output. Evidence rule: a runtime call site or env wiring when the caller's source is vendored; compose depends_on only when the caller's source is not vendored and nothing better exists. Not yet reviewed by a human; thresholds are reported, not enforced (spec part C, gate semantics).",
+  "review_note": "Derived on 2026-10-13 by reading the vendored 3.1.0 sources (call sites, env wiring, compose depends_on), independently of gira output. Evidence rule: a runtime call site or env wiring when the caller's source is vendored; compose depends_on only when the caller's source is not vendored and nothing better exists. Re-checked on 2026-10-13 against the full upstream tree at upstream_sha (GIRA_EVAL_FULL_CORPUS=1): every anchor resolves, the vendored snapshot is byte-identical to upstream, and every expected id names a Component or proto/topic Contract that exists there. Not yet reviewed by a human; thresholds are reported, not enforced (spec part C, gate semantics).",
   "corpus": {
     "name": "opentelemetry-demo",
     "release": "3.1.0",
     "upstream_sha": "dedc0178918e260823323b8d95005a8cb924b007",
+    "upstream_url": "https://github.com/open-telemetry/opentelemetry-demo.git",
     "repo_id": "opentelemetry-demo",
     "snapshot": "testdata/corpus/otel-demo-3.1.0-mini"
   },
