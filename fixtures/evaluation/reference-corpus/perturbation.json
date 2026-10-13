@@ -1,0 +1,51 @@
+{
+  "schema": "gira-eval-perturbation/1",
+  "note": "Deterministic recipe for the Perturbed Variant (ADR 0007). Edits are applied to the published text, then renames to every path, content and ground-truth id. Renames are single words so that Go identifiers stay valid.",
+  "renames": [
+    {"from": "product-catalog", "to": "inventory"},
+    {"from": "ProductCatalog", "to": "Inventory"},
+    {"from": "productCatalog", "to": "inventory"},
+    {"from": "PRODUCT_CATALOG", "to": "INVENTORY"},
+    {"from": "checkout", "to": "ordering"},
+    {"from": "Checkout", "to": "Ordering"},
+    {"from": "CHECKOUT", "to": "ORDERING"},
+    {"from": "cart", "to": "basket"},
+    {"from": "Cart", "to": "Basket"},
+    {"from": "CART", "to": "BASKET"},
+    {"from": "payment", "to": "billing"},
+    {"from": "Payment", "to": "Billing"},
+    {"from": "PAYMENT", "to": "BILLING"},
+    {"from": "currency", "to": "exchange"},
+    {"from": "Currency", "to": "Exchange"},
+    {"from": "CURRENCY", "to": "EXCHANGE"},
+    {"from": "email", "to": "notify"},
+    {"from": "Email", "to": "Notify"},
+    {"from": "EMAIL", "to": "NOTIFY"},
+    {"from": "shipping", "to": "dispatch"},
+    {"from": "Shipping", "to": "Dispatch"},
+    {"from": "SHIPPING", "to": "DISPATCH"},
+    {"from": "accounting", "to": "ledger"},
+    {"from": "Accounting", "to": "Ledger"},
+    {"from": "frontend", "to": "storefront"},
+    {"from": "Frontend", "to": "Storefront"},
+    {"from": "FRONTEND", "to": "STOREFRONT"}
+  ],
+  "edits": [
+    {"path": "src/checkout/main.go", "find": "\tcurrencySvcClient       pb.CurrencyServiceClient\n", "replace": ""},
+    {"path": "src/checkout/main.go", "find": "\tsvc.currencySvcClient = pb.NewCurrencyServiceClient(c)\n", "replace": "\t_ = c\n"},
+    {"path": "compose.yaml", "find": "      - CART_ADDR\n      - CURRENCY_ADDR\n      - EMAIL_ADDR\n", "replace": "      - CART_ADDR\n      - EMAIL_ADDR\n"},
+    {"path": "compose.yaml", "find": "      currency:\n        condition: service_healthy\n      email:\n", "replace": "      email:\n"},
+    {"path": "src/checkout/kafka/producer.go", "find": "return \"orders\"", "replace": "return \"order-events\""}
+  ],
+  "ground_truth": {
+    "id_renames": [
+      {"from": "contract:kafka:orders", "to": "contract:kafka:order-events"}
+    ],
+    "remove": [
+      {"task": "task-01-checkout-placeorder", "field": "expected_upstream_services", "id": "service:currency"},
+      {"task": "task-01-checkout-placeorder", "field": "expected_affected_contracts", "id": "contract:CurrencyService"},
+      {"task": "task-04-proto-currencyservice", "field": "expected_downstream_services", "id": "service:checkout"},
+      {"task": "task-12-currency-language-boundary", "field": "expected_downstream_services", "id": "service:checkout"}
+    ]
+  }
+}

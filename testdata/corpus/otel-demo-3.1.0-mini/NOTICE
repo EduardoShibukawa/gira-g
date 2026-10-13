@@ -1,0 +1,10 @@
+This directory is a minimal, unmodified subset of the OpenTelemetry Demo,
+release 3.1.0 (commit dedc0178918e260823323b8d95005a8cb924b007),
+https://github.com/open-telemetry/opentelemetry-demo
+
+Copyright The OpenTelemetry Authors. Licensed under the Apache License,
+Version 2.0 (see LICENSE in this directory).
+
+It is vendored only as a hermetic evaluation corpus for gira's internal
+evaluator (specs/gira-agent-skills-and-eval.md, part C). README, AGENTS.md
+and docs/ are deliberately excluded (ADR 0007 memory-leak rule).

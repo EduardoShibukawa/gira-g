@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
-	"github.com/EduardoShibukawa/gira-g/internal/extractors"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
+	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
@@ -205,47 +205,10 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("failed to initialize cache manager: %w", err)
 	}
 
-	ctx := context.Background()
-
-	// 3. Ensure repos & iterate files based on path_scopes
-	var targetFiles []extractors.TargetFile
-	for _, repo := range m.Repositories {
-		if err := cm.EnsureRepo(ctx, repo, offline); err != nil {
-			return fmt.Errorf("failed to ensure repository %q: %w", repo.ID, err)
-		}
-
-		entries, err := cm.ListTree(ctx, repo)
-		if err != nil {
-			return fmt.Errorf("failed to list tree for repository %q: %w", repo.ID, err)
-		}
-
-		for _, entry := range entries {
-			content, err := cm.ReadFile(ctx, repo, entry.Path)
-			if err != nil {
-				return fmt.Errorf("failed to read file %q from repository %q: %w", entry.Path, repo.ID, err)
-			}
-
-			targetFiles = append(targetFiles, extractors.TargetFile{
-				Repo:      repo.ID,
-				CommitSHA: repo.SHA,
-				Path:      entry.Path,
-				Content:   content,
-			})
-		}
-	}
-
-	// 4. Run 3-layer extraction pipeline
-	pipe := extractors.DefaultPipeline()
-	mm, err := pipe.ProcessFiles(ctx, m.TargetSystem.Name, targetFiles)
+	// 3–5. Fetch repos, extract, apply overrides (shared with the evaluator)
+	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{Offline: offline, ManifestPath: manifestPath})
 	if err != nil {
-		return fmt.Errorf("failed to extract files: %w", err)
-	}
-
-	// 5. Apply declarative overrides from manifest
-	if m.Overrides != nil {
-		if err := pipe.ApplyOverrides(mm, m.Overrides, manifestPath); err != nil {
-			return fmt.Errorf("failed to apply overrides: %w", err)
-		}
+		return err
 	}
 
 	// 6. Persist generated MacroMap
@@ -637,4 +600,3 @@ func openInBrowser(filePath string) {
 	// Non-blocking fire-and-forget; do not block or fail command if browser fails
 	_ = cmd.Start()
 }
-
