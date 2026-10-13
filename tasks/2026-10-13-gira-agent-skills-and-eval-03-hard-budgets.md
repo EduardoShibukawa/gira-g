@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "9de69b2"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-01-eval-end-to-end]
@@ -29,10 +30,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 4d197c0 | clean worktree at 4d197c0; taken after the first edits had started, on the unedited commit |
-| AC1 | `go test -race ./cmd/gira -run SC6 -v` and `go test -race ./internal/slices -run Fit` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./cmd/gira -run SC6 -v` and `go test -race ./internal/slices -run Fit` | pass | 9de69b2 | 10 of 12 tasks x 3 tiers x json/md/mcp within budget; repeat byte-identical; focal kept; tasks 05/06 have no node (see Outcome) |
+| R1 | `go test -race ./...` | pass | 9de69b2 | all packages ok; existing e2e unchanged |
+| R2 | `node tools/validate/validate.js` | pass | 9de69b2 | overall pass |
+| V1 | read the diff against the ACs | pass | 9de69b2 | scope: slices budget and render, CLI impact/slice flags, MCP budget arg, eval.Hermetic helper |
 
 ## Plan
 
