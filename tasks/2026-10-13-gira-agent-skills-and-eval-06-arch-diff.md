@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "75ecdba"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 depends_on: [2026-10-13-gira-agent-skills-and-eval-01-eval-end-to-end]
@@ -29,10 +30,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 96ae840 | all packages ok before any edit |
-| AC1 | `go test -race ./cmd/gira ./internal/archdiff -run SC9 and -run ArchDiff and -run Segments and -run Ambiguous -v` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./cmd/gira ./internal/archdiff -run SC9 and -run ArchDiff and -run Segments and -run Ambiguous -v` | pass | 75ecdba | 24 renames equal the table; 2 removed edges equal index_changes; no other structural change; CLI equals MCP; ambiguous rename not guessed |
+| R1 | `go test -race ./...` | pass | 75ecdba | all packages ok |
+| R2 | `node tools/validate/validate.js` | pass | 75ecdba | overall pass |
+| V1 | read the diff against the ACs | pass | 75ecdba | scope: archdiff package, CLI diff, MCP diff_maps, recipe index_changes |
 
 ## Plan
 
