@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: verified
+verified_at: "a93c508"
 parent: 2026-10-13-gira-agent-skills-and-eval
 spec: gira-agent-skills-and-eval@1
 ---
@@ -28,10 +29,10 @@ Out of scope: other children's criteria.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | fd35d79 | all packages ok before any edit |
-| AC1 | `go test -race ./...` run inside `bench/` (quarantine package) | not run | | |
-| R1 | `go test -race ./...` at the repository root; the bench module is not entered | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
-| V1 | read the diff against the ACs | not run | | |
+| AC1 | `go test -race ./...` run inside `bench/` (quarantine package) | pass | a93c508 | no guarded file references the bench; out/ ignored; query phases network none; mounts limited; recipes pinned; violations detected on a synthetic tree |
+| R1 | `go test -race ./...` at the repository root; the bench module is not entered | pass | a93c508 | all root packages ok; bench module not entered |
+| R2 | `node tools/validate/validate.js` | pass | a93c508 | overall pass |
+| V1 | read the diff against the ACs | pass | a93c508 | scope: bench/ only (go.mod, containers, phases.json, scripts, quarantine, .gitignore, README) |
 
 ## Constraints and budget
 
