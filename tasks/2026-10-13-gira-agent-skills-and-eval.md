@@ -19,6 +19,8 @@ spec: gira-agent-skills-and-eval@1
 - approved: ADR 0012 by owner (2026-10-13, "bora? use o /g-inga:drive e bora fazer tudo")
 - decided: manifest-integrity blocked → install the G-Ingá bundle in this repo (recommended option, under "bora fazer tudo") by owner (2026-10-13, "bora fazer tudo")
 - divergence: spec SC1: the mutation names the Protobuf extractor, but removing it leaves recall unchanged because the Go AST extractor also creates the contract nodes. Child 01 removes Go AST instead (contract recall 0.33 → 0.17). Needs an owner exception or a spec v2.
+- approved: exception SC1 — the mutation test removes the Go AST extractor instead of Protobuf, because Go AST also creates the contract nodes; the intent of SC1 (prove the eval depends on extraction) is kept. Resolves the SC1 divergence above. By owner (2026-10-13, "approved: exception SC1 — o teste de mutação remove o extrator Go AST em vez do Protobuf, porque o Go AST também cria os nós de contrato; a intenção do SC1 (provar que o eval depende da extração) está mantida. Isso resolve a divergence: já registrada.")
+- approved: run children 02–11 via /g-inga:drive, standard tier each, no paid LLM calls, quarantine per ADR 0012, no push or release, by owner (2026-10-13, "/g-inga:drive --limit 11 --tag gira-agent-skills-and-eval@1")
 
 ## Objective
 
