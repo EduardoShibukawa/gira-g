@@ -16,16 +16,22 @@ const (
 	NodeLibrary        NodeType = "Library"
 	NodeInfrastructure NodeType = "Infrastructure"
 	NodeContract       NodeType = "Contract"
+	NodePolicy         NodeType = "Policy"
+	NodeSkill          NodeType = "Skill"
+	NodeTask           NodeType = "Task"
 )
 
 // RelationVerb defines the closed set of directional relationship verbs.
 type RelationVerb string
 
 const (
-	VerbProvides RelationVerb = "provides"
-	VerbConsumes RelationVerb = "consumes"
-	VerbImports  RelationVerb = "imports"
-	VerbAccesses RelationVerb = "accesses"
+	VerbProvides   RelationVerb = "provides"
+	VerbConsumes   RelationVerb = "consumes"
+	VerbImports    RelationVerb = "imports"
+	VerbAccesses   RelationVerb = "accesses"
+	VerbImplements RelationVerb = "implements"
+	VerbVerifies   RelationVerb = "verifies"
+	VerbGoverns    RelationVerb = "governs"
 )
 
 // DerivationOrigin designates the provenance classification of a discovered fact.

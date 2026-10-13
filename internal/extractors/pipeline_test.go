@@ -433,10 +433,10 @@ func TestPipeline_ApplyOverrides_NilAndEdgeCases(t *testing.T) {
 func TestPipeline_Wave2Extractors(t *testing.T) {
 	pipe := DefaultPipeline()
 
-	// Verify all 9 extractors registered (Data, Compose, Helm, GoMod, GHA, OpenAPI, Mise, Proto, GoAST)
+	// Verify all 10 extractors registered (Data, Compose, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST)
 	extractors := pipe.Extractors()
-	if len(extractors) != 9 {
-		t.Fatalf("expected 9 extractors in DefaultPipeline, got %d", len(extractors))
+	if len(extractors) != 10 {
+		t.Fatalf("expected 10 extractors in DefaultPipeline, got %d", len(extractors))
 	}
 
 	ghaYaml := `name: CI
@@ -520,4 +520,109 @@ run = "go test ./..."
 		t.Errorf("missing Mise consumes relationship")
 	}
 }
+
+func TestPipeline_MarkdownIntegration(t *testing.T) {
+	pipe := DefaultPipeline()
+
+	taskMD := `---
+schema: task/1
+tier: standard
+status: active
+---
+
+# Feature Task
+
+Blocked by: [Task Dependency](tasks/dep-task.md)
+implements: architecture-policy
+
+## Verification
+
+| ID | Check | Result |
+|---|---|---|
+| AC1 | Model expansion | pass |
+`
+
+	adrMD := `---
+schema: dec/1
+---
+
+# ADR 0001: Architecture Decision
+
+governs: payment-service, auth-service
+`
+
+	skillMD := `---
+name: code-reviewer
+---
+
+# Code Reviewer Skill
+`
+
+	files := []TargetFile{
+		{Repo: "repo", CommitSHA: "c1", Path: "tasks/feature-task.md", Content: []byte(taskMD)},
+		{Repo: "repo", CommitSHA: "c1", Path: "docs/decisions/0001-architecture.md", Content: []byte(adrMD)},
+		{Repo: "repo", CommitSHA: "c1", Path: "skills/code-reviewer/SKILL.md", Content: []byte(skillMD)},
+	}
+
+	mm, err := pipe.ProcessFiles(context.Background(), "test-system", files)
+	if err != nil {
+		t.Fatalf("ProcessFiles failed: %v", err)
+	}
+
+	nodeMap := make(map[string]domain.Node)
+	for _, n := range mm.Nodes {
+		nodeMap[n.ID] = n
+	}
+
+	// Verify nodes
+	taskNode, hasTask := nodeMap["task:feature-task"]
+	if !hasTask {
+		t.Fatalf("missing task:feature-task node")
+	}
+	if taskNode.Kind != domain.NodeTask {
+		t.Errorf("expected NodeTask, got %v", taskNode.Kind)
+	}
+	if taskNode.Name != "Feature Task" {
+		t.Errorf("expected 'Feature Task', got %s", taskNode.Name)
+	}
+
+	adrNode, hasAdr := nodeMap["policy:0001-architecture"]
+	if !hasAdr {
+		t.Fatalf("missing policy:0001-architecture node")
+	}
+	if adrNode.Kind != domain.NodePolicy {
+		t.Errorf("expected NodePolicy, got %v", adrNode.Kind)
+	}
+
+	skillNode, hasSkill := nodeMap["skill:code-reviewer"]
+	if !hasSkill {
+		t.Fatalf("missing skill:code-reviewer node")
+	}
+	if skillNode.Kind != domain.NodeSkill {
+		t.Errorf("expected NodeSkill, got %v", skillNode.Kind)
+	}
+
+	// Verify relationships
+	relMap := make(map[string]bool)
+	for _, r := range mm.Relationships {
+		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
+	}
+
+	if !relMap["task:dep-task->governs->task:feature-task"] {
+		t.Errorf("missing governs relationship from dep-task to feature-task")
+	}
+	if !relMap["task:feature-task->implements->policy:architecture-policy"] {
+		t.Errorf("missing implements relationship from feature-task to architecture-policy")
+	}
+	if !relMap["task:feature-task->verifies->contract:check:ac1"] {
+		t.Errorf("missing verifies relationship from feature-task to contract:check:ac1")
+	}
+	if !relMap["policy:0001-architecture->governs->service:payment-service"] {
+		t.Errorf("missing governs relationship to payment-service")
+	}
+	if !relMap["policy:0001-architecture->governs->service:auth-service"] {
+		t.Errorf("missing governs relationship to auth-service")
+	}
+}
+
 

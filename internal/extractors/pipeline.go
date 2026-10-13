@@ -38,6 +38,7 @@ func DefaultPipeline() *Pipeline {
 		NewGitHubActionsExtractor(),
 		NewOpenAPIExtractor(),
 		NewMiseExtractor(),
+		NewMarkdownExtractor(),
 		NewProtobufExtractor(),
 		NewGoASTExtractor(),
 	)
@@ -169,10 +170,11 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	for _, r := range relMap {
 		// Ensure endpoints exist in nodeMap
 		if _, ok := nodeMap[r.SourceID]; !ok {
-			// Create dummy service node to preserve graph integrity if source not found
+			// Create dummy node to preserve graph integrity if source not found
+			srcKind := deriveKindFromID(r.SourceID)
 			srcNode := domain.Node{
 				ID:   r.SourceID,
-				Kind: domain.NodeService,
+				Kind: srcKind,
 				Name: r.SourceID,
 			}
 			if err := macroMap.AddNode(srcNode); err == nil {
@@ -180,10 +182,11 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 			}
 		}
 		if _, ok := nodeMap[r.TargetID]; !ok {
-			// Create dummy service node to preserve graph integrity if target not found
+			// Create dummy node to preserve graph integrity if target not found
+			tgtKind := deriveKindFromID(r.TargetID)
 			tgtNode := domain.Node{
 				ID:   r.TargetID,
-				Kind: domain.NodeService,
+				Kind: tgtKind,
 				Name: r.TargetID,
 			}
 			if err := macroMap.AddNode(tgtNode); err == nil {
@@ -296,6 +299,25 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 	return nil
 }
 
+func deriveKindFromID(nodeID string) domain.NodeType {
+	switch {
+	case strings.HasPrefix(nodeID, "contract:"):
+		return domain.NodeContract
+	case strings.HasPrefix(nodeID, "infra:") || strings.HasPrefix(nodeID, "infrastructure:"):
+		return domain.NodeInfrastructure
+	case strings.HasPrefix(nodeID, "lib:") || strings.HasPrefix(nodeID, "library:"):
+		return domain.NodeLibrary
+	case strings.HasPrefix(nodeID, "policy:"):
+		return domain.NodePolicy
+	case strings.HasPrefix(nodeID, "skill:"):
+		return domain.NodeSkill
+	case strings.HasPrefix(nodeID, "task:"):
+		return domain.NodeTask
+	default:
+		return domain.NodeService
+	}
+}
+
 func ensureNodeExists(mm *domain.MacroMap, nodeID, manifestPath string, now time.Time) {
 	for _, n := range mm.Nodes {
 		if n.ID == nodeID {
@@ -303,14 +325,7 @@ func ensureNodeExists(mm *domain.MacroMap, nodeID, manifestPath string, now time
 		}
 	}
 
-	kind := domain.NodeService
-	if strings.HasPrefix(nodeID, "contract:") {
-		kind = domain.NodeContract
-	} else if strings.HasPrefix(nodeID, "infra:") || strings.HasPrefix(nodeID, "infrastructure:") {
-		kind = domain.NodeInfrastructure
-	} else if strings.HasPrefix(nodeID, "lib:") || strings.HasPrefix(nodeID, "library:") {
-		kind = domain.NodeLibrary
-	}
+	kind := deriveKindFromID(nodeID)
 
 	name := nodeID
 	if idx := strings.Index(nodeID, ":"); idx != -1 {
