@@ -1,0 +1,184 @@
+{
+  "focal_node": {
+    "id": "service:cart",
+    "kind": "Service",
+    "name": "cart",
+    "metadata": {
+      "image": "${IMAGE_NAME}:${DEMO_VERSION}-cart"
+    },
+    "evidence": [
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "compose.yaml",
+          "start_line": 80,
+          "end_line": 80
+        },
+        "origin": "extracted",
+        "deployment_profile": "compose:compose.yaml",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "tier": "contracts",
+  "neighbors": [
+    {
+      "id": "service:checkout",
+      "kind": "Service",
+      "name": "checkout",
+      "metadata": {
+        "base_image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+        "entrypoint": "[ \"./checkout\" ]",
+        "image": "",
+        "package": "kafka",
+        "ports": [
+          "${CHECKOUT_PORT}"
+        ]
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.full.yaml",
+            "start_line": 130,
+            "end_line": 130
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.full.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "service:flagd",
+      "kind": "Infrastructure",
+      "name": "flagd",
+      "metadata": {
+        "image": "${FLAGD_IMAGE}"
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 697,
+            "end_line": 697
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "service:frontend",
+      "kind": "Service",
+      "name": "frontend",
+      "metadata": {
+        "base_image": "gcr.io/distroless/nodejs24-debian13:nonroot@sha256:bb6b03d81066993293a10feda7250e8e1cc034035fe9b61cfceededa7c8bf04d",
+        "cmd": "[\"--require=./Instrumentation.js\", \"server.js\"]",
+        "image": "${IMAGE_NAME}:${DEMO_VERSION}-frontend",
+        "ports": [
+          "${FRONTEND_PORT}"
+        ]
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 253,
+            "end_line": 253
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel:cart-accesses-flagd",
+      "source_id": "service:cart",
+      "target_id": "service:flagd",
+      "verb": "accesses",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 80,
+            "end_line": 80
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "rel:checkout-consumes-cart",
+      "source_id": "service:checkout",
+      "target_id": "service:cart",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 116,
+            "end_line": 116
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "rel:frontend-consumes-cart",
+      "source_id": "service:frontend",
+      "target_id": "service:cart",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 253,
+            "end_line": 253
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "budget": {
+    "limit": 1500,
+    "estimated": 1304,
+    "truncated": true,
+    "dropped": {
+      "nodes": 2,
+      "relationships": 2,
+      "evidence": 0
+    },
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 1905: rerun with budget >= 1905"
+  }
+}

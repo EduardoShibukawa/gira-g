@@ -1,0 +1,270 @@
+{
+  "target_id": "contract:PaymentService",
+  "target_kind": "Contract",
+  "depth": 1,
+  "upstream_services": [],
+  "downstream_services": [
+    {
+      "id": "service:checkout",
+      "kind": "Service",
+      "name": "checkout",
+      "metadata": {
+        "base_image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+        "entrypoint": "[ \"./checkout\" ]",
+        "image": "",
+        "package": "kafka",
+        "ports": [
+          "${CHECKOUT_PORT}"
+        ]
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.full.yaml",
+            "start_line": 130,
+            "end_line": 130
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.full.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 116,
+            "end_line": 116
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/Dockerfile",
+            "start_line": 24,
+            "end_line": 24
+          },
+          "origin": "extracted",
+          "deployment_profile": "dockerfile",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/kafka/producer.go",
+            "start_line": 3,
+            "end_line": 3
+          },
+          "origin": "extracted",
+          "deployment_profile": "go",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 3,
+            "end_line": 3
+          },
+          "origin": "extracted",
+          "deployment_profile": "go",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "affected_contracts": [
+    {
+      "id": "contract:PaymentService",
+      "kind": "Contract",
+      "name": "PaymentService",
+      "metadata": {
+        "full_name": "oteldemo.PaymentService",
+        "messages": [
+          "CartItem",
+          "AddItemRequest",
+          "EmptyCartRequest",
+          "GetCartRequest",
+          "Cart",
+          "Empty",
+          "ListRecommendationsRequest",
+          "ListRecommendationsResponse",
+          "Product",
+          "ListProductsResponse",
+          "GetProductRequest",
+          "SearchProductsRequest",
+          "SearchProductsResponse",
+          "GetQuoteRequest",
+          "GetQuoteResponse",
+          "ShipOrderRequest",
+          "ShipOrderResponse",
+          "Address",
+          "Money",
+          "GetSupportedCurrenciesResponse",
+          "CurrencyConversionRequest",
+          "CreditCardInfo",
+          "ChargeRequest",
+          "ChargeResponse",
+          "OrderItem",
+          "OrderResult",
+          "SendOrderConfirmationRequest",
+          "PlaceOrderRequest",
+          "PlaceOrderResponse",
+          "AdRequest",
+          "AdResponse",
+          "Ad",
+          "Flag",
+          "GetFlagRequest",
+          "GetFlagResponse",
+          "CreateFlagRequest",
+          "CreateFlagResponse",
+          "UpdateFlagRequest",
+          "UpdateFlagResponse",
+          "ListFlagsRequest",
+          "ListFlagsResponse",
+          "DeleteFlagRequest",
+          "DeleteFlagResponse"
+        ],
+        "methods": [
+          "Charge"
+        ],
+        "package": "oteldemo",
+        "rpc_definitions": [
+          {
+            "name": "Charge",
+            "request": "ChargeRequest",
+            "response": "ChargeResponse"
+          }
+        ],
+        "syntax": "proto3"
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "pb/demo.proto",
+            "start_line": 177,
+            "end_line": 179
+          },
+          "origin": "declared",
+          "deployment_profile": "protobuf",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 159,
+            "end_line": 159
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 245,
+            "end_line": 245
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 578,
+            "end_line": 578
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "mediation_edges": [
+    {
+      "id": "rel:checkout-consumes-paymentservice",
+      "source_id": "service:checkout",
+      "target_id": "contract:PaymentService",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 159,
+            "end_line": 159
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 245,
+            "end_line": 245
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 578,
+            "end_line": 578
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "unsupported_boundaries": [
+    {
+      "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
+      }
+    }
+  ]
+}

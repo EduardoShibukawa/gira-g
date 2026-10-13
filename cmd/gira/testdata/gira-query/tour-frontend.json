@@ -1,0 +1,96 @@
+{
+  "focus": "service:frontend",
+  "entry_points": [
+    "service:frontend"
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "title": "frontend (Service)",
+      "node_ids": [
+        "service:frontend"
+      ],
+      "read": [
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
+      ],
+      "why": "`service:frontend` is the focus of this tour.",
+      "why_template": "focus",
+      "why_args": [
+        "service:frontend"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "otel-collector (Infrastructure)",
+      "node_ids": [
+        "service:otel-collector"
+      ],
+      "read": [
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.full.yaml#L139-L139"
+      ],
+      "why": "`service:otel-collector` is reached because `service:frontend` accesses it.",
+      "why_template": "reached",
+      "why_args": [
+        "service:otel-collector",
+        "service:frontend",
+        "accesses"
+      ]
+    },
+    {
+      "order": 3,
+      "title": "flagd (Infrastructure)",
+      "node_ids": [
+        "service:flagd"
+      ],
+      "read": [
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L697-L697"
+      ],
+      "why": "`service:flagd` is reached because `service:frontend` accesses it.",
+      "why_template": "reached",
+      "why_args": [
+        "service:flagd",
+        "service:frontend",
+        "accesses"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "product-catalog (Service)",
+      "node_ids": [
+        "service:product-catalog",
+        "contract:Health",
+        "contract:ProductCatalogService"
+      ],
+      "read": [
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L518-L518",
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:src/product-catalog/main.go#L208-L208",
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:src/product-catalog/main.go#L54-L54"
+      ],
+      "why": "`service:product-catalog` is reached because `service:frontend` consumes it.",
+      "why_template": "reached",
+      "why_args": [
+        "service:product-catalog",
+        "service:frontend",
+        "consumes"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "cart (Service)",
+      "node_ids": [
+        "service:cart"
+      ],
+      "read": [
+        "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L80-L80"
+      ],
+      "why": "`service:cart` is reached because `service:frontend` consumes it.",
+      "why_template": "reached",
+      "why_args": [
+        "service:cart",
+        "service:frontend",
+        "consumes"
+      ]
+    }
+  ],
+  "truncated": true
+}

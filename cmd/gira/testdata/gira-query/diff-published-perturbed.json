@@ -1,0 +1,213 @@
+{
+  "from": "opentelemetry-demo",
+  "to": "opentelemetry-demo",
+  "renamed": [
+    {
+      "from": "contract:CartService",
+      "to": "contract:BasketService",
+      "kind": "Contract",
+      "score": 2.167
+    },
+    {
+      "from": "contract:CheckoutService",
+      "to": "contract:OrderingService",
+      "kind": "Contract",
+      "score": 2.167
+    },
+    {
+      "from": "contract:CurrencyService",
+      "to": "contract:ExchangeService",
+      "kind": "Contract",
+      "score": 2
+    },
+    {
+      "from": "contract:EmailService",
+      "to": "contract:NotifyService",
+      "kind": "Contract",
+      "score": 2
+    },
+    {
+      "from": "contract:PaymentService",
+      "to": "contract:BillingService",
+      "kind": "Contract",
+      "score": 2
+    },
+    {
+      "from": "contract:ProductCatalogService",
+      "to": "contract:InventoryService",
+      "kind": "Contract",
+      "score": 2.3
+    },
+    {
+      "from": "contract:ShippingService",
+      "to": "contract:DispatchService",
+      "kind": "Contract",
+      "score": 2.167
+    },
+    {
+      "from": "library:github.com/open-telemetry/opentelemetry-demo/src/checkout/flags",
+      "to": "library:github.com/open-telemetry/opentelemetry-demo/src/ordering/flags",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "library:github.com/open-telemetry/opentelemetry-demo/src/checkout/genproto/oteldemo",
+      "to": "library:github.com/open-telemetry/opentelemetry-demo/src/ordering/genproto/oteldemo",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "library:github.com/open-telemetry/opentelemetry-demo/src/checkout/kafka",
+      "to": "library:github.com/open-telemetry/opentelemetry-demo/src/ordering/kafka",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "library:github.com/open-telemetry/opentelemetry-demo/src/checkout/money",
+      "to": "library:github.com/open-telemetry/opentelemetry-demo/src/ordering/money",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "library:github.com/opentelemetry/opentelemetry-demo/src/product-catalog/flags",
+      "to": "library:github.com/opentelemetry/opentelemetry-demo/src/inventory/flags",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "library:github.com/opentelemetry/opentelemetry-demo/src/product-catalog/genproto/oteldemo",
+      "to": "library:github.com/opentelemetry/opentelemetry-demo/src/inventory/genproto/oteldemo",
+      "kind": "Library",
+      "score": 0.5
+    },
+    {
+      "from": "service:accounting",
+      "to": "service:ledger",
+      "kind": "Service",
+      "score": 3.5
+    },
+    {
+      "from": "service:cart",
+      "to": "service:basket",
+      "kind": "Service",
+      "score": 2.25
+    },
+    {
+      "from": "service:checkout",
+      "to": "service:ordering",
+      "kind": "Service",
+      "score": 3.034
+    },
+    {
+      "from": "service:currency",
+      "to": "service:exchange",
+      "kind": "Service",
+      "score": 0.667
+    },
+    {
+      "from": "service:email",
+      "to": "service:notify",
+      "kind": "Service",
+      "score": 1.1
+    },
+    {
+      "from": "service:frontend",
+      "to": "service:storefront",
+      "kind": "Service",
+      "score": 0.978
+    },
+    {
+      "from": "service:frontend-proxy",
+      "to": "service:storefront-proxy",
+      "kind": "Service",
+      "score": 1.333
+    },
+    {
+      "from": "service:payment",
+      "to": "service:billing",
+      "kind": "Service",
+      "score": 1.214
+    },
+    {
+      "from": "service:product-catalog",
+      "to": "service:inventory",
+      "kind": "Service",
+      "score": 1.262
+    },
+    {
+      "from": "service:shipping",
+      "to": "service:dispatch",
+      "kind": "Service",
+      "score": 1
+    },
+    {
+      "from": "service:valkey-cart",
+      "to": "service:valkey-basket",
+      "kind": "Infrastructure",
+      "score": 1
+    }
+  ],
+  "added_nodes": [],
+  "removed_nodes": [],
+  "added_edges": [],
+  "removed_edges": [
+    {
+      "source": "service:checkout",
+      "verb": "consumes",
+      "target": "contract:CurrencyService"
+    },
+    {
+      "source": "service:checkout",
+      "verb": "consumes",
+      "target": "service:currency"
+    }
+  ],
+  "changed_contracts": [],
+  "newly_unsupported": [],
+  "no_longer_unsupported": [],
+  "evidence_moved": [
+    "contract:BasketService",
+    "contract:BillingService",
+    "contract:DispatchService",
+    "contract:ExchangeService",
+    "contract:Health",
+    "contract:InventoryService",
+    "contract:NotifyService",
+    "contract:OrderingService",
+    "service:astronomy-db",
+    "service:billing",
+    "service:dispatch",
+    "service:exchange",
+    "service:flagd",
+    "service:flagd-ui",
+    "service:image-provider",
+    "service:inventory",
+    "service:load-generator",
+    "service:notify",
+    "service:otel-collector",
+    "service:quote",
+    "service:recommendation",
+    "service:storefront",
+    "service:storefront-proxy",
+    "service:telemetry-docs",
+    "service:valkey-basket"
+  ],
+  "token_renames": {
+    "Cart": "Basket",
+    "Checkout": "Ordering",
+    "Currency": "Exchange",
+    "Email": "Notify",
+    "Payment": "Billing",
+    "ProductCatalog": "Inventory",
+    "Shipping": "Dispatch",
+    "accounting": "ledger",
+    "cart": "basket",
+    "checkout": "ordering",
+    "currency": "exchange",
+    "email": "notify",
+    "frontend": "storefront",
+    "payment": "billing",
+    "product-catalog": "inventory",
+    "shipping": "dispatch"
+  }
+}

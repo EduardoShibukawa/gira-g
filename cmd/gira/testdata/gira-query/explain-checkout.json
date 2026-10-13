@@ -1,0 +1,164 @@
+{
+  "target_id": "service:checkout",
+  "node_id": "service:checkout",
+  "node": {
+    "id": "service:checkout",
+    "kind": "Service",
+    "name": "checkout",
+    "metadata": {
+      "base_image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+      "entrypoint": "[ \"./checkout\" ]",
+      "image": "",
+      "package": "kafka",
+      "ports": [
+        "${CHECKOUT_PORT}"
+      ]
+    },
+    "evidence": [
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "compose.full.yaml",
+          "start_line": 130,
+          "end_line": 130
+        },
+        "origin": "extracted",
+        "deployment_profile": "compose:compose.full.yaml",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "compose.yaml",
+          "start_line": 116,
+          "end_line": 116
+        },
+        "origin": "extracted",
+        "deployment_profile": "compose:compose.yaml",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "src/checkout/Dockerfile",
+          "start_line": 24,
+          "end_line": 24
+        },
+        "origin": "extracted",
+        "deployment_profile": "dockerfile",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "src/checkout/kafka/producer.go",
+          "start_line": 3,
+          "end_line": 3
+        },
+        "origin": "extracted",
+        "deployment_profile": "go",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "locator": {
+          "repo": "opentelemetry-demo",
+          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "path": "src/checkout/main.go",
+          "start_line": 3,
+          "end_line": 3
+        },
+        "origin": "extracted",
+        "deployment_profile": "go",
+        "status": "current",
+        "discovered_at": "2026-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "compose.full.yaml",
+        "start_line": 130,
+        "end_line": 130
+      },
+      "origin": "extracted",
+      "deployment_profile": "compose:compose.full.yaml",
+      "status": "current",
+      "discovered_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "compose.yaml",
+        "start_line": 116,
+        "end_line": 116
+      },
+      "origin": "extracted",
+      "deployment_profile": "compose:compose.yaml",
+      "status": "current",
+      "discovered_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/checkout/Dockerfile",
+        "start_line": 24,
+        "end_line": 24
+      },
+      "origin": "extracted",
+      "deployment_profile": "dockerfile",
+      "status": "current",
+      "discovered_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/checkout/kafka/producer.go",
+        "start_line": 3,
+        "end_line": 3
+      },
+      "origin": "extracted",
+      "deployment_profile": "go",
+      "status": "current",
+      "discovered_at": "2026-01-01T00:00:00Z"
+    },
+    {
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/checkout/main.go",
+        "start_line": 3,
+        "end_line": 3
+      },
+      "origin": "extracted",
+      "deployment_profile": "go",
+      "status": "current",
+      "discovered_at": "2026-01-01T00:00:00Z"
+    }
+  ],
+  "deployment_profiles": [
+    "compose:compose.full.yaml",
+    "compose:compose.yaml",
+    "dockerfile",
+    "go"
+  ],
+  "origins": [
+    "extracted"
+  ],
+  "statuses": [
+    "current"
+  ]
+}

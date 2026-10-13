@@ -1,0 +1,13 @@
+{
+  "error": {
+    "code": "node_not_found",
+    "message": "the id is not in the index; see suggestions",
+    "suggestions": [
+      "contract:CartService",
+      "service:cart",
+      "service:valkey-cart",
+      "src/cart/src/Program.cs",
+      "src/frontend/gateways/rpc/Cart.gateway.ts"
+    ]
+  }
+}

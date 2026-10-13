@@ -1,0 +1,181 @@
+[
+  {
+    "kind": "Contract",
+    "id": "contract:CurrencyService",
+    "name": "CurrencyService",
+    "matched_on": "id",
+    "node": {
+      "id": "contract:CurrencyService",
+      "kind": "Contract",
+      "name": "CurrencyService",
+      "metadata": {
+        "full_name": "oteldemo.CurrencyService",
+        "messages": [
+          "CartItem",
+          "AddItemRequest",
+          "EmptyCartRequest",
+          "GetCartRequest",
+          "Cart",
+          "Empty",
+          "ListRecommendationsRequest",
+          "ListRecommendationsResponse",
+          "Product",
+          "ListProductsResponse",
+          "GetProductRequest",
+          "SearchProductsRequest",
+          "SearchProductsResponse",
+          "GetQuoteRequest",
+          "GetQuoteResponse",
+          "ShipOrderRequest",
+          "ShipOrderResponse",
+          "Address",
+          "Money",
+          "GetSupportedCurrenciesResponse",
+          "CurrencyConversionRequest",
+          "CreditCardInfo",
+          "ChargeRequest",
+          "ChargeResponse",
+          "OrderItem",
+          "OrderResult",
+          "SendOrderConfirmationRequest",
+          "PlaceOrderRequest",
+          "PlaceOrderResponse",
+          "AdRequest",
+          "AdResponse",
+          "Ad",
+          "Flag",
+          "GetFlagRequest",
+          "GetFlagResponse",
+          "CreateFlagRequest",
+          "CreateFlagResponse",
+          "UpdateFlagRequest",
+          "UpdateFlagResponse",
+          "ListFlagsRequest",
+          "ListFlagsResponse",
+          "DeleteFlagRequest",
+          "DeleteFlagResponse"
+        ],
+        "methods": [
+          "GetSupportedCurrencies",
+          "Convert"
+        ],
+        "package": "oteldemo",
+        "rpc_definitions": [
+          {
+            "name": "GetSupportedCurrencies",
+            "request": "Empty",
+            "response": "GetSupportedCurrenciesResponse"
+          },
+          {
+            "name": "Convert",
+            "request": "CurrencyConversionRequest",
+            "response": "Money"
+          }
+        ],
+        "syntax": "proto3"
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "pb/demo.proto",
+            "start_line": 140,
+            "end_line": 143
+          },
+          "origin": "declared",
+          "deployment_profile": "protobuf",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 157,
+            "end_line": 157
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 235,
+            "end_line": 235
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "Service",
+    "id": "service:currency",
+    "name": "currency",
+    "matched_on": "id",
+    "node": {
+      "id": "service:currency",
+      "kind": "Service",
+      "name": "currency",
+      "metadata": {
+        "image": "${IMAGE_NAME}:${DEMO_VERSION}-currency"
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.yaml",
+            "start_line": 178,
+            "end_line": 178
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  },
+  {
+    "kind": "unsupported",
+    "id": "src/currency/src/server.cpp",
+    "name": "server.cpp",
+    "matched_on": "path",
+    "details": "no extractor registered for file extension",
+    "unsupported": {
+      "path": "src/currency/src/server.cpp",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/currency/src/server.cpp"
+      }
+    }
+  },
+  {
+    "kind": "unsupported",
+    "id": "src/frontend/gateways/rpc/Currency.gateway.ts",
+    "name": "Currency.gateway.ts",
+    "matched_on": "path",
+    "details": "no extractor registered for file extension",
+    "unsupported": {
+      "path": "src/frontend/gateways/rpc/Currency.gateway.ts",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/frontend/gateways/rpc/Currency.gateway.ts"
+      }
+    }
+  }
+]

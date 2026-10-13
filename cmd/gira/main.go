@@ -19,6 +19,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
+	"github.com/EduardoShibukawa/gira-g/internal/skills"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
@@ -76,6 +77,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "diff":
 		return runDiff(rest, stdout, stderr)
 
+	case "skills":
+		return runSkills(rest, stdin, stdout, stderr)
+
 	case "flows":
 		return runFlows(rest, stdout, stderr)
 
@@ -108,6 +112,7 @@ Commands:
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
   diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
+  skills install --host claude|cursor|agents [--dir <project>] [--index <path>] Generate GIRA skills and MCP registration for a host
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
@@ -728,4 +733,57 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	_, err = stdout.Write(data)
 	return err
+}
+
+func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	if len(args) > 0 && args[0] == "nudge" {
+		return runNudge(args[1:], stdin, stdout, stderr)
+	}
+	if len(args) == 0 || args[0] != "install" {
+		return fmt.Errorf("usage: gira skills install --host %s [--dir <project>] [--index <path>] [--hook]", strings.Join(skills.Hosts, "|"))
+	}
+	fs := flag.NewFlagSet("skills install", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var host, dir, index, command string
+	fs.StringVar(&host, "host", "", "Host family: "+strings.Join(skills.Hosts, ", "))
+	fs.StringVar(&dir, "dir", ".", "Project directory to install into")
+	fs.StringVar(&index, "index", "", "Index the registered MCP server should load")
+	fs.StringVar(&command, "command", "gira", "Command the host runs to start the MCP server")
+	var hook bool
+	fs.BoolVar(&hook, "hook", false, "claude host: register the opt-in PreToolUse nudge (never blocks)")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	rep, err := skills.Install(host, skills.Options{Root: dir, Index: index, Command: command, Hook: hook})
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(rep, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(stdout, string(data))
+	return err
+}
+
+// runNudge is the PreToolUse hook command. It never fails the hook: problems
+// produce no output and exit status 0.
+func runNudge(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("skills nudge", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var indexPath string
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	if err := fs.Parse(args); err != nil {
+		return nil
+	}
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return nil
+	}
+	root, _ := os.Getwd()
+	if out, err := exec.Command("git", "rev-parse", "--show-toplevel").Output(); err == nil {
+		root = strings.TrimSpace(string(out))
+	}
+	_ = skills.Nudge(stdin, stdout, mm, root)
+	return nil
 }

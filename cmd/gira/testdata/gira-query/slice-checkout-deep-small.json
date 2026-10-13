@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "budget_exceeded",
+    "message": "the parts that are never dropped exceed the budget: raise it",
+    "suggestions": []
+  }
+}
