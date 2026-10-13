@@ -108,10 +108,18 @@ func resolveTargetNodeID(currentPath string, targetRef string) (string, bool) {
 
 	// Direct repo-relative paths
 	if strings.HasPrefix(lowerRef, "tasks/") {
-		return fmt.Sprintf("task:%s", cleanSlug(filepath.Base(lowerRef))), true
+		slug := cleanSlug(filepath.Base(lowerRef))
+		if slug == "" {
+			return "", false
+		}
+		return fmt.Sprintf("task:%s", slug), true
 	}
 	if strings.HasPrefix(lowerRef, "docs/decisions/") || strings.HasPrefix(lowerRef, "docs/adr/") {
-		return fmt.Sprintf("policy:%s", cleanSlug(filepath.Base(lowerRef))), true
+		slug := cleanSlug(filepath.Base(lowerRef))
+		if slug == "" {
+			return "", false
+		}
+		return fmt.Sprintf("policy:%s", slug), true
 	}
 
 	dir := filepath.Dir(filepath.ToSlash(currentPath))
@@ -133,6 +141,9 @@ func resolveTargetNodeID(currentPath string, targetRef string) (string, bool) {
 				effort := parts[i+1]
 				if strings.ToLower(parts[i+2]) == "issues" && i+3 == len(parts)-1 {
 					slug := cleanSlug(parts[i+3])
+					if slug == "" {
+						return "", false
+					}
 					return fmt.Sprintf("task:%s:%s", effort, slug), true
 				}
 				if targetBase == "map.md" || targetBase == "map.markdown" {
@@ -158,22 +169,38 @@ func resolveTargetNodeID(currentPath string, targetRef string) (string, bool) {
 	// 4. docs/decisions/ or docs/adr/
 	if strings.Contains(targetLower, "/docs/decisions/") || strings.HasPrefix(targetLower, "docs/decisions/") ||
 		strings.Contains(targetLower, "/docs/adr/") || strings.HasPrefix(targetLower, "docs/adr/") {
-		return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
+		slug := cleanSlug(targetBase)
+		if slug == "" {
+			return "", false
+		}
+		return fmt.Sprintf("policy:%s", slug), true
 	}
 
 	// 5. tasks/
 	if strings.Contains(targetLower, "/tasks/") || strings.HasPrefix(targetLower, "tasks/") {
-		return fmt.Sprintf("task:%s", cleanSlug(targetBase)), true
+		slug := cleanSlug(targetBase)
+		if slug == "" {
+			return "", false
+		}
+		return fmt.Sprintf("task:%s", slug), true
 	}
 
 	// 6. Generic well-known docs
 	if targetBase == "agents.md" || targetBase == "claude.md" || targetBase == "gemini.md" ||
 		targetBase == "context.md" {
-		return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
+		slug := cleanSlug(targetBase)
+		if slug == "" {
+			return "", false
+		}
+		return fmt.Sprintf("policy:%s", slug), true
 	}
 
 	// Default fallback
-	return fmt.Sprintf("policy:%s", cleanSlug(targetBase)), true
+	slug := cleanSlug(targetBase)
+	if slug == "" {
+		return "", false
+	}
+	return fmt.Sprintf("policy:%s", slug), true
 }
 
 // frontmatterInfo captures parsed YAML frontmatter metadata and line boundaries.
@@ -249,14 +276,41 @@ func findDocumentTitle(content []byte) (string, int) {
 	return "", 1
 }
 
+var slugNonAlnumReg = regexp.MustCompile(`[^a-z0-9_\-]+`)
+
 // cleanSlug normalizes a filename or title into a kebab-case slug.
+// Returns an empty string if the input consists only of punctuation, special characters, or spaces.
 func cleanSlug(s string) string {
 	s = strings.TrimSuffix(s, filepath.Ext(s))
 	s = strings.ToLower(s)
-	reg := regexp.MustCompile(`[^a-z0-9_\-]+`)
-	cleaned := reg.ReplaceAllString(s, "-")
-	cleaned = strings.Trim(cleaned, "-")
+	cleaned := slugNonAlnumReg.ReplaceAllString(s, "-")
+	cleaned = strings.Trim(cleaned, "-_")
+	hasAlphaNum := false
+	for _, r := range cleaned {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			hasAlphaNum = true
+			break
+		}
+	}
+	if !hasAlphaNum {
+		return ""
+	}
 	return cleaned
+}
+
+// isValidTargetSlug validates that a target slug has at least 2 alphanumeric characters
+// and is not purely punctuation, trivial symbols, or empty.
+func isValidTargetSlug(s string) bool {
+	if len(s) < 2 {
+		return false
+	}
+	alnumCount := 0
+	for _, r := range s {
+		if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+			alnumCount++
+		}
+	}
+	return alnumCount >= 2
 }
 
 // Extract parses the markdown file, extracts structured entities and relationships.
@@ -720,6 +774,7 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 		reBlockedBy := regexp.MustCompile(`(?i)Blocked\s+by:\s*([^\r\n]+)`)
 		reImplements := regexp.MustCompile(`(?i)implements\s*:\s*([^\r\n]+)`)
 		reVerTable := regexp.MustCompile(`^\|\s*([A-Za-z0-9_.\-]+)\s*\|\s*([^|]+)\|\s*(pass|fail|blocked|not run)\s*\|`)
+		inCodeBlock := false
 
 		for scanner.Scan() {
 			currentLine++
@@ -731,6 +786,14 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 
 			lineText := scanner.Text()
 
+			if strings.HasPrefix(strings.TrimSpace(lineText), "```") {
+				inCodeBlock = !inCodeBlock
+				continue
+			}
+			if inCodeBlock {
+				continue
+			}
+
 			// Check blocked by (VerbGoverns or VerbImplements)
 			if m := reBlockedBy.FindStringSubmatch(lineText); len(m) > 1 {
 				val := strings.TrimSpace(m[1])
@@ -741,7 +804,7 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 					for _, match := range matches {
 						if len(match) > 1 && match[1] != "" && match[1] != "none" {
 							targetSlug := cleanSlug(match[1])
-							if targetSlug != "" && targetSlug != slug {
+							if isValidTargetSlug(targetSlug) && targetSlug != slug {
 								targetID := fmt.Sprintf("task:%s", targetSlug)
 								rel := domain.Relationship{
 									ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(targetID), sanitizeID(nodeID)),
@@ -777,7 +840,7 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 				parts := strings.Split(val, ",")
 				for _, p := range parts {
 					target := cleanSlug(p)
-					if target != "" {
+					if isValidTargetSlug(target) {
 						targetID := fmt.Sprintf("policy:%s", target)
 						rel := domain.Relationship{
 							ID:       fmt.Sprintf("rel:%s-implements-%s", sanitizeID(nodeID), sanitizeID(targetID)),
@@ -929,42 +992,61 @@ func (e *MarkdownExtractor) Extract(ctx context.Context, file TargetFile) ([]dom
 		scanner := bufio.NewScanner(bytes.NewReader(file.Content))
 		currentLine := 0
 		reGoverns := regexp.MustCompile(`(?i)(?:governa|governs|applies to|scope):\s*([^\r\n]+)`)
+		inCodeBlock := false
 
 		for scanner.Scan() {
 			currentLine++
+			select {
+			case <-ctx.Done():
+				return nil, nil, nil, ctx.Err()
+			default:
+			}
+
 			lineText := scanner.Text()
+
+			if strings.HasPrefix(strings.TrimSpace(lineText), "```") {
+				inCodeBlock = !inCodeBlock
+				continue
+			}
+			if inCodeBlock {
+				continue
+			}
 
 			if m := reGoverns.FindStringSubmatch(lineText); len(m) > 1 {
 				val := strings.TrimSpace(m[1])
 				parts := strings.Split(val, ",")
 				for _, p := range parts {
 					p = strings.TrimSpace(p)
-					if p != "" {
-						targetSlug := cleanSlug(p)
-						targetID := fmt.Sprintf("service:%s", targetSlug)
-						rel := domain.Relationship{
-							ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(nodeID), sanitizeID(targetID)),
-							SourceID: nodeID,
-							TargetID: targetID,
-							Verb:     domain.VerbGoverns,
-							Evidence: []domain.EvidenceRecord{
-								{
-									Locator: domain.Locator{
-										Repo:      file.Repo,
-										CommitSHA: file.CommitSHA,
-										Path:      file.Path,
-										StartLine: currentLine,
-										EndLine:   currentLine,
-									},
-									Origin:            domain.OriginExtracted,
-									DeploymentProfile: "markdown",
-									Status:            domain.StatusCurrent,
-									DiscoveredAt:      discoveredAt,
-								},
-							},
-						}
-						relationships = append(relationships, rel)
+					if p == "" {
+						continue
 					}
+					targetSlug := cleanSlug(p)
+					if !isValidTargetSlug(targetSlug) {
+						continue
+					}
+					targetID := fmt.Sprintf("service:%s", targetSlug)
+					rel := domain.Relationship{
+						ID:       fmt.Sprintf("rel:%s-governs-%s", sanitizeID(nodeID), sanitizeID(targetID)),
+						SourceID: nodeID,
+						TargetID: targetID,
+						Verb:     domain.VerbGoverns,
+						Evidence: []domain.EvidenceRecord{
+							{
+								Locator: domain.Locator{
+									Repo:      file.Repo,
+									CommitSHA: file.CommitSHA,
+									Path:      file.Path,
+									StartLine: currentLine,
+									EndLine:   currentLine,
+								},
+								Origin:            domain.OriginExtracted,
+								DeploymentProfile: "markdown",
+								Status:            domain.StatusCurrent,
+								DiscoveredAt:      discoveredAt,
+							},
+						},
+					}
+					relationships = append(relationships, rel)
 				}
 			}
 		}

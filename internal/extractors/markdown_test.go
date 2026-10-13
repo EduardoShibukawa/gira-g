@@ -612,3 +612,120 @@ func TestMarkdownExtractor_ExtractRealScratchIssue(t *testing.T) {
 		t.Errorf("expected locator line 6, got %d", rels[0].Evidence[0].Locator.StartLine)
 	}
 }
+
+func TestMarkdownExtractor_NoGhostNodesFromCodeBlocks(t *testing.T) {
+	ext := NewMarkdownExtractor()
+
+	content := `---
+schema: dec/1
+---
+
+# ADR 0006: In-Memory Graph Indexing
+
+## Context
+
+Configuration example:
+
+` + "```yaml" + `
+pipeline:
+  name: "harness"
+  path_scope: "."
+  scope: "-"
+  applies to: "—"
+` + "```" + `
+
+Governs: graph-service, cache-service
+`
+
+	file := TargetFile{
+		Repo:      "duh-homelab",
+		CommitSHA: "abc1234",
+		Path:      "docs/adr/0006-graph-indexing.md",
+		Content:   []byte(content),
+	}
+
+	nodes, rels, unsupporteds, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(unsupporteds) != 0 {
+		t.Fatalf("expected 0 unsupporteds, got %d", len(unsupporteds))
+	}
+
+	// 1. Verify no ghost node named "service:" or empty/punctuation target
+	for _, n := range nodes {
+		if n.ID == "service:" || strings.HasPrefix(n.ID, "service:.") || strings.HasPrefix(n.ID, "service:-") {
+			t.Errorf("found ghost node: %s", n.ID)
+		}
+	}
+
+	// 2. Verify relationships do not contain ghost targets or sources
+	for _, r := range rels {
+		if r.TargetID == "service:" || r.TargetID == "service:." || r.TargetID == "service:-" {
+			t.Errorf("found ghost relationship target: %s (rel ID: %s)", r.TargetID, r.ID)
+		}
+		if r.SourceID == "service:" {
+			t.Errorf("found ghost relationship source: %s (rel ID: %s)", r.SourceID, r.ID)
+		}
+		if strings.HasPrefix(r.TargetID, "service:.") || strings.HasPrefix(r.TargetID, "service:-") {
+			t.Errorf("invalid punctuation target ID in rel: %s", r.TargetID)
+		}
+	}
+
+	// 3. Verify legitimate relations ARE present: graph-service and cache-service
+	relMap := make(map[string]domain.Relationship)
+	for _, r := range rels {
+		relMap[r.TargetID] = r
+	}
+
+	if _, ok := relMap["service:graph-service"]; !ok {
+		t.Errorf("missing relation to service:graph-service")
+	}
+	if _, ok := relMap["service:cache-service"]; !ok {
+		t.Errorf("missing relation to service:cache-service")
+	}
+	if len(rels) != 2 {
+		t.Fatalf("expected exactly 2 relationships, got %d", len(rels))
+	}
+}
+
+func TestCleanSlug_And_IsValidTargetSlug(t *testing.T) {
+	// cleanSlug should return empty for pure punctuation or special characters
+	emptyCases := []string{".", "-", "—", "...", "   ", "-_-", "./", "!@#$%"}
+	for _, tc := range emptyCases {
+		if got := cleanSlug(tc); got != "" {
+			t.Errorf("expected cleanSlug(%q) == %q, got %q", tc, "", got)
+		}
+	}
+
+	// valid slugs
+	validCases := map[string]string{
+		"order-service":  "order-service",
+		"0001-use-go.md": "0001-use-go",
+		"my_service":     "my_service",
+		"Go":             "go",
+	}
+	for input, expected := range validCases {
+		if got := cleanSlug(input); got != expected {
+			t.Errorf("cleanSlug(%q) = %q, expected %q", input, got, expected)
+		}
+	}
+
+	// isValidTargetSlug checks
+	if isValidTargetSlug("") {
+		t.Errorf("expected isValidTargetSlug(\"\") to be false")
+	}
+	if isValidTargetSlug("a") {
+		t.Errorf("expected isValidTargetSlug(\"a\") to be false (less than 2 alnum)")
+	}
+	if isValidTargetSlug(".-") {
+		t.Errorf("expected isValidTargetSlug(\".-\") to be false")
+	}
+	if !isValidTargetSlug("go") {
+		t.Errorf("expected isValidTargetSlug(\"go\") to be true")
+	}
+	if !isValidTargetSlug("order-service") {
+		t.Errorf("expected isValidTargetSlug(\"order-service\") to be true")
+	}
+}
+
