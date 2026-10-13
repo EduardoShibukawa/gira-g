@@ -34,6 +34,7 @@ func DefaultPipeline() *Pipeline {
 		NewDataFormatExtractor(),
 		NewComposeExtractor(),
 		NewHelmExtractor(),
+		NewGoModExtractor(),
 		NewProtobufExtractor(),
 		NewGoASTExtractor(),
 	)
