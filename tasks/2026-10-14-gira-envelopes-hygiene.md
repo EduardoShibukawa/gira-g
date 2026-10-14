@@ -82,6 +82,7 @@ SC8–SC10 at every child. Rollback: `git revert` per child.
 - [F6] the 3 budgeted gira-query goldens were stale against F2 (`estimator`/`measured`) → regenerated; SC9 scoped to the frozen ground-truth/corpus (3369500, spec v2)
 - [F7] the dogfood e2e poisoned the fixture commit SHA from a git hook's leaked `GIT_*` environment → commit identity pinned; the pre-commit gate is green (3369500)
 - [F8] formatting drift from earlier `--no-verify` commits plus an embedded `.claude/worktrees` gitlink → gofmt applied; the worktree is untracked and ignored (3369500)
+- [F9] the §6.1 guard still forgot the remembered record on a *non*-deletion (a parallel commit that lacks the file), so GitHub's merge-ref walk saw the spec as created at `b100d4e`; `lastState.delete` now runs only when a direct parent held the record (CI-caught)
 
 ## Checkpoint
 

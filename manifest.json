@@ -15,7 +15,7 @@
     ".agents/skills/work/standard.md": "e9b4e80c30d8384b090aefcba65d67d7442f5f934a1a87e90d14f001c8e24e51",
     ".agents/skills/work/references/artifact-contracts.md": "a39eb61edf1fff1654187fdf453bd15ecd25017432a1fa9f45d093e20add68a4",
     "tools/validate/ci-template.yml": "cdb90cde7205718785511b60c872c38dcd2381b621ad576f9a17c65c1347578d",
-    "tools/validate/validate.js": "f830aaaa5fd8136452e687f6e2535823ef7f23abbc79f638640b566fe8d815ba",
+    "tools/validate/validate.js": "1f2a0931da49226056145dee5fd64fa68036fe687054d44031a4b32c569e06cb",
     "tools/validate/validate.ts": "ffc70337cf190adb1bd8d7701cbf69f9bec22df5ba3fa8aa2654843f3c1fccb6"
   }
 }
