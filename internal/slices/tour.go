@@ -283,6 +283,15 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourS
 					add(provider, verb+" "+t.ID+" from", p.Evidence)
 				}
 			}
+			for _, c := range e.consumesByContract[t.ID] {
+				consumer := c.SourceID
+				if consumer == t.ID {
+					consumer = c.TargetID
+				}
+				if consumer != id {
+					add(consumer, t.ID+" consumed by", c.Evidence)
+				}
+			}
 			continue
 		}
 		add(r.TargetID, verb, r.Evidence)
