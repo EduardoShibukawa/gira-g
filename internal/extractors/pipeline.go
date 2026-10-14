@@ -83,6 +83,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	relMap := make(map[string]*domain.Relationship)
 	unsupportedMap := make(map[string]domain.UnsupportedBoundary)
 	unsupportedContent := make(map[string][]byte)
+	constructPaths := make(map[string]bool)
 	var hints []Hint
 
 	for _, file := range files {
@@ -163,9 +164,12 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 				}
 			}
 
-			// Aggregate unsupported boundaries
+			// Aggregate unsupported boundaries. The file was parsed by an
+			// Extractor, so each row is an unsupported construct inside a
+			// supported file, not an unsupported file (F7).
 			for _, u := range unsupporteds {
 				unsupportedMap[u.Path] = u
+				constructPaths[u.Path] = true
 			}
 
 			if he, ok := ext.(HintEmitter); ok {
@@ -226,6 +230,10 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	for _, u := range unsupportedMap {
 		macroMap.Unsupported = append(macroMap.Unsupported, u)
 	}
+	for p := range constructPaths {
+		macroMap.UnsupportedConstructs = append(macroMap.UnsupportedConstructs, p)
+	}
+	sort.Strings(macroMap.UnsupportedConstructs)
 
 	return macroMap, nil
 }
