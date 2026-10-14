@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:422ed174fbe24646e7ad58150d46bdd5cda808a25e164463b77819ab4b62ac68
 ---
 
 # GIRA Evidence & Gate Hardening
