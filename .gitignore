@@ -23,9 +23,7 @@ architecture.html
 *~
 .DS_Store
 
-# E3: benchmark/hygiene artifacts
+# Local run outputs and agent worktrees
 results.tsv
 run.log
-
-# OpenCode/harness worktrees (quarantined from the product)
 .claude/worktrees/
