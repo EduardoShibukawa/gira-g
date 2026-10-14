@@ -1,11 +1,11 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
 parent: 2026-10-14-gira-evidence-gate
 spec: gira-evidence-gate@1
 depends_on: [2026-10-14-gira-evidence-gate-02-l2-control-sample]
-verified_at: "80d7934"
+verified_at: "a389d21"
 ---
 
 # L3 taxonomy and findings register (F3)
@@ -31,10 +31,10 @@ Out of scope: the other children's features; ground-truth changes.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` + bench + validator before change | pass | 16e9da0 | 02 verified; green at 16e9da0 |
-| AC1 | `go test ./internal/eval -run SCL3TaxonomyRegister -v` | pass | 80d7934 | failed first (undefined symbols), passes after findings.go; unlabeled + repro-less measured + log-reading fix-check all fail |
-| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | 80d7934 | root/bench green, validator pass; no extractor change |
-| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | 80d7934 | touched pkgs pass |
-| V1 | diff read against AC1–AC2 + spec F3 | pass | 80d7934 | additive only: findings.go, review cmd, get_findings_register; register pointer-only |
+| AC1 | `go test ./internal/eval -run SCL3TaxonomyRegister -v` | pass | a389d21 | re-verified after F5/F6/F7/F11 fix batch: repro-path os.Stat, register \|\| escape + load-validate, --expect-content real-path fix-check, unknown→unknown |
+| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | a389d21 | root/bench green, validator pass; R82.4/P90.3 unchanged |
+| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | a389d21 | touched pkgs pass |
+| V1 | diff read against AC1–AC2 + spec F3 | pass | a389d21 | register validated-on-load, fix-check always reads path; pointer-only preserved |
 
 ## Constraints and budget
 
@@ -50,4 +50,4 @@ Out of scope: the other children's features; ground-truth changes.
 
 ## Outcome
 
-F3 delivered: Gallon S1 verbatim taxonomy mapped to Gira tiers, dual severity, `reviews/findings.md` register round-trip, independent fix-check rerun. 05 still waits on 04.
+F3 delivered + F5/F6/F7/F11 sealed: Gallon S1 verbatim taxonomy mapped to Gira tiers (unknown→unknown), dual severity, `reviews/findings.md` register round-trip with hostile cells, validated-on-load, independent fix-check via --expect-content real-path read. Re-verified at a389d21; 05 still waits on 04.
