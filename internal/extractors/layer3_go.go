@@ -49,6 +49,44 @@ func stdlibHealthContract(name string) bool {
 	return name == "Health"
 }
 
+// unsupportedGoConstructs is the fixed literal table for J3 (SC3): Go
+// constructs whose peer no Extractor resolves. The first match in a file is
+// reported as an unknown row at its line; its peer is never named.
+var unsupportedGoConstructs = []struct {
+	importPrefix, callContains, reason string
+}{
+	{"github.com/open-telemetry/opamp-go", "OpAMPClient", "OpAMP client: no extractor resolves its server endpoint (opamp-go); upstream unknown"},
+}
+
+// unsupportedGoConstruct returns the first unsupported construct in the file.
+func unsupportedGoConstruct(fset *token.FileSet, f *ast.File) (line int, reason string) {
+	for _, c := range unsupportedGoConstructs {
+		for _, imp := range f.Imports {
+			if l := fset.Position(imp.Pos()).Line; strings.HasPrefix(strings.Trim(imp.Path.Value, `"`), c.importPrefix) && (line == 0 || l < line) {
+				line, reason = l, c.reason
+			}
+		}
+		ast.Inspect(f, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			var name string
+			switch fn := call.Fun.(type) {
+			case *ast.SelectorExpr:
+				name = fn.Sel.Name
+			case *ast.Ident:
+				name = fn.Name
+			}
+			if l := fset.Position(call.Pos()).Line; strings.Contains(name, c.callContains) && (line == 0 || l < line) {
+				line, reason = l, c.reason
+			}
+			return true
+		})
+	}
+	return line, reason
+}
+
 func deriveServiceName(filePath string, pkgName string) string {
 	clean := filepath.ToSlash(filepath.Clean(filePath))
 	parts := strings.Split(clean, "/")
@@ -293,7 +331,16 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 		relationships = append(relationships, r)
 	}
 
-	return nodes, relationships, nil, nil
+	var unsupported []domain.UnsupportedBoundary
+	if line, reason := unsupportedGoConstruct(fset, astFile); line > 0 {
+		unsupported = append(unsupported, domain.UnsupportedBoundary{
+			Path:    file.Path,
+			Reason:  reason,
+			Locator: domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path, StartLine: line, EndLine: line},
+		})
+	}
+
+	return nodes, relationships, unsupported, nil
 }
 
 func (e *GoASTExtractor) ensureContractNode(nodeMap map[string]domain.Node, contractID string, contractName string, file TargetFile, startLine, endLine int, discoveredAt time.Time) {

@@ -365,3 +365,51 @@ func TestDependsOnNeedsCorroboration(t *testing.T) {
 		t.Fatalf("infrastructure wiring must stay accesses")
 	}
 }
+
+// SC3 (J3): unsupported code that names a Contract is an explicit unknown
+// join (boundary row at the first mention), never an edge; a Go OpAMP client
+// is an unknown row at its call-site; a business-irrelevant file stays a
+// plain boundary.
+func TestUnsupportedPostureIsUnknownNotJoined(t *testing.T) {
+	proto := "syntax = \"proto3\";\npackage demo;\nservice PaymentService {\n  rpc Charge(Req) returns (Res) {}\n}\nmessage Req {}\nmessage Res {}\n"
+	js := "const x = 1;\nserver.addService(pkg.PaymentService.service, {});\n"
+	ts := "import { PaymentServiceClient } from './demo';\n"
+	other := "console.log('PaymentServiceX');\n"
+	goSrc := "package main\n\nfunc main() {\n\tstartOpAMPClient()\n}\n"
+	files := []TargetFile{
+		{Repo: "r", CommitSHA: "c", Path: "pb/demo.proto", Content: []byte(proto)},
+		{Repo: "r", CommitSHA: "c", Path: "src/payment/index.js", Content: []byte(js)},
+		{Repo: "r", CommitSHA: "c", Path: "src/web/pay.ts", Content: []byte(ts)},
+		{Repo: "r", CommitSHA: "c", Path: "src/other/x.js", Content: []byte(other)},
+		{Repo: "r", CommitSHA: "c", Path: "src/catalog/main.go", Content: []byte(goSrc)},
+	}
+	mm, err := DefaultPipeline().ProcessFiles(context.Background(), "t", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, ub := range mm.Unsupported {
+		got[ub.Path] = fmt.Sprintf("L%d %v", ub.Locator.StartLine, ub.UnknownJoins)
+	}
+	want := map[string]string{
+		"src/payment/index.js": "L2 [contract:PaymentService]",
+		"src/web/pay.ts":       "L1 [contract:PaymentService]",
+		"src/other/x.js":       "L0 []",
+		"src/catalog/main.go":  "L4 []",
+	}
+	for p, w := range want {
+		if got[p] != w {
+			t.Errorf("%s: got %q, want %q", p, got[p], w)
+		}
+	}
+	for _, r := range mm.Relationships {
+		for _, ev := range r.Evidence {
+			if !strings.HasSuffix(ev.Locator.Path, ".proto") && !strings.HasSuffix(ev.Locator.Path, ".go") {
+				t.Errorf("edge %s cites unsupported %s", r.ID, ev.Locator.Path)
+			}
+		}
+		if r.TargetID == "contract:PaymentService" && r.Verb != domain.VerbProvides {
+			t.Errorf("unknown join became an edge: %s", r.ID)
+		}
+	}
+}

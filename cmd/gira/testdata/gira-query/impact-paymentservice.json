@@ -237,8 +237,27 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CheckoutService"
+      ]
+    },
+    {
+      "path": "src/payment/index.js",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+        "path": "src/payment/index.js",
+        "start_line": 46,
+        "end_line": 46
+      },
+      "unknown_joins": [
+        "contract:PaymentService"
+      ]
     }
   ]
 }

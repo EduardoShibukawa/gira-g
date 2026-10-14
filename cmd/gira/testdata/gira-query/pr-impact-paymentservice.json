@@ -146,8 +146,27 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CheckoutService"
+      ]
+    },
+    {
+      "path": "src/payment/index.js",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+        "path": "src/payment/index.js",
+        "start_line": 46,
+        "end_line": 46
+      },
+      "unknown_joins": [
+        "contract:PaymentService"
+      ]
     }
   ],
   "diff": {
@@ -161,13 +180,13 @@
   },
   "budget": {
     "limit": 1500,
-    "estimated": 1213,
+    "estimated": 1343,
     "truncated": true,
     "dropped": {
       "nodes": 0,
       "relationships": 0,
       "evidence": 7
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 1934: rerun with budget >= 1934"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2063: rerun with budget >= 2063"
   }
 }

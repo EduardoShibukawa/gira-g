@@ -801,6 +801,12 @@ func (e *Engine) LocateBoundary(query string) ([]BoundaryMatch, error) {
 }
 
 func (e *Engine) isUnsupportedRelated(ub domain.UnsupportedBoundary, node domain.Node) bool {
+	for _, id := range ub.UnknownJoins {
+		if id == node.ID {
+			return true
+		}
+	}
+
 	lowerPath := strings.ToLower(ub.Path)
 	lowerReason := strings.ToLower(ub.Reason)
 	lowerName := strings.ToLower(node.Name)

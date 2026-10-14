@@ -208,8 +208,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/currency/src/server.cpp"
-      }
+        "path": "src/currency/src/server.cpp",
+        "start_line": 141,
+        "end_line": 141
+      },
+      "unknown_joins": [
+        "contract:CurrencyService"
+      ]
     }
   },
   {
@@ -224,8 +229,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Currency.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Currency.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CurrencyService"
+      ]
     }
   }
 ]
