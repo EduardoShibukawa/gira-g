@@ -1,11 +1,11 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
 parent: 2026-10-14-gira-evidence-gate
 spec: gira-evidence-gate@1
 depends_on: [2026-10-14-gira-evidence-gate-02-l2-control-sample]
-verified_at: "f48e56b"
+verified_at: "a389d21"
 ---
 
 # Honest token accounting (F4)
@@ -31,10 +31,10 @@ Out of scope: the other children's features; ground-truth changes.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` + bench + validator before change | pass | 0aa3c1e | 03 verified; green at 0aa3c1e |
-| AC1 | `go test ./internal/tokens -run SCTokenHonesty -v` | pass | f48e56b | failed first (undefined symbols), passes after accounting.go; len/4-as-measured fails, quarantine/net/lift hold |
-| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | f48e56b | root/bench green, validator pass; Estimate untouched so E0 unaffected |
-| R1 | `go test ./internal/tokens ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | f48e56b | touched pkgs pass; `gira eval --token-report=measured` emits measured tokens line |
-| V1 | diff read against AC1–AC2 + spec F4 | pass | f48e56b | additive only: accounting.go, eval flag, get_token_accounting; no envelopes, no existing change |
+| AC1 | `go test ./internal/tokens -run SCTokenHonesty -v` | pass | a389d21 | re-verified after F8 fix batch: caller expansions force measured=false, net=gross-expansions, quarantine holds |
+| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | a389d21 | root/bench green, validator pass; R82.4/P90.3 unchanged |
+| R1 | `go test ./internal/tokens ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | a389d21 | touched pkgs pass; `gira eval --token-report=measured` emits measured tokens line |
+| V1 | diff read against AC1–AC2 + spec F4 | pass | a389d21 | mixed reports quarantined-not-rejected; pure measurements stay measured |
 
 ## Constraints and budget
 
@@ -50,4 +50,4 @@ Out of scope: the other children's features; ground-truth changes.
 
 ## Outcome
 
-F4 delivered: `{gross,expansions,net,measured_bool}`, quarantine keeps estimated out of headlines, lift-before-measure, single-source defs. 05 unblocked (03+04 now verified).
+F4 delivered + F8 sealed: `{gross,expansions,net,measured_bool}`, quarantine keeps estimated out of headlines, lift-before-measure, single-source defs; MCP mixed reports labeled unmeasured. Re-verified at a389d21; 05 unblocked (03+04 now verified).
