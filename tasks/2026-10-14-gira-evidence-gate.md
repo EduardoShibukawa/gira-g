@@ -1,8 +1,9 @@
 ---
 schema: task/1
 tier: heavy
-status: completed
+status: verified
 spec: gira-evidence-gate@1
+verified_at: "0c5f8b6"
 ---
 
 # Evidence & gate hardening (Gallon L1/L2/L3 + token honesty)
@@ -15,6 +16,7 @@ spec: gira-evidence-gate@1
 - decided: L3 taxonomy → Gallon S1 verbatim + mapping table to Gira tiers by owner (2026-10-14, "Gallon verbatim + mapa (Recommended)")
 - decided: gate-lint --strict → warn-only in CI, fail-closed locally, until E3 by owner (2026-10-14, "Warn-only (Recommended)")
 - approved: spec v1 by owner (2026-10-14, "Approve v1 (Recommended)")
+- decided: fix-all → owner ordered the full F1–F11 fix batch, autoresearch-grounded, by owner (2026-10-14, "faca o fix de tudo")
 
 ## Objective
 
@@ -42,17 +44,17 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + bench + validator before children | pass | 0a35b64 | root 15 pkgs ok, bench ok, validator pass (recorded in 01/B1) |
-| SC1 | `go test ./internal/eval -run SCL1ArtifactVerified` + CLI/MCP wiring | fail | 2dd72b5 | lib passes; review F1–F2: `--artifact-verified` flag missing, digest preimage differs across eval/verify/verify_artifact, fingerprint not printed |
-| SC2 | `go test ./internal/eval -run SCL2ControlSample` + CLI/MCP wiring | fail | 2dd72b5 | lib passes; review F3–F4: plug-via-first undetected, CLI/MCP assert agreement without sampling/comparison |
-| SC3 | `go test ./internal/eval -run SCL3TaxonomyRegister` + CLI/MCP wiring | fail | 2dd72b5 | lib passes; review F5–F7: fake-path measured, register `\|` round-trip + unvalidated load, CLI `--repro-ok` self-attestation (critical) |
-| SC4 | `go test ./internal/tokens -run SCTokenHonesty` + CLI/MCP wiring | fail | 2dd72b5 | lib passes; review F8: MCP labels caller expansions measured |
-| SC5 | `go test ./internal/gate -run SCGateLint` + CLI/MCP wiring | pass | 2dd72b5 | sealed/drift/ABANDON/status-reverify hold; minors: missing-file CI path, `Strict` no-op (review F10 open) |
-| SC6 | I1/I2 + race root+bench + validator + E0 guard | fail | 2dd72b5 | regression half passes (race/bench/validator green, EndToEnd suites pass, no extractor/GT change); I1 breached via F4/F7, I2 taxonomy-in-digest missing (review F9), `unknown` literal (F11) |
-| AC1 | SC1–SC6 integrated | fail | 2dd72b5 | SC1–SC4, SC6 fail per review; SC5 passes |
-| R1 | `go test -race ./...` (root, integrated head) | pass | 2dd72b5 | all pkgs ok, incl. EndToEnd published+perturbed |
-| R2 | `go test ./...` (bench/) | pass | 2dd72b5 | layer0/1/2/quarantine ok |
-| R3 | `node tools/validate/validate.js` | pass | 2dd72b5 | manifest-integrity + artifact-records pass |
-| V1 | integrated diff 0a35b64..HEAD read + fresh-context review ses_ec79c595bffesmPPu3ig7Vq0HC | pass | 2dd72b5 | additive only (own epic); concurrent 18b9af4 CI slash-fix noted, not ours; no GT/model/paid/push issues; review ran, 11 findings open below |
+| SC1 | `go test ./internal/eval -run SCL1ArtifactVerified` + CLI/MCP wiring | pass | 0c5f8b6 | canonical 6-field preimage (taxonomy in digest), `--artifact-verified` flag, fingerprint printed, stdout re-derives (TestCLI_EvalStdoutRederives) |
+| SC2 | `go test ./internal/eval -run SCL2ControlSample` + honesty + CLI/MCP wiring | pass | 0c5f8b6 | plug rejected both sides, ControlTotal.Validate, CLI runs real seeded sample + blind round, MCP rejects inconsistent lines |
+| SC3 | `go test ./internal/eval -run SCL3TaxonomyRegister` + honesty + CLI/MCP wiring | pass | 0c5f8b6 | repro path must exist, register round-trips hostile cells + validates on load, `--expect-content` fix-check reads the path |
+| SC4 | `go test ./internal/tokens -run SCTokenHonesty` + MCP wiring | pass | 0c5f8b6 | net math, quarantine, no len/4 as measured; MCP mixed reports labeled unmeasured |
+| SC5 | `go test ./internal/gate -run SCGateLint` + strictness + CLI/MCP wiring | pass | 0c5f8b6 | sealed/drift/ABANDON/status-reverify hold; CI warn-only incl. missing ledger; non-strict warns, strict fails closed locally |
+| SC6 | I1/I2 + race root+bench + validator + E0 guard | pass | 0c5f8b6 | race/bench/validator green, EndToEnd published+perturbed pass, R82.4/P90.3/S100/D100 unchanged, no extractor/GT change; taxonomy in digest (I2), unknown→silent (I1) |
+| AC1 | SC1–SC6 integrated | pass | 0c5f8b6 | all SC rows pass at the integrated head |
+| R1 | `go test -race ./...` (root, integrated head) | pass | 0c5f8b6 | all pkgs ok, incl. EndToEnd published+perturbed |
+| R2 | `go test ./...` (bench/) | pass | 0c5f8b6 | layer0/1/2/quarantine ok |
+| R3 | `node tools/validate/validate.js` | pass | 0c5f8b6 | manifest-integrity + artifact-records pass |
+| V1 | integrated diff 0a35b64..HEAD read + fresh-context review ses_ec79c595bffesmPPu3ig7Vq0HC + fix re-lint | pass | 0c5f8b6 | additive only (own epic + 18b9af4 CI slash-fix, not ours); no GT/model/paid/push issues; 11 findings fixed below |
 
 ## Plan
 
@@ -66,22 +68,25 @@ Children are created at `@1` after approval, in dependency order. Each one is te
 
 ## Review
 
-- [F1] `gira eval --artifact-verified` flag advertised but undefined (`cmd/gira/eval_artifact.go:27-34`) → open (major, SC1)
-- [F2] digest preimage differs across eval/verify/verify_artifact; fingerprint not printed → open (major, SC1)
-- [F3] `BlindReDerive` checks plugs only in `second`, not `first` (`internal/eval/control.go:95-106`) → open (major, SC2)
-- [F4] CLI/MCP control lines assert agreement without sampling/comparison → open (major, SC2/I1)
-- [F5] `Finding.Validate` accepts fake `ReproPath` as measured (`internal/eval/findings.go:69-73`) → open (major, SC3)
-- [F6] register `\|` escape lost on load; `LoadRegister` never validates → open (major, SC3)
-- [F7] CLI `--repro-ok` self-attests fix-check without touching the repro path (`cmd/gira/review.go:40`) → open (critical, SC3/I1)
-- [F8] MCP `get_token_accounting` labels caller expansions measured (`internal/mcp/server.go:634-635`) → open (major, SC4)
-- [F9] taxonomy never enters any digest (I2 second clause unimplemented) → open (major, SC6/I2; needs spec-interpretation call: digest preimage change invalidates existing digests)
-- [F10] missing ledger fails in CI (should warn); `Strict` is a no-op (`internal/gate/gate.go:99-102,121-124`) → open (minor, SC5)
-- [F11] `GiraTier()` returns `""` instead of `"unknown"` → open (minor, SC6/I1)
+- [F1] `gira eval --artifact-verified` flag advertised but undefined → fixed in a389d21 (explicit flag, default on; TestCLI_EvalStdoutRederives)
+- [F2] digest preimage differs across entry points; fingerprint not printed → fixed in a389d21 (canonical 6-field constructor shared by eval/verify/verify_artifact; fingerprint line; stdout re-derives)
+- [F3] `BlindReDerive` plug check only in `second` → fixed in a389d21 (both sides; TestSCL2ControlHonesty)
+- [F4] control lines assert agreement without a round → fixed in a389d21 (CLI runs SeededSample+BlindReDerive+Validate; MCP rejects inconsistent lines)
+- [F5] `Finding.Validate` accepts fake `ReproPath` → fixed in a389d21 (os.Stat existence for measured/checked)
+- [F6] register `\|` escape lost; load never validates → fixed in a389d21 (escape-aware split/unescape; load validates every row)
+- [F7] CLI `--repro-ok` self-attestation → fixed in a389d21 (`--expect-content`; rerun always reads the path; TestCLI_ReviewFixCheckReadsPath)
+- [F8] MCP labels caller expansions measured → fixed in a389d21 (mixed reports unmeasured; TestMCP_TokenAccountingHonesty)
+- [F9] taxonomy not in any digest → fixed in a389d21 (TAXONOMY line in preimage = spec I2; no persisted digests existed, so nothing invalidated in practice)
+- [F10] missing ledger fails in CI; `Strict` no-op → fixed in a389d21 (CI warn-only everywhere; non-strict warns, strict fails closed locally; TestSCGateLintStrictness)
+- [F11] `GiraTier()` returns `""` → fixed in a389d21 (`"unknown"`; TestSCL3RegisterHonesty)
 
 ## Checkpoint
 
-- as of: 2026-10-14, branch feat/gira-impact-precision, head 2dd72b5, worktree dirty (tasks/2026-10-14-gira-evidence-gate.md)
-- done: 01–05 verified (@1, specs v1); parent integration attempted (SC rows + R1–R3 + V1 above); fresh-context review ses_ec79c595bffesmPPu3ig7Vq0HC recorded (11 open findings)
-- next: owner morning triage — (a) F9 digest-preimage call, (b) CLI demo semantics (F4 control line, F7 fix-check predicate), (c) fix batch + child re-verification; then parent re-lint, review close-out, `accepted:` by owner
-- open: fixes deferred to avoid invalidating 5 verified children overnight; no push/release (branch only)
-- revalidate: SC rows ran at 2dd72b5; rerun after any code change
+- as of: 2026-10-14, branch overnight/oct15, head 0c5f8b6, worktree dirty (tasks/2026-10-14-gira-evidence-gate.md)
+- done: 01–05 verified @a389d21; parent re-lint green (SC1–SC6 + R1–R3 + V1 at 0c5f8b6); review findings F1–F11 closed above
+- next: `accepted:` by owner — nothing else pending; no push/release (branch only)
+- revalidate: rows ran at 0c5f8b6; rerun after any code change
+
+## Outcome
+
+Epic delivered: every `gira` claim re-derivable or silent — L1 canonical closing line, L2 blind control-total, L3 taxonomy register + independent fix-check, honest token accounting, strict gate-lint. E0 untouched (R82.4/P90.3/S100/D100).
