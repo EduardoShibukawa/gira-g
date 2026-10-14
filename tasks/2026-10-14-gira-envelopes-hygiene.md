@@ -67,8 +67,8 @@ SC8–SC10 at every child. Rollback: `git revert` per child. Branch linear (cher
 
 ## Checkpoint
 
-- as of: 2026-10-14, branch e3-envelopes-hygiene, head 13fc1a9, worktree clean
-- done: spec approved; parent active; children 01-02 verified; children 03-05 todo
-- next: child 03 (structured errors)
+- as of: 2026-10-14, branch e3-envelopes-hygiene, head d20a85d, worktree clean
+- done: spec approved; parent active; children 01-03 verified; children 04-05 todo
+- next: child 04 (single registry)
 
 ## Outcome

@@ -58,6 +58,7 @@ type ToolDefinition struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"inputSchema"`
+	Enveloped   bool        `json:"enveloped"`
 }
 
 type InputSchema struct {
@@ -330,6 +331,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"target_id"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_pr_impact",
@@ -364,6 +366,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"range"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_tour",
@@ -385,6 +388,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "diff_maps",
@@ -407,6 +411,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"index_a", "index_b"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_context_slice",
@@ -435,6 +440,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"node_id"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "explain_evidence",
@@ -456,6 +462,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "locate_boundary",
@@ -474,6 +481,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"query"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "verify_artifact",
@@ -507,6 +515,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_control_total",
@@ -532,6 +541,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_findings_register",
@@ -545,6 +555,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_token_accounting",
@@ -562,6 +573,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "gate_status",
@@ -575,9 +587,11 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 	}
 }
+
 
 type toolCallParams struct {
 	Name      string          `json:"name"`
