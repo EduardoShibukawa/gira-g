@@ -43,7 +43,11 @@ const (
 	// WhyEntryDeclared is an entry point whose ports declaration has a locator.
 	WhyEntryDeclared = "entry_declared"
 	WhyReached       = "reached"
-	whyUnknownT      = "unknown"
+	// WhyConsumer is a stop reached by the Kafka fan-out (J4): it consumes a topic
+	// contract that the previous stop visited. Its args are the consumer, the
+	// topic, the consume edge's origin tier, the visiting stop and its verb.
+	WhyConsumer = "consumer"
+	whyUnknownT = "unknown"
 )
 
 var whyTemplates = map[string]string{
@@ -51,6 +55,7 @@ var whyTemplates = map[string]string{
 	WhyEntry:         "`%s` is an entry point: its extracted metadata declares %s (locator of the ports declaration: unknown).",
 	WhyEntryDeclared: "`%s` is an entry point: it declares %s at the cited locator.",
 	WhyReached:       "`%s` is reached because `%s` %s it.",
+	WhyConsumer:      "`%s` is reached because it consumes `%s` (%s), which `%s` %s.",
 }
 
 // RenderWhy renders a why template. Unknown templates render a marker, never text.
@@ -202,6 +207,9 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 	for _, id := range level {
 		visited[id] = true
 	}
+	// fanned marks stops reached by the topic fan-out: they do not fan out again,
+	// so the fan-out is one hop (no transitive consumer chains).
+	fanned := map[string]bool{}
 	for len(level) > 0 {
 		var next []string
 		for _, id := range level {
@@ -209,12 +217,15 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 				tour.Truncated = true
 				return tour, nil
 			}
-			step, reached := e.tourStep(id, why[id], visited)
+			step, reached := e.tourStep(id, why[id], visited, !fanned[id])
 			step.Order = len(tour.Steps) + 1
 			tour.Steps = append(tour.Steps, step)
 			for _, r := range reached {
 				visited[r.id] = true
-				why[r.id] = TourStep{WhyTemplate: WhyReached, WhyArgs: []string{r.id, id, r.verb}, WhyLocator: r.locator}
+				why[r.id] = r.why
+				if r.why.WhyTemplate == WhyConsumer {
+					fanned[r.id] = true
+				}
 				next = append(next, r.id)
 			}
 		}
@@ -224,11 +235,55 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 	return tour, nil
 }
 
-type reach struct{ id, verb, locator string }
+type reach struct {
+	id  string
+	why TourStep // WhyTemplate, WhyArgs and WhyLocator of the reached stop
+}
+
+// isTopic reports whether a Contract is a Kafka topic (`contract:kafka:<topic>`).
+func isTopic(n domain.Node) bool {
+	return n.Kind == domain.NodeContract && (n.Metadata["protocol"] == "kafka" || strings.HasPrefix(n.ID, "contract:kafka:"))
+}
+
+// blockLocator cites the evidence of an edge whose subject is n. When the edge's
+// line sits in n's own declaration block (n declared earlier in the same file,
+// with no other node declared in between), the range starts at n's declaration,
+// so the citation shows whose line it is; otherwise it is the edge line alone.
+func (e *Engine) blockLocator(n domain.Node, ev domain.EvidenceRecord) string {
+	l := ev.Locator
+	same := func(o domain.Locator) bool {
+		return o.Repo == l.Repo && o.CommitSHA == l.CommitSHA && o.Path == l.Path
+	}
+	start := 0
+	for _, nev := range n.Evidence {
+		if same(nev.Locator) && nev.Locator.StartLine <= l.StartLine && nev.Locator.StartLine > start {
+			start = nev.Locator.StartLine
+		}
+	}
+	if start == 0 {
+		return l.String()
+	}
+	for _, o := range e.macroMap.Nodes {
+		if o.ID == n.ID {
+			continue
+		}
+		for _, oev := range o.Evidence {
+			if same(oev.Locator) && oev.Locator.StartLine > start && oev.Locator.StartLine <= l.StartLine {
+				return l.String()
+			}
+		}
+	}
+	end := l.EndLine
+	if end < l.StartLine {
+		end = l.StartLine
+	}
+	return domain.Locator{Repo: l.Repo, CommitSHA: l.CommitSHA, Path: l.Path, StartLine: start, EndLine: end}.String()
+}
 
 // tourStep builds the stop for id and returns the unvisited stops it reaches,
-// either directly or through a Contract it consumes (Contract → its providers).
-func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourStep, []reach) {
+// either directly or through a Contract it reaches (Contract → its providers;
+// with fanOut, a Kafka topic → its consumers, one hop).
+func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool, fanOut bool) (TourStep, []reach) {
 	n := e.nodesByID[id]
 	step := TourStep{
 		Title:       fmt.Sprintf("%s (%s)", n.Name, n.Kind),
@@ -248,18 +303,20 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourS
 
 	seen := map[string]bool{}
 	var out []reach
-	add := func(target, verb string, evs []domain.EvidenceRecord) {
+	add := func(target string, why TourStep, evs []domain.EvidenceRecord) {
 		t, ok := e.nodesByID[target]
 		if !ok || !tourable(t) || visited[target] || seen[target] || target == id {
 			return
 		}
 		seen[target] = true
 		addRead(evs)
-		loc := ""
-		if len(evs) > 0 {
-			loc = evs[0].Locator.String()
+		if why.WhyLocator == "" && len(evs) > 0 {
+			why.WhyLocator = evs[0].Locator.String()
 		}
-		out = append(out, reach{target, verb, loc})
+		out = append(out, reach{target, why})
+	}
+	reached := func(target, verb string) TourStep {
+		return TourStep{WhyTemplate: WhyReached, WhyArgs: []string{target, id, verb}}
 	}
 	contracts := map[string]bool{}
 	for _, r := range e.edgesByNode[id] {
@@ -280,21 +337,30 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourS
 					provider = p.TargetID
 				}
 				if provider != id {
-					add(provider, verb+" "+t.ID+" from", p.Evidence)
+					add(provider, reached(provider, verb+" "+t.ID+" from"), p.Evidence)
 				}
+			}
+			if !fanOut || !isTopic(t) {
+				continue
 			}
 			for _, c := range e.consumesByContract[t.ID] {
 				consumer := c.SourceID
 				if consumer == t.ID {
 					consumer = c.TargetID
 				}
-				if consumer != id {
-					add(consumer, t.ID+" consumed by", c.Evidence)
+				if consumer == id {
+					continue
 				}
+				why := TourStep{WhyTemplate: WhyConsumer, WhyArgs: []string{consumer, t.ID, "unknown", id, verb}}
+				if len(c.Evidence) > 0 {
+					why.WhyArgs[2] = string(c.Evidence[0].Origin)
+					why.WhyLocator = e.blockLocator(e.nodesByID[consumer], c.Evidence[0])
+				}
+				add(consumer, why, c.Evidence)
 			}
 			continue
 		}
-		add(r.TargetID, verb, r.Evidence)
+		add(r.TargetID, reached(r.TargetID, verb), r.Evidence)
 	}
 	for c := range contracts {
 		step.NodeIDs = append(step.NodeIDs, c)

@@ -135,3 +135,28 @@ func TestStudyProtocolDocument(t *testing.T) {
 		}
 	}
 }
+
+// Anchors match case-insensitively with '-' and '_' alike, on both sides; a
+// different name still does not match.
+func TestMeasureAnchorHyphenUnderscore(t *testing.T) {
+	root := t.TempDir()
+	_ = os.WriteFile(filepath.Join(root, "compose.yaml"), []byte("environment:\n  - IMAGE_PROVIDER_HOST\n  - IMAGE_PROXY\n  - frontend-proxy_addr\n"), 0o644)
+	step := func(anchor, loc string) Step {
+		return Step{Title: anchor, Text: anchor, Claims: []Claim{{Anchor: anchor, Locators: []string{loc}}}}
+	}
+	for _, c := range []struct {
+		anchor, loc string
+		want        int
+	}{
+		{"image-provider", "compose.yaml#L2", 1}, // '-' anchor vs '_' text
+		{"FRONTEND_PROXY", "compose.yaml#L4", 1}, // '_' anchor vs '-' text
+		{"Image-Provider", "compose.yaml#L2", 1}, // case folds
+		{"image-provider", "compose.yaml#L3", 0}, // IMAGE_PROXY is another name
+		{"image-proxy-db", "compose.yaml#L3", 0}, // longer anchor never matches a shorter name
+		{"imageprovider", "compose.yaml#L2", 0},  // separators are not dropped
+	} {
+		if p := Measure(Tour{Steps: []Step{step(c.anchor, c.loc)}}, nil, readFrom(root), ""); p.Verified != c.want {
+			t.Errorf("anchor %q in %s: verified %d, want %d", c.anchor, c.loc, p.Verified, c.want)
+		}
+	}
+}
