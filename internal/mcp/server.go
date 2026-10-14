@@ -14,6 +14,7 @@ import (
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/eval"
+	gatepkg "github.com/EduardoShibukawa/gira-g/internal/gate"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
@@ -517,6 +518,19 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 			},
 		},
+		{
+			Name:        "gate_status",
+			Description: "F5: non-executing gate status read for a ledger file.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"state": {
+						Type:        "string",
+						Description: "Gate ledger file path.",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -620,6 +634,31 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		m := tokens.Measure([]byte(args.Text))
 		rep := tokens.NewReport(m.Gross, args.Expansions, true)
 		out, _ := json.Marshal(rep)
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F5: gate_status is a non-executing read (no engine).
+	if params.Name == "gate_status" {
+		var args struct {
+			State string `json:"state"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for gate_status: %v", err)},
+				},
+			}
+		}
+		path := args.State
+		if path == "" {
+			path = ".gira/gate.json"
+		}
+		s, err := gatepkg.Status(path)
+		if err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}
+		}
+		out, _ := json.Marshal(s)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 
