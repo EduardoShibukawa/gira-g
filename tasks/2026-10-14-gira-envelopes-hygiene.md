@@ -67,8 +67,18 @@ SC8–SC10 at every child. Rollback: `git revert` per child. Branch linear (cher
 
 ## Checkpoint
 
-- as of: 2026-10-14, branch e3-envelopes-hygiene, head ef3ebd1, worktree clean
-- done: spec approved; parent active; children 01-04 verified; child 05 todo
-- next: child 05 (CI hygiene)
+- as of: 2026-10-14, branch e3-envelopes-hygiene, head a8aaf03, worktree clean
+- done: spec approved; parent active; children 01-05 all verified
+- next: parent seal, open PR
 
 ## Outcome
+
+E3 Envelopes & Hygiene delivered: all 5 children verified.
+
+- Child 01 (SC1, SC2): Envelope coverage on all 12 MCP tools + CLI; deterministic drop order
+- Child 02 (SC3, SC4): Honest budget labels (estimator="bytes/4", measured=false); global MCP ceiling with budget_exceeded + escalate_hint
+- Child 03 (SC5): Structured errors {code, message, retryable, suggestions} on MCP; gira-query reads code first
+- Child 04 (SC6): Single tool registry at internal/tools/registry.go; enveloped field on all 12 tools
+- Child 05 (SC7): CI hygiene - bench race, validator, gate-lint warn-only on ubuntu-latest; opt-in floor guard; hygiene fixes (gitignore, README link, quarantine skip .claude/worktrees/, validator §6.1 fix)
+
+All invariants preserved: hermetic published R82.4/P100.0, perturbed R81.2/P100.0; SC15 ≥ 90%; zero fixture diff; unbudgeted calls byte-identical. Validator passes at every commit. Ready for PR.
