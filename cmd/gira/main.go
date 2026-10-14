@@ -98,6 +98,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "verify":
 		return runVerify(rest, stdout, stderr)
 
+	case "review":
+		return runReview(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -125,6 +128,7 @@ Commands:
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)
   verify --check <c> --expect <e> [--cwd <d>]               Print ARTIFACT-VERIFIED closing line for inputs (F1)
+  review --findings-register <path> [--fix-check]           L3 findings register + independent fix-check (F3)
   version                                                   Show harness version
 
 Global Flags:

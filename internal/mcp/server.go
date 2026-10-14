@@ -486,6 +486,19 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 			},
 		},
+		{
+			Name:        "get_findings_register",
+			Description: "F3: returns the L3 findings register entries (pointer only, outside slices).",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"register": {
+						Type:        "string",
+						Description: "Path to the findings register file.",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -544,6 +557,31 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 		out, _ := json.Marshal(eval.ControlReport(args.Total, args.Matched, args.Mismatched, args.Seed))
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F3: get_findings_register reads the register file (no engine).
+	if params.Name == "get_findings_register" {
+		var args struct {
+			Register string `json:"register"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_findings_register: %v", err)},
+				},
+			}
+		}
+		path := args.Register
+		if path == "" {
+			path = "reviews/findings.md"
+		}
+		reg, err := eval.LoadRegister(path)
+		if err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}
+		}
+		out, _ := json.Marshal(reg.Findings)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 
