@@ -461,6 +461,31 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 			},
 		},
+		{
+			Name:        "get_control_total",
+			Description: "F2: returns control:{total,matched,mismatched,sampled_n,seed} with the seeded max(20,5%) rule.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"total": {
+						Type:        "integer",
+						Description: "Control denominator (task count).",
+					},
+					"matched": {
+						Type:        "integer",
+						Description: "Blind re-derivation matches on the sample.",
+					},
+					"mismatched": {
+						Type:        "integer",
+						Description: "Blind re-derivation mismatches on the sample.",
+					},
+					"seed": {
+						Type:        "integer",
+						Description: "Sampler seed.",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -499,6 +524,26 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		}
 		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint)
 		out, _ := json.Marshal(map[string]string{"digest": digest, "closing_line": eval.FormatClosingLine(digest)})
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F2: get_control_total needs no engine (pure control math).
+	if params.Name == "get_control_total" {
+		var args struct {
+			Total      int    `json:"total"`
+			Matched    int    `json:"matched"`
+			Mismatched int    `json:"mismatched"`
+			Seed       uint64 `json:"seed"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_control_total: %v", err)},
+				},
+			}
+		}
+		out, _ := json.Marshal(eval.ControlReport(args.Total, args.Matched, args.Mismatched, args.Seed))
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 
