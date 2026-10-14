@@ -17,6 +17,8 @@ spec: gira-skills-release@1
 - decided: Q4 add gira skills manifest, gira skills check, and skills-manifest.json release artifact (Option A) by owner (2026-10-14, "Q4. A")
 - decided: Q5 keep default CI gate-lint warn-only, add --fail-on-ci for explicit ledger enforcement (Option A) by owner (2026-10-14, "Q5. A")
 - decided: Q6 close findings register GC with Register.GC and gira review --gc [--keep-resolved <n>] (Option A) by owner (2026-10-14, "Q6. A")
+- approved: spec v1 by owner (2026-10-14, "vamos criar a spec e as TASKS sem execucao, sera executado no modelo deep seek v4 pro")
+- approved: edits to protected files (.github/workflows/release.yml, mise.toml, .goreleaser.yaml) for E5 by owner (2026-10-14, "vamos criar a spec e as TASKS sem execucao, sera executado no modelo deep seek v4 pro")
 
 ## Objective
 
@@ -78,6 +80,6 @@ skip: runs after child 05 is verified.
 
 ## Checkpoint
 
-- as of: 2026-10-14, branch main, head f404ce0, worktree dirty (draft spec + parent task + spike)
-- done: spike `docs/spikes/2026-10-14-e5-skills-release.md` written; owner confirmed `heavy` and answered Q1–Q6; `specs/gira-skills-release.md` drafted at `status: draft, version: 1`; parent task `tasks/2026-10-14-gira-skills-release.md` created at `status: active`
-- next: commit draft v1 + parent task, await owner approval of `specs/gira-skills-release.md` v1 (and protected-file edit approval for `.github/workflows/release.yml` and `mise.toml`), then freeze `approved_hash` and decompose children 01–05
+- as of: 2026-10-14, branch e5-skills-release, head b60aae5, worktree clean after step 2 commit
+- done: spike `docs/spikes/2026-10-14-e5-skills-release.md` written; owner confirmed `heavy`, answered Q1–Q6, and approved spec v1 + decomposition without execution; `specs/gira-skills-release.md` approved at v1; children 01–05 decomposed at `status: todo`
+- next: execute children 01–05 in dependency order (01 → 02 → 03, 04 → 05), then run integrated verification SC1–SC7 + adversarial review

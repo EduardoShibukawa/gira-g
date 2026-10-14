@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:dc5e0b44e49bf3608b1e8fd35afb129082f211d67589ed45034519f3546d0f4c
 ---
 
 # GIRA skills distribution and release (E5)
