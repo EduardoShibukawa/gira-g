@@ -16,6 +16,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
+	"github.com/EduardoShibukawa/gira-g/internal/human"
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
@@ -23,6 +24,104 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
+
+// emitHuman writes a rendered human document. Markdown is styled only on a
+// terminal with NO_COLOR unset; JSON and the plain path stay byte-identical
+// (ADR 0008 §1).
+func emitHuman(stdout io.Writer, data []byte, format slices.Format) error {
+	text := string(data)
+	if format == slices.FormatMarkdown {
+		text = human.Decorate(text, human.Styled(stdout))
+	}
+	_, err := io.WriteString(stdout, text)
+	return err
+}
+
+// emitMarkdownLine writes text plus a trailing newline, decorating only when
+// stdout is a styled terminal.
+func emitMarkdownLine(stdout io.Writer, text string) error {
+	_, err := io.WriteString(stdout, human.Decorate(text, human.Styled(stdout))+"\n")
+	return err
+}
+
+// humanBanner writes the indexed-commit line and, when checkout is given and its
+// HEAD is not an indexed commit, a stale line — to stderr, so the stdout
+// document (and its E3 goldens/budget markers) stays byte-identical (ADR 0008
+// §4). It only fires for human (Markdown) output, so JSON stays clean.
+func humanBanner(stderr io.Writer, mm *domain.MacroMap, checkout string, format slices.Format) {
+	if mm == nil || format != slices.FormatMarkdown {
+		return
+	}
+	if cs := mm.IndexedCommits(); len(cs) > 0 {
+		fmt.Fprintf(stderr, "indexed commit: %s\n", strings.Join(cs, ", "))
+	}
+	if checkout != "" {
+		if head := gitHead(checkout); head != "" && !mm.HasCommit(head) {
+			fmt.Fprintf(stderr, "stale: local HEAD %s is not an indexed commit\n", head)
+		}
+	}
+}
+
+func gitHead(dir string) string {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// excerptFor reads a locator's excerpt from the checkout. When the checkout is a
+// Git repository it must contain the cited commit, so an unrelated checkout
+// cannot masquerade as the source (F2).
+func excerptFor(repoRoot string, loc domain.Locator) (string, bool) {
+	if repoRoot == "" || loc.Path == "" {
+		return "", false
+	}
+	if loc.CommitSHA != "" && isGitRepo(repoRoot) && !checkoutHasCommit(repoRoot, loc.CommitSHA) {
+		return "", false
+	}
+	return slices.Excerpt(repoRoot, loc, slices.SourceWindow)
+}
+
+func isGitRepo(dir string) bool {
+	return exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree").Run() == nil
+}
+
+func checkoutHasCommit(dir, sha string) bool {
+	return exec.Command("git", "-C", dir, "rev-parse", "--verify", "--quiet", sha+"^{commit}").Run() == nil
+}
+
+// sourceSection renders the on-demand source excerpts for an evidence report,
+// one block per distinct locator. A locator whose source cannot be read shows
+// the "source unavailable" marker. Reading is at render time only (ADR 0001).
+func sourceSection(r *slices.EvidenceReport, repoRoot string) string {
+	var sb strings.Builder
+	seen := map[string]bool{}
+	blocks := 0
+	for _, ev := range r.Evidence {
+		loc := ev.Locator
+		if loc.Path == "" {
+			continue
+		}
+		key := loc.String()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if blocks == 0 {
+			sb.WriteString("\n## Source Excerpts\n")
+		}
+		blocks++
+		fmt.Fprintf(&sb, "\n### %s\n\n```\n", key)
+		if ex, ok := excerptFor(repoRoot, loc); ok {
+			sb.WriteString(ex)
+		} else {
+			sb.WriteString(slices.SourceUnavailable + "\n")
+		}
+		sb.WriteString("```\n")
+	}
+	return sb.String()
+}
 
 var (
 	version = "0.1.0-dev"
@@ -323,7 +422,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	var format string
 	var budget int
 
-	var fromDiff, repoDir, repoID string
+	var fromDiff, repoDir, repoID, checkout string
 
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; briefing default 1500)")
 	fs.IntVar(&depth, "depth", 1, "Graph traversal depth")
@@ -332,6 +431,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.StringVar(&fromDiff, "from-diff", "", "Start from a git revision range <base>..<head> instead of a target id")
 	fs.StringVar(&repoDir, "repo", ".", "Repository the --from-diff range is read from")
 	fs.StringVar(&repoID, "repo-id", "", "Only match locators of this repository id (--from-diff)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -369,12 +469,13 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		}
 	}
 
-	data, err := briefing.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	data, err := briefing.Emit(emitFormat, budget)
 	if err != nil {
 		return err
 	}
-	_, err = stdout.Write(data)
-	return err
+	humanBanner(stderr, mm, checkout, emitFormat)
+	return emitHuman(stdout, data, emitFormat)
 }
 
 func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -387,6 +488,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	var view string
 	var indexPath string
 	var format string
+	var checkout string
 	var budget int
 
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; tier defaults 500/1500/3500)")
@@ -395,6 +497,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -417,12 +520,13 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	data, err := slice.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	data, err := slice.Emit(emitFormat, budget)
 	if err != nil {
 		return err
 	}
-	_, err = stdout.Write(data)
-	return err
+	humanBanner(stderr, mm, checkout, emitFormat)
+	return emitHuman(stdout, data, emitFormat)
 }
 
 func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -435,11 +539,17 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	var edgeID string
 	var indexPath string
 	var format string
+	var repo, checkout string
+	var source, noSource bool
 
 	fs.StringVar(&nodeID, "node", "", "Node ID")
 	fs.StringVar(&edgeID, "edge", "", "Edge ID")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&repo, "repo", ".", "Local checkout the locators are read from (source excerpts)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.BoolVar(&source, "source", true, "Fetch source excerpts from --repo (default true)")
+	fs.BoolVar(&noSource, "no-source", false, "Do not fetch source excerpts (locators only)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -465,9 +575,17 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
+	humanBanner(stderr, mm, checkout, slices.ParseFormat(strings.ToLower(format)))
+
 	switch strings.ToLower(format) {
 	case "md", "markdown":
-		fmt.Fprintln(stdout, report.RenderMarkdown())
+		text := report.RenderMarkdown()
+		if source && !noSource {
+			text += sourceSection(report, repo)
+		}
+		if err := emitMarkdownLine(stdout, text); err != nil {
+			return err
+		}
 	default:
 		data, err := report.CanonicalJSON()
 		if err != nil {
@@ -487,9 +605,11 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	var indexPath string
 	var format string
+	var checkout string
 
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -512,9 +632,13 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
+	humanBanner(stderr, mm, checkout, slices.ParseFormat(strings.ToLower(format)))
+
 	switch strings.ToLower(format) {
 	case "md", "markdown":
-		fmt.Fprintln(stdout, slices.RenderBoundaryMatches(matches))
+		if err := emitMarkdownLine(stdout, slices.RenderBoundaryMatches(matches)); err != nil {
+			return err
+		}
 	default:
 		data, err := json.MarshalIndent(matches, "", "  ")
 		if err != nil {
@@ -534,10 +658,12 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) error {
 	var format string
 	var outputPath string
 	var indexPath string
+	var checkout string
 
 	fs.StringVar(&format, "format", "md", "Export format (md|html)")
 	fs.StringVar(&outputPath, "output", "", "Output file path (default stdout)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -547,6 +673,8 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
+
+	humanBanner(stderr, mm, checkout, slices.FormatMarkdown)
 
 	var content string
 	switch strings.ToLower(format) {
@@ -580,9 +708,13 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	var outputDir string
 	var indexPath string
+	var checkout string
+	var noOpen bool
 
 	fs.StringVar(&outputDir, "output", "", "Directory to generate HTML artifact (default temp dir)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.BoolVar(&noOpen, "no-open", false, "Write the artifact but do not open a browser")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -593,6 +725,7 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
 
+	humanBanner(stderr, mm, checkout, slices.FormatMarkdown)
 	htmlContent := slices.ExportHTML(mm)
 
 	var targetDir string
@@ -622,14 +755,17 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 	fileURI := "file://" + filepath.ToSlash(absPath)
 	fmt.Fprintf(stdout, "Exported HTML view to: %s\n", fileURI)
 
-	// Attempt non-blocking browser open if not in headless/CI environment
-	openInBrowser(absPath)
+	// Attempt non-blocking browser open unless --no-open or headless/CI.
+	openInBrowser(absPath, noOpen)
 
 	return nil
 }
 
-func openInBrowser(filePath string) {
-	// If CI or NO_BROWSER environment variable is set, avoid launching external process
+func openInBrowser(filePath string, noOpen bool) {
+	// --no-open, or a CI/NO_BROWSER environment, never launches a browser.
+	if noOpen {
+		return
+	}
 	if os.Getenv("CI") != "" || os.Getenv("NO_BROWSER") != "" {
 		return
 	}
@@ -657,12 +793,13 @@ func openInBrowser(filePath string) {
 func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs := flag.NewFlagSet("tour", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var focus, indexPath, format string
+	var focus, indexPath, format, checkout string
 	var maxSteps int
 	fs.StringVar(&focus, "focus", "", "Start the tour at this node instead of the entry points")
 	fs.IntVar(&maxSteps, "max-steps", slices.DefaultTourSteps, "Maximum number of tour steps")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -674,9 +811,10 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, tour.RenderMarkdown())
-		return err
+	tourFormat := slices.ParseFormat(strings.ToLower(format))
+	humanBanner(stderr, mm, checkout, tourFormat)
+	if tourFormat == slices.FormatMarkdown {
+		return emitMarkdownLine(stdout, tour.RenderMarkdown())
 	}
 	data, err := tour.CanonicalJSON()
 	if err != nil {
@@ -690,9 +828,10 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	positionals, flagArgs := splitArgs(args)
 	fs := flag.NewFlagSet("flows", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var indexPath, format string
+	var indexPath, format, checkout string
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
@@ -708,9 +847,10 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, flows.RenderMarkdown())
-		return err
+	flowsFormat := slices.ParseFormat(strings.ToLower(format))
+	humanBanner(stderr, mm, checkout, flowsFormat)
+	if flowsFormat == slices.FormatMarkdown {
+		return emitMarkdownLine(stdout, flows.RenderMarkdown())
 	}
 	data, err := flows.CanonicalJSON()
 	if err != nil {
@@ -724,8 +864,9 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	positionals, flagArgs := splitArgs(args)
 	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
 	fs.SetOutput(stderr)
-	var format string
+	var format, checkout string
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
@@ -742,10 +883,10 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to load %s: %w", all[1], err)
 	}
+	humanBanner(stderr, a, checkout, slices.ParseFormat(strings.ToLower(format)))
 	d := archdiff.Compare(a, b)
 	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, d.RenderMarkdown())
-		return err
+		return emitMarkdownLine(stdout, d.RenderMarkdown())
 	}
 	data, err := d.CanonicalJSON()
 	if err != nil {

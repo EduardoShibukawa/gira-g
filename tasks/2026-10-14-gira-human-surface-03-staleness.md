@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-14-gira-human-surface
 spec: gira-human-surface@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Indexed commit and staleness (F3; SC3)
@@ -29,10 +29,10 @@ states the comparison. No false `stale`/`current`.
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + bench + validator before change | not run | | |
-| AC1 | `go test ./internal/domain ./cmd/gira -run SCStaleness -count=1` | not run | | |
-| R1 | `go test ./internal/domain ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1; show diff before commit | not run | | |
+| B1 | `go test -race ./...` (root) + bench + validator before change | pass | HEAD~1 | child 02 merged; all green |
+| AC1 | `go test ./internal/domain ./cmd/gira -run SCStaleness -count=1` | pass | HEAD | indexed commits listed; a non-indexed local HEAD flags `stale` |
+| R1 | `go test ./internal/domain ./cmd/gira -count=1` | pass | HEAD | no regression; banner is stderr-only, stdout byte-identical |
+| V1 | diff read against AC1 | pass | HEAD | `MacroMap.IndexedCommits`/`HasCommit`; banner never touches the document |
 
 ## Constraints and budget
 
@@ -47,3 +47,11 @@ states the comparison. No false `stale`/`current`.
 2. Implement the domain helper + banner + per-node/edge flag.
 3. Wire the styled/plain renderer from child 01.
 4. Run AC1/R1/V1; commit.
+
+## Outcome
+
+Added `domain.MacroMap.IndexedCommits()` (sorted `repo@commit`) and `HasCommit`.
+`slice`, `impact` and `explain` print `indexed commit: …` and, when `--repo`
+resolves to a HEAD the index does not cite, `stale: …`, both to **stderr** so the
+stdout document stays byte-identical (no E3 golden/budget churn). `slice` gained
+`--repo` (impact/explain already had it).

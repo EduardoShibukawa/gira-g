@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-14-gira-human-surface
 spec: gira-human-surface@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Explain source excerpts (F2; SC2)
@@ -30,10 +30,10 @@ excerpts are read at render time and never persisted.
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + bench + validator before change | not run | | |
-| AC1 | `go test ./internal/slices ./cmd/gira -run SCExplainSource -count=1` | not run | | |
-| R1 | `go test ./internal/slices ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1; show diff before commit | not run | | |
+| B1 | `go test -race ./...` (root) + bench + validator before change | pass | HEAD~1 | child 01 merged; all green |
+| AC1 | `go test ./internal/slices ./cmd/gira -run SCExplainSource -count=1` | pass | HEAD | window ±40 honored, `--no-source`, `source unavailable`, path escape rejected |
+| R1 | `go test ./internal/slices ./cmd/gira -count=1` | pass | HEAD | no regression; JSON stays locator-only |
+| V1 | diff read against AC1 | pass | HEAD | `slices.Excerpt` reads at render time; never persists (ADR 0001) |
 
 ## Constraints and budget
 
@@ -48,3 +48,11 @@ excerpts are read at render time and never persisted.
 2. Implement the on-demand reader (git checkout) + cap + `--no-source`.
 3. Wire the styled/plain renderer from child 01.
 4. Run AC1/R1/V1; commit.
+
+## Outcome
+
+`gira explain` gains `--repo` (default `.`) and `--no-source`, and appends a
+`## Source Excerpts` section: `slices.Excerpt` reads the cited lines ±40 from the
+local checkout, one block per distinct locator, with `source unavailable` when
+the file/range is missing or the path escapes the checkout. The index keeps
+locators only (ADR 0001); JSON output is unchanged.

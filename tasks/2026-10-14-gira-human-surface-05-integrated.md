@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-14-gira-human-surface
 spec: gira-human-surface@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Integrated verification (F1–F5; SC6, SC7)
@@ -29,11 +29,11 @@ ground-truth/corpus, `reviewed: false`).
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + bench + validator before the integrated run | not run | | |
-| AC1 | `go test -race ./...` root and bench/; `node tools/validate/validate.js` | not run | | |
-| AC2 | `go test ./internal/eval -run EndToEnd -v`; bench SC15; `git diff --exit-code 21a8092 -- fixtures/ testdata/`; `"reviewed": false` | not run | | |
-| R1 | `go test ./internal/slices ./internal/domain ./cmd/gira -count=1` | not run | | |
-| V1 | integrated diff read + fresh-context adversarial review; resolve findings | not run | | |
+| B1 | `go test -race ./...` (root) + bench + validator before the integrated run | pass | HEAD~1 | child 04 merged; all green |
+| AC1 | `go test -race ./...` root and bench/; `node tools/validate/validate.js` | pass | HEAD | root + bench green; validator pass |
+| AC2 | `go test ./internal/eval -run EndToEnd -v`; bench SC15; `git diff --exit-code 21a8092 -- fixtures/ testdata/`; `"reviewed": false` | pass | HEAD | published 82.4/100.0, perturbed 81.2/100.0; SC15 ok; diff 0; reviewed false |
+| R1 | `go test ./internal/slices ./internal/domain ./internal/human ./cmd/gira -count=1` | pass | HEAD | E4 packages green |
+| V1 | fresh-context adversarial review (review.md); resolve findings in the parent ## Review | pass | HEAD | 9 findings F1–F9; fixed |
 
 ## Constraints and budget
 
@@ -46,3 +46,9 @@ ground-truth/corpus, `reviewed: false`).
 1. Integrate F1–F5; fix cross-feature issues.
 2. Run AC1/AC2/R1 with fresh-context review.
 3. Report integrated evidence for the parent seal.
+
+## Outcome
+
+Integrated: SC6 (race root+bench, validator) and SC7 (R/P unchanged, SC15,
+frozen ground-truth/corpus, reviewed false) pass. The fresh-context adversarial
+review produced F1–F9; all were fixed on this branch (see the parent `## Review`).
