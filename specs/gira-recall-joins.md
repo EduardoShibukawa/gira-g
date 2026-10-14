@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:5635376e9058f2e7df53c8835e04da6d191a286301e14377faa359193e4b3026
 ---
 
 # GIRA recall joins (E2)
