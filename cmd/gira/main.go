@@ -44,6 +44,31 @@ func emitMarkdownLine(stdout io.Writer, text string) error {
 	return err
 }
 
+// staleBanner writes the indexed-commit line and, when repoDir resolves to a
+// HEAD the index does not cite, a stale line — to stderr, so the stdout
+// document (and its E3 goldens/budget markers) stays byte-identical (ADR 0008 §4).
+func staleBanner(stderr io.Writer, mm *domain.MacroMap, repoDir string) {
+	if mm == nil {
+		return
+	}
+	if cs := mm.IndexedCommits(); len(cs) > 0 {
+		fmt.Fprintf(stderr, "indexed commit: %s\n", strings.Join(cs, ", "))
+	}
+	if repoDir != "" {
+		if head := gitHead(repoDir); head != "" && !mm.HasCommit(head) {
+			fmt.Fprintf(stderr, "stale: local HEAD %s is not an indexed commit\n", head)
+		}
+	}
+}
+
+func gitHead(dir string) string {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
 // sourceSection renders the on-demand source excerpts for an evidence report,
 // one block per distinct locator. A locator whose source cannot be read shows
 // the "source unavailable" marker. Reading is at render time only (ADR 0001).
@@ -426,6 +451,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	staleBanner(stderr, mm, repoDir)
 	return emitHuman(stdout, data, emitFormat)
 }
 
@@ -439,6 +465,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	var view string
 	var indexPath string
 	var format string
+	var repo string
 	var budget int
 
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; tier defaults 500/1500/3500)")
@@ -447,6 +474,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&repo, "repo", ".", "Local checkout HEAD is compared against the indexed commits")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -474,6 +502,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+	staleBanner(stderr, mm, repo)
 	return emitHuman(stdout, data, emitFormat)
 }
 
@@ -520,6 +549,8 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
+
+	staleBanner(stderr, mm, repo)
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
