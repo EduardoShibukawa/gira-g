@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: completed
+status: verified
+verified_at: "08665a9"
 spec: gira-agent-skills-and-eval@1
 ---
 
@@ -53,25 +54,25 @@ Out of scope:
 |---|---|---|---|---|
 | B1 | `go test -race ./...` | pass | 6dacb25 | all 9 packages ok before any edit |
 | B2 | `node tools/validate/validate.js` | blocked | 6dacb25 | manifest-integrity blocked (no bundle); bundle installed in e3645d1, the validator passes there |
-| AC1 | SC1 to SC16 of spec v1, rows below | pass | 8db9304 | every SC row passes; SC6 with the open divergence on tasks 05/06 |
-| SC1 | `go test -race ./internal/eval` with -run EndToEnd, Mutation, RejectsEmbedded | pass | 8db9304 | indexes a materialized git repo through indexer.Build; removing Go AST lowers contract recall 0.33 to 0.17 (owner exception); a fixture with macro_map is rejected |
-| SC2 | `go test -race ./internal/eval` with -run Baseline, FailedTask | pass | 8db9304 | no baseline constants; a grown corpus raises the measured baseline while measured harness tokens stay equal; failed tasks add no tokens |
-| SC3 | `go test -race ./internal/eval` with -run UnsupportedSafety | pass | 8db9304 | clean index 100; one injected extracted C++ record drops the score and fails the gate through SetCorpusChecks |
-| SC4 | `go test -race ./internal/indexer ./internal/eval` with -run Deterministic, EndToEnd | pass | 8db9304 | two cold indexes with separate caches are byte-identical for published and perturbed |
-| SC5 | `go test -race ./internal/eval` with -run GateSemantics | pass | 8db9304 | unreviewed No-Go reports; reviewed recall miss fails |
-| SC6 | `go test -race ./cmd/gira ./internal/slices` with -run SC6, FocalContract, BudgetOnMissing, NoBudget, Fit, DropOrder | pass | 8db9304 | 10 of 12 tasks x 3 tiers x json, md, MCP within budget, byte-identical, focal kept; tasks 05/06 have no node (divergence above) |
-| SC7 | `go test -race ./cmd/gira ./internal/gitdiff` with -run SC7, FromDiff, Parse, Touches, RunRejects | pass | 8db9304 | PaymentService proto edit gives the direct contract Impact Set on CLI, MCP and supplied diff; file-level fallback and unknown paths covered |
-| SC8 | `go test -race ./cmd/gira` with -run SC8, Flows, FlowAnchors | pass | 8db9304 | byte-identical tours; every read and why_locator resolves in bounds at the pinned SHA or the why says unknown; why templated; order-flow coverage 81.8% |
-| SC9 | `go test -race ./cmd/gira ./internal/archdiff` with -run SC9, ArchDiff, Segments, Ambiguous | pass | 8db9304 | 24 renames (origin inferred) and 2 removed edges exactly as the recipe declares; nothing else structural |
-| SC10 | `go test -race ./internal/skills` | pass | 8db9304 | 3 hosts from one catalog; second run unchanged; only markers or the owned JSON key change; every SKILL.md declares trigger, operations, contract, budget |
-| SC11 | `go test -race ./cmd/gira` with -run SC11, GiraQuerySkill | pass | 8db9304 | 11 questions incl. pr_impact byte-identical via MCP and CLI and equal to goldens |
-| SC12 | `go test -race ./quarantine` inside bench/ | pass | 8db9304 | no guarded file references the bench (bench as a path word, go.work, embedded assets); out/ ignored; query phases network none; script runs by image id with declared mounts; recipes pinned |
-| SC13 | `go test -race ./layer0` inside bench/ | pass | 8db9304 | 3 adapter goldens; locator checker rejects out-of-bounds, anchor mismatch, missing file |
-| SC14 | `go test -race ./layer1` inside bench/ | pass | 8db9304 | 120 mock records (12 tasks x A, B x 5) valid against the schema; scorer equals the hand-computed fixture |
-| SC15 | `go test -race ./layer2` inside bench/ and read of bench/layer2/study-protocol.md | pass | 8db9304 | proxies on real GIRA tours: focused tour assertiveness 5.9% (1/17), coverage 81.8%; protocol has tasks, Latin square, rubric, instruments |
-| SC16 | `node tools/validate/validate.js` (and R1) | pass | 8db9304 | overall pass; no fail |
-| R1 | `go test -race ./...` at the root and inside bench/ | pass | 8db9304 | all packages ok; existing e2e and dogfood tests unchanged |
-| V1 | read `git diff 41fd67b..8db9304` against spec v1, plus the fresh-context review | pass | 8db9304 | all SC rows mapped to code and tests; review findings resolved below |
+| AC1 | SC1 to SC16 of spec v1, rows below | pass | 08665a9 | every SC row passes; SC6 with the open divergence on tasks 05/06 |
+| SC1 | `go test -race ./internal/eval` with -run EndToEnd, Mutation, RejectsEmbedded | pass | 08665a9 | indexes a materialized git repo through indexer.Build; removing Go AST lowers contract recall 0.30 to 0.15 (owner exception); a fixture with macro_map is rejected |
+| SC2 | `go test -race ./internal/eval` with -run Baseline, FailedTask | pass | 08665a9 | no baseline constants; a grown corpus raises the measured baseline while measured harness tokens stay equal; failed tasks add no tokens |
+| SC3 | `go test -race ./internal/eval` with -run UnsupportedSafety | pass | 08665a9 | clean index 100; one injected extracted C++ record drops the score and fails the gate through SetCorpusChecks |
+| SC4 | `go test -race ./internal/indexer ./internal/eval` with -run Deterministic, EndToEnd | pass | 08665a9 | two cold indexes with separate caches are byte-identical for published and perturbed |
+| SC5 | `go test -race ./internal/eval` with -run GateSemantics | pass | 08665a9 | unreviewed No-Go reports; reviewed recall miss fails |
+| SC6 | `go test -race ./cmd/gira ./internal/slices` with -run SC6, FocalContract, BudgetOnMissing, NoBudget, Fit, DropOrder | pass | 08665a9 | 10 of 12 tasks x 3 tiers x json, md, MCP within budget, byte-identical, focal kept; tasks 05/06 have no node (divergence above) |
+| SC7 | `go test -race ./cmd/gira ./internal/gitdiff` with -run SC7, FromDiff, Parse, Touches, RunRejects | pass | 08665a9 | PaymentService proto edit gives the direct contract Impact Set on CLI, MCP and supplied diff; file-level fallback and unknown paths covered |
+| SC8 | `go test -race ./cmd/gira` with -run SC8, Flows, FlowAnchors | pass | 08665a9 | byte-identical tours; every read and why_locator resolves in bounds at the pinned SHA or the why says unknown; why templated; order-flow coverage 81.8% |
+| SC9 | `go test -race ./cmd/gira ./internal/archdiff` with -run SC9, ArchDiff, Segments, Ambiguous | pass | 08665a9 | 24 renames (origin inferred) and 2 removed edges exactly as the recipe declares; nothing else structural |
+| SC10 | `go test -race ./internal/skills` | pass | 08665a9 | 3 hosts from one catalog; second run unchanged; only markers or the owned JSON key change; every SKILL.md declares trigger, operations, contract, budget |
+| SC11 | `go test -race ./cmd/gira` with -run SC11, GiraQuerySkill | pass | 08665a9 | 11 questions incl. pr_impact byte-identical via MCP and CLI and equal to goldens |
+| SC12 | `go test -race ./quarantine` inside bench/ | pass | 08665a9 | no guarded file references the bench (bench as a path word, go.work, embedded assets); out/ ignored; query phases network none; script runs by image id with declared mounts; recipes pinned |
+| SC13 | `go test -race ./layer0` inside bench/ | pass | 08665a9 | 3 adapter goldens; locator checker rejects out-of-bounds, anchor mismatch, missing file |
+| SC14 | `go test -race ./layer1` inside bench/ | pass | 08665a9 | 120 mock records (12 tasks x A, B x 5) valid against the schema; scorer equals the hand-computed fixture |
+| SC15 | `go test -race ./layer2` inside bench/ and read of bench/layer2/study-protocol.md | pass | 08665a9 | proxies on real GIRA tours: focused tour assertiveness 5.9% (1/17), coverage 81.8%; protocol has tasks, Latin square, rubric, instruments |
+| SC16 | `node tools/validate/validate.js` (and R1) | pass | 08665a9 | overall pass; no fail |
+| R1 | `go test -race ./...` at the root and inside bench/ | pass | 08665a9 | all packages ok; existing e2e and dogfood tests unchanged |
+| V1 | read `git diff 41fd67b..08665a9` against spec v1, plus the fresh-context review | pass | 08665a9 | all SC rows mapped to code and tests; review findings resolved below |
 
 ## Constraints and budget
 
@@ -116,7 +117,8 @@ Review focus: (a) the reviewer found no circular path; (b) budgets: F1 was the o
 
 - as of: 2026-10-13, branch main, head 8db9304 plus this record, worktree clean after commit
 - done: children 01–11 verified; review findings fixed; SC1–SC16, R1 and V1 pass at 8db9304
-- next: rerun SC1–SC16, R1 and V1 on the commit carrying the corrected ground truth, then `verified`; the owner then decides `reviewed: true` and records `accepted:`
+- done also: SC1–SC16, R1 and V1 rerun at 08665a9 (corrected ground truth); parent verified there
+- next: the owner decides `reviewed: true` (it turns the No-Go into a failing build) and records `accepted:`
 - done also: both divergences resolved by owner exceptions; parent verified at 8db9304
 - open: no push, no release; paid runs (Layer 1 frontier, UA indexing) not performed
 
