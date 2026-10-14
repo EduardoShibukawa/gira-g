@@ -23,7 +23,7 @@ func TestSCL2ControlHonesty(t *testing.T) {
 		t.Fatalf("consistent control line must validate: %v", err)
 	}
 	for _, bad := range []eval.ControlTotal{
-		{Total: 1000, Matched: 40, Mismatched: 2, SampledN: 50, Seed: 42}, // 40+2 != 50
+		{Total: 1000, Matched: 40, Mismatched: 2, SampledN: 50, Seed: 42},  // 40+2 != 50
 		{Total: 1000, Matched: -1, Mismatched: 51, SampledN: 50, Seed: 42}, // negative
 		{Total: -5, Matched: 0, Mismatched: 0, SampledN: 0, Seed: 42},      // negative total
 		{Total: 1000, Matched: 48, Mismatched: 2, SampledN: 20, Seed: 42},  // wrong sampled_n

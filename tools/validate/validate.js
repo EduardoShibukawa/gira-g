@@ -7526,6 +7526,14 @@ function checkHistory(root, opts = {}) {
   const lastState = new Map;
   const lastStatusChange = new Map;
   const reported = new Set;
+  const parentCache = new Map;
+  const parents = (rev) => {
+    if (!parentCache.has(rev)) {
+      const list = rev === WT ? git(root, ["rev-parse", "--verify", "--quiet", "HEAD"]).ok ? ["HEAD"] : [] : git(root, ["rev-list", "--parents", "-n", "1", rev]).out.trim().split(/\s+/).slice(1).filter(Boolean);
+      parentCache.set(rev, list);
+    }
+    return parentCache.get(rev);
+  };
   for (const rev of revs) {
     const cur = snap(rev);
     const changedStatus = new Set;
@@ -7542,7 +7550,8 @@ function checkHistory(root, opts = {}) {
       const file = (now ?? before.rec).path;
       const f = (msg, rule = "§7.1") => findings.push({ level: "fail", rule, file, msg: `${at(rev)}: ${msg}` });
       if (!now) {
-        f(`${file} was deleted; ${key.startsWith("spec") ? "a spec is never deleted (§4.3)" : "a committed task record is closed as cancelled, never deleted (§6.1)"}`, key.startsWith("spec") ? "§7.1" : "§6.1");
+        if (parents(rev).some((p) => snap(p).has(key)))
+          f(`${file} was deleted; ${key.startsWith("spec") ? "a spec is never deleted (§4.3)" : "a committed task record is closed as cancelled, never deleted (§6.1)"}`, key.startsWith("spec") ? "§7.1" : "§6.1");
         lastState.delete(key);
         continue;
       }

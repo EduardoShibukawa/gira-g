@@ -16,6 +16,30 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
+// sanitizedGitEnv drops GIT_* variables that a hook runner may export (GIT_DIR,
+// GIT_WORK_TREE, GIT_INDEX_FILE, ...). Without this, a git hook that runs the
+// tests can redirect the fixture repository's init/add/commit into the product
+// repository. GIT_CONFIG_* and identity/dates are kept.
+func sanitizedGitEnv() []string {
+	drop := map[string]bool{
+		"GIT_DIR":                          true,
+		"GIT_WORK_TREE":                    true,
+		"GIT_INDEX_FILE":                   true,
+		"GIT_OBJECT_DIRECTORY":             true,
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+		"GIT_COMMON_DIR":                   true,
+		"GIT_CEILING_DIRECTORIES":          true,
+	}
+	var out []string
+	for _, kv := range os.Environ() {
+		if i := strings.IndexByte(kv, '='); i > 0 && drop[kv[:i]] {
+			continue
+		}
+		out = append(out, kv)
+	}
+	return out
+}
+
 // setupDeterministicBareRepo initializes a git repo from sourceDir and clones it as a bare repo
 // into targetBareDir using deterministic timestamps and committer identities.
 func setupDeterministicBareRepo(t *testing.T, sourceDir, targetBareDir, commitMsg string) string {
@@ -26,7 +50,7 @@ func setupDeterministicBareRepo(t *testing.T, sourceDir, targetBareDir, commitMs
 	runGit := func(dir string, env []string, args ...string) string {
 		cmd := exec.Command("git", args...)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), env...)
+		cmd.Env = append(sanitizedGitEnv(), env...)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			t.Fatalf("git %v in %s failed: %v\nOutput: %s", args, dir, err, string(out))
@@ -66,7 +90,14 @@ func setupDeterministicBareRepo(t *testing.T, sourceDir, targetBareDir, commitMs
 	runGit(workTree, nil, "config", "user.email", "dogfood@gira.local")
 	runGit(workTree, nil, "add", ".")
 
+	// Fix identity and dates explicitly so a leaked GIT_AUTHOR_*/GIT_COMMITTER_*
+	// in the environment (for example from a git hook runner) can't change the
+	// commit SHA the manifest pins.
 	commitEnv := []string{
+		"GIT_AUTHOR_NAME=Gira Dogfood Runner",
+		"GIT_AUTHOR_EMAIL=dogfood@gira.local",
+		"GIT_COMMITTER_NAME=Gira Dogfood Runner",
+		"GIT_COMMITTER_EMAIL=dogfood@gira.local",
 		"GIT_AUTHOR_DATE=2026-01-01T00:00:00Z",
 		"GIT_COMMITTER_DATE=2026-01-01T00:00:00Z",
 	}

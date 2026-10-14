@@ -455,7 +455,6 @@ func (t *Tour) Emit(format Format, limit int) ([]byte, error) {
 	})
 }
 
-
 // RenderMarkdown renders a tour as a numbered reading list.
 func (t *Tour) RenderMarkdown() string {
 	var sb strings.Builder

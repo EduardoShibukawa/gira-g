@@ -26,3 +26,6 @@ architecture.html
 # E3: benchmark/hygiene artifacts
 results.tsv
 run.log
+
+# OpenCode/harness worktrees (quarantined from the product)
+.claude/worktrees/

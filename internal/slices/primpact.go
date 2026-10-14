@@ -10,7 +10,7 @@ import (
 
 // DiffTargets explains how a diff was mapped to the briefing's targets.
 type DiffTargets struct {
-	Range          string   `json:"range"`
+	Range        string   `json:"range"`
 	ChangedPaths []string `json:"changed_paths"`
 	Targets      []string `json:"targets"`
 	// UnmatchedPaths are changed files no locator in the index cites at all:

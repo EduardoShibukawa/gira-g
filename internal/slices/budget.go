@@ -193,18 +193,20 @@ type candidate func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]b
 // never dropped. If they alone exceed limit, fit returns ErrBudgetExceeded.
 func fit(limit int, order []string, build candidate) ([]byte, error) {
 	render, _ := build(false, nil)
-	_, fullEst, err := settle(&Budget{Limit: limit}, render)
+	hint := func(est int) string {
+		return fmt.Sprintf("truncated to fit %d tokens; the full output needs about %d: rerun with budget >= %d", limit, est, est)
+	}
+	fullOut, fullEst, err := settleHint(limit, hint, render)
 	if err != nil {
 		return nil, err
 	}
-	hint := fmt.Sprintf("truncated to fit %d tokens; the full output needs about %d: rerun with budget >= %d", limit, fullEst, fullEst)
 	if fullEst <= limit {
 		// Even when no truncation is needed, include the budget with escalate_hint
-		// so clients can detect the ceiling and plan accordingly.
-		finalBudget := &Budget{Limit: limit, Estimated: fullEst, Truncated: false, Dropped: Dropped{}, EscalateHint: hint}
-		out, err := render(finalBudget)
-		return out, err
+		// so clients can detect the ceiling and plan accordingly. The estimate was
+		// settled with the hint included, so Estimated matches the emitted bytes.
+		return fullOut, nil
 	}
+	fullHint := hint(fullEst)
 
 	try := func(k int) ([]byte, bool, error) {
 		drop := make(map[string]bool, k)
@@ -212,7 +214,7 @@ func fit(limit int, order []string, build candidate) ([]byte, error) {
 			drop[id] = true
 		}
 		render, dropped := build(true, drop)
-		out, est, err := settle(&Budget{Limit: limit, Truncated: dropped != Dropped{}, Dropped: dropped, EscalateHint: hint}, render)
+		out, est, err := settle(&Budget{Limit: limit, Truncated: dropped != Dropped{}, Dropped: dropped, EscalateHint: fullHint}, render)
 		return out, est <= limit, err
 	}
 
@@ -242,6 +244,26 @@ func fit(limit int, order []string, build candidate) ([]byte, error) {
 		out, _, err = try(len(order))
 	}
 	return out, err
+}
+
+// settleHint settles Estimated against the bytes that carry it, recomputing the
+// escalate hint each pass because the hint text embeds the estimate itself.
+// Without it a no-truncation budget would omit the hint's own bytes from
+// Estimated, so a client's Estimate(output) would exceed the reported figure.
+func settleHint(limit int, hint func(int) string, render func(*Budget) ([]byte, error)) ([]byte, int, error) {
+	b := &Budget{Limit: limit}
+	for i := 0; i < 8; i++ {
+		b.EscalateHint = hint(b.Estimated)
+		out, est, err := settle(b, render)
+		if err != nil {
+			return nil, 0, err
+		}
+		if hint(est) == b.EscalateHint {
+			return out, est, nil
+		}
+		b.Estimated = est
+	}
+	return nil, 0, fmt.Errorf("budget estimate did not settle")
 }
 
 // settle renders until b.Estimated equals the estimate of the bytes that carry it.

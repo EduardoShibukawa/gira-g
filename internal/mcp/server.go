@@ -79,9 +79,9 @@ type CallToolResult struct {
 }
 
 type ToolContent struct {
-	Type string                 `json:"type"`
-	Text string                 `json:"text"`
-	Data map[string]any         `json:"data,omitempty"`
+	Type string         `json:"type"`
+	Text string         `json:"text"`
+	Data map[string]any `json:"data,omitempty"`
 }
 
 // StructuredError represents a structured error response for MCP tools.
@@ -592,7 +592,6 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 	}
 }
 
-
 type toolCallParams struct {
 	Name      string          `json:"name"`
 	Arguments json.RawMessage `json:"arguments"`
@@ -1001,6 +1000,17 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			return newStructuredError("envelope_error", fmt.Sprintf("Failed to locate boundary: %v", err), true, "Check query format")
 		}
 
+		// Q1: a call without a budget stays byte-identical to the CLI's locate
+		// JSON (a bare array); only a budgeted call gains the envelope object.
+		if args.Budget <= 0 {
+			out, err := json.MarshalIndent(matches, "", "  ")
+			if err != nil {
+				return newStructuredError("envelope_error", fmt.Sprintf("Failed to format matches: %v", err), false, "Check query format")
+			}
+			out = append(out, '\n')
+			return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+		}
+
 		result := slices.BoundaryResult{Matches: matches}
 		out, err := result.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
@@ -1022,4 +1032,3 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		return newStructuredError("tool_not_found", fmt.Sprintf("Unknown tool: %s", params.Name), false, "Check available tools with tools/list")
 	}
 }
-

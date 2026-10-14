@@ -1,9 +1,9 @@
 ---
 schema: spec/1
 status: approved
-version: 1
-approved_version: 1
-approved_hash: sha256:b17cb4e0ff02bcc9c635d984821434261d1491eede58ff806350fb9572a6cd51
+version: 2
+approved_version: 2
+approved_hash: sha256:01fbac6a07126948d410ab4e0ac6b88aab15436d7d4bdff991f863fc4d567bf8
 ---
 
 # GIRA envelopes and hygiene (E3)
@@ -57,7 +57,7 @@ Single tool registry (or a set-equality test); each tool declares `enveloped`.
 
 ### F5 — CI hygiene
 
-Bench race, validator, gate-lint at owner-chosen promotion level on ubuntu-latest. Opt-in floor guard asserting sealed hermetic R/P and SC15 ≥ 90%. Hygiene fixes: gitignore results.tsv/run.log, fix README.md:22 link, bench/quarantine ignoring .claude/worktrees/, fix validator §6.1 false positive in non-linear history.
+Validator, gate-lint and an opt-in floor guard on ubuntu-latest. ADR 0012 takes precedence over the earlier CI-bench clause: the quarantined comparative module never runs from the product CI. Opt-in floor guard asserting the sealed hermetic R/P floors; SC15 ≥ 90% stays in the quarantined module. Hygiene fixes: gitignore results.tsv/run.log, fix README.md:22 link, quarantine ignoring .claude/worktrees/, fix validator §6.1 false positive in non-linear history.
 
 ## Scope
 
@@ -89,9 +89,9 @@ Bench race, validator, gate-lint at owner-chosen promotion level on ubuntu-lates
 - SC4 transport ceiling: `go test ./internal/mcp -run SCTransportCeiling -count=1`
 - SC5 structured errors: `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1`
 - SC6 single registry: `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1`
-- SC7 CI hygiene (after approval): workflow greps for validate.js, gate-lint, `working-directory: bench`; `go test ./internal/gate -run SCGateLintStrictness -count=1`
+- SC7 CI hygiene (after approval): workflow greps for validate.js, gate-lint and `E3_FLOOR_GUARD`; `go test ./internal/gate -run SCGateLintStrictness -count=1`; `E3_FLOOR_GUARD=1 go test ./internal/eval -run FloorGuard -count=1`
 - SC8 I3 numbers: EndToEnd published/perturbed R/P unchanged; bench SC15 ≥ 90% both tours.
-- SC9 I4/I5: `git diff --exit-code 9ba80a6 -- fixtures/ testdata/ cmd/gira/testdata/gira-query/`; `"reviewed": false` in ground-truth.v2.json.
+- SC9 I4/I5: `git diff --exit-code 9ba80a6 -- fixtures/ testdata/` (ground-truth and corpus stay frozen); the `cmd/gira/testdata/gira-query/` goldens are regenerated to the E3 contract (F2 adds `estimator`/`measured` to budgeted answers), not frozen; `"reviewed": false` in ground-truth.v2.json.
 - SC10 regression: `go test -race ./...` root and bench/; validator exit 0.
 
 ## Interfaces and dependencies
@@ -102,7 +102,7 @@ Bench race, validator, gate-lint at owner-chosen promotion level on ubuntu-lates
 | CLI | `--budget` on tour, flows, diff, explain, locate; JSON error object under `--format json` |
 | `budget` JSON | additive `estimator`, `measured` |
 | internal/tokens, internal/mcp | single tool registry |
-| .github/workflows/ci.yml | bench, validator, gate-lint (protected) |
+| .github/workflows/ci.yml | validator, gate-lint, floor guard (protected) |
 
 ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becomes policy); 0011:30 CI edits need approval; 0012 prior art is idea-only.
 
@@ -110,8 +110,8 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 
 - Q1: envelopes opt-in only (no default on tools outside slice); calls without budget stay byte-identical.
 - Q2: gate-lint enters CI in warn-only mode; strict stays for later.
-- Q3: bench and validator in CI only on ubuntu-latest.
-- Q4: yes to opt-in floor guard of floors (R/P hermetic and SC15 ≥ 90%), separate from revised gt thresholds.
+- Q3: validator, gate-lint and the floor guard in CI only on ubuntu-latest; the quarantined comparative module runs its own tests and never the product CI (ADR 0012 rule 3).
+- Q4: yes to opt-in floor guard of hermetic R/P floors (published R82.4/P100.0; perturbed R81.2/P100.0), separate from the ADR 0007 thresholds; SC15 ≥ 90% stays in the quarantined module.
 - Q5: above the ceiling, refuse with budget_exceeded + escalate_hint (no pagination in v1).
 - Q6: in E3: gitignore results.tsv/run.log, broken README.md:22 link, bench/quarantine ignoring .claude/worktrees/, and the false §6.1 of the validator in non-linear history. The .goreleaser stays for E5.
 - Q7: F2 stays deferred, outside E3.
@@ -126,7 +126,7 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 
 ## Verification
 
-- Per child + integrated: B1 `go test -race ./...` (root); B2 `go test -race ./...` (bench/); B3 `go test ./internal/gate -run EndToEnd -v` (both hermetic variants, report recall/precision/safety/determinism); B4 opt-in full-corpus run (reported only); B5 `node tools/validate/validate.js`.
+- Per child + integrated: B1 `go test -race ./...` (root); B2 `go test -race ./...` (bench/); B3 `go test ./internal/eval -run EndToEnd -v` (both hermetic variants, report recall/precision/safety/determinism); B4 opt-in full-corpus run (reported only); B5 `node tools/validate/validate.js`.
 - AC rows map SC1–SC10 to the `go test` names above; `not run` forbidden at parent seal.
 - **Review focus:** does the ceiling actually cover all hermetic outputs? Is truncation deterministic and honest? Is the error vocabulary complete? Does the floor guard opt-in correctly? Does CI run bench+validator only on ubuntu-latest? Any weakened assertions or named guesses?
 
@@ -142,3 +142,4 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 ## Revisions
 
 - v1 (2026-10-14): approved v1 with owner decisions Q1–Q7.
+- v2 (2026-10-14): ADR 0012 takes precedence over the v1 CI-bench clause (owner decision). The product CI no longer runs the quarantined comparative module; an opt-in hermetic R/P floor guard replaces it; SC15 remains in the quarantined module. F5, SC7, Q3, Q4 (and the CI interface row) updated; B3 path corrected to `internal/eval`. SC9 scoped to the frozen ground-truth/corpus (`fixtures/`, `testdata/`); the `cmd/gira/testdata/gira-query/` goldens are regenerated to the E3 contract because F2's `estimator`/`measured` are additive to budgeted answers. Also folds the fix pass that made the E3 tests green: the no-truncation budget now settles its estimate with the escalate hint included, and `locate_boundary` without a budget returns the bare array (Q1).

@@ -43,12 +43,22 @@ func TestSCL1ArtifactVerified(t *testing.T) {
 	// flips the digest.
 	base := eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "measured")
 	for name, mutate := range map[string]func() string{
-		"check":       func() string { return eval.ArtifactDigest("CHECK: other", "EXPECT: ok", "/repo", 0, fp1, "measured") },
-		"expect":      func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: fail", "/repo", 0, fp1, "measured") },
-		"cwd":         func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/other", 0, fp1, "measured") },
-		"exit":        func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 1, fp1, "measured") },
-		"fingerprint": func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, eval.FingerprintInputs(tampered), "measured") },
-		"taxonomy":    func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "inferred") },
+		"check": func() string { return eval.ArtifactDigest("CHECK: other", "EXPECT: ok", "/repo", 0, fp1, "measured") },
+		"expect": func() string {
+			return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: fail", "/repo", 0, fp1, "measured")
+		},
+		"cwd": func() string {
+			return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/other", 0, fp1, "measured")
+		},
+		"exit": func() string {
+			return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 1, fp1, "measured")
+		},
+		"fingerprint": func() string {
+			return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, eval.FingerprintInputs(tampered), "measured")
+		},
+		"taxonomy": func() string {
+			return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "inferred")
+		},
 	} {
 		if mutate() == base {
 			t.Fatalf("digest must cover %s", name)

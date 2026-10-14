@@ -3,7 +3,7 @@ schema: task/1
 tier: standard
 status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
-spec: gira-envelopes-hygiene@1
+spec: gira-envelopes-hygiene@2
 verified_at: "HEAD"
 ---
 
@@ -12,6 +12,7 @@ verified_at: "HEAD"
 ## Routing and approvals
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-envelopes-hygiene; spec v1 approved)
+- spec-version: v1 → v2; unaffected: spec clarification only (ADR 0012 precedence over the CI bench clause)
 - depends_on: ["2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools"]
 
 ## Objective

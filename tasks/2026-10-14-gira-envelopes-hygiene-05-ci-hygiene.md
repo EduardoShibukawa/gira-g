@@ -3,7 +3,7 @@ schema: task/1
 tier: standard
 status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
-spec: gira-envelopes-hygiene@1
+spec: gira-envelopes-hygiene@2
 verified_at: "HEAD"
 ---
 
@@ -12,6 +12,7 @@ verified_at: "HEAD"
 ## Routing and approvals
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-envelopes-hygiene; spec v1 approved)
+- spec-version: v1 → v2; unaffected: spec clarification only (ADR 0012 precedence over the CI bench clause)
 - depends_on: ["2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools", "2026-10-14-gira-envelopes-hygiene-02-envelope-honesty-and-ceiling", "2026-10-14-gira-envelopes-hygiene-03-structured-errors", "2026-10-14-gira-envelopes-hygiene-04-single-registry"]
 - needs owner `approved:` before commit (ADR 0011:30; CI edits are protected)
 
@@ -39,9 +40,9 @@ Out of scope: envelope features (01–04); ground-truth changes; .goreleaser (E5
 
 ## Constraints and budget
 
-- CI runs bench + validator only on `ubuntu-latest` (Q3).
+- CI runs validator, gate-lint and the floor guard only on `ubuntu-latest` (Q3). ADR 0012 rule 3 takes precedence over the v1 CI-bench clause: the quarantined comparative module is not referenced from the product CI and runs its own tests.
 - `gate-lint --strict` in CI: warn-only (Q2); strict stays for later.
-- Opt-in floor guard (separate from gt thresholds) asserting hermetic R82.4/P100.0, perturbed R81.2/P100.0, SC15 ≥ 90% (Q4).
+- Opt-in hermetic R/P floor guard (separate from the ADR 0007 thresholds): published R82.4/P100.0, perturbed R81.2/P100.0 (Q4). SC15 stays in the quarantined module.
 - `.gitignore`: add `results.tsv`, `run.log` (Q6).
 - `README.md:22`: fix broken link to `../../.scratch/system-context-harness/map.md` (Q6).
 - `bench/quarantine/check.go`: skip `.claude/worktrees/` in `Guarded` or `References` (Q6).
@@ -72,13 +73,13 @@ Out of scope: envelope features (01–04); ground-truth changes; .goreleaser (E5
 ## Outcome
 
 Child 05 delivered: CI hygiene (SC7). Updated `.github/workflows/ci.yml` with:
-- Bench race job on ubuntu-latest with `working-directory: bench`
 - Validator step on ubuntu-latest with `node tools/validate/validate.js`
 - Gate-lint step in warn-only mode (continue-on-error: true)
-- Opt-in floor guard step (env-gated with E3_FLOOR_GUARD=1)
+- Opt-in hermetic R/P floor guard (env-gated with E3_FLOOR_GUARD=1, asserting the sealed floors in `internal/eval`)
 Fixed hygiene issues:
 - `.gitignore`: added `results.tsv` and `run.log`
 - `README.md:22`: fixed broken link to point to `docs/decisions.md`
 - `bench/quarantine/check.go`: skip `.claude/worktrees/` directory
-- `tools/validate/validate.js`: §6.1 false positive in non-linear history handled (validator passes)
-All SC7 tests pass.
+- `tools/validate/validate.js`: real §6.1 non-linear-history fix (parent-aware deletion detection), with a regression test that fails without it
+
+Revision (2026-10-14, owner decision): the v1 CI-bench job was removed. It violated ADR 0012/SC12, which forbids any reference to the quarantined module from the product CI; the quarantine check passed at E2 and broke at this child. The floor guard was also a no-op (`--floor-guard` did not exist); it is now a real opt-in hermetic R/P guard. SC7 is verified at spec v2, where ADR 0012 takes precedence.

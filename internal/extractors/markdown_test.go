@@ -735,4 +735,3 @@ func TestCleanSlug_And_IsValidTargetSlug(t *testing.T) {
 		t.Errorf("expected isValidTargetSlug(\"order-service\") to be true")
 	}
 }
-

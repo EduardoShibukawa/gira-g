@@ -787,7 +787,6 @@ func (er *EvidenceReport) Emit(format Format, limit int) ([]byte, error) {
 	})
 }
 
-
 // LocateBoundary performs substring and exact case-insensitive search across nodes, methods, and unhandled files.
 func (e *Engine) LocateBoundary(query string) ([]BoundaryMatch, error) {
 	q := strings.TrimSpace(query)

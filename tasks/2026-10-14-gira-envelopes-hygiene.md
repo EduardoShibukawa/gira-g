@@ -2,7 +2,7 @@
 schema: task/1
 tier: heavy
 status: active
-spec: gira-envelopes-hygiene@1
+spec: gira-envelopes-hygiene@2
 verified_at: ""
 ---
 
@@ -12,8 +12,11 @@ verified_at: ""
 
 - tier: heavy (H1: product calls on ceilings/overflow/CI; H3: spans MCP, CLI, slices, tokens, skills, gate, CI, bench; H5: 5 children, multi-session)
 - confirmed: heavy by owner (2026-10-14, Q1–Q7 answers)
-- decided: Q1 envelopes opt-in only; Q2 gate-lint warn-only in CI; Q3 bench+validator ubuntu-only; Q4 opt-in floor guard; Q5 refuse with budget_exceeded; Q6 hygiene extras in E3; Q7 F2 deferred
+- decided: Q1 envelopes opt-in only; Q2 gate-lint warn-only in CI; Q3 validator/gate-lint/floor-guard ubuntu-only; Q4 opt-in hermetic R/P floor guard; Q5 refuse with budget_exceeded; Q6 hygiene extras in E3; Q7 F2 deferred
+- decided: ADR 0012 takes precedence over the v1 CI-bench clause; the quarantined comparative module is not run from the product CI (owner 2026-10-14, "Honrar o ADR: tirar bench do CI")
 - approved: spec v1 by owner (2026-10-14)
+- approved: spec v2 by owner (2026-10-14, ADR 0012 precedence over the CI bench clause; opt-in hermetic R/P floor guard)
+- spec-version: v1 → v2; rerun: SC7 (CI hygiene) only
 
 ## Objective
 

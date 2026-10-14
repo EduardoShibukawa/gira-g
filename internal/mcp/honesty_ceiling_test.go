@@ -123,7 +123,7 @@ func TestSCTransportCeiling(t *testing.T) {
 		content := result["content"].([]any)
 		c0 := content[0].(map[string]any)
 		text := c0["text"].(string)
-		
+
 		// Check that error message contains budget_exceeded
 		if !contains(text, "budget_exceeded") {
 			t.Fatalf("expected budget_exceeded in error message, got: %s", text)
@@ -157,7 +157,7 @@ func TestSCTransportCeiling(t *testing.T) {
 		content := result["content"].([]any)
 		c0 := content[0].(map[string]any)
 		text := c0["text"].(string)
-		
+
 		// Check that error message contains budget_exceeded
 		if !contains(text, "budget_exceeded") {
 			t.Fatalf("expected budget_exceeded in error message, got: %s", text)

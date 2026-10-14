@@ -719,5 +719,3 @@ EXPOSE 5432
 		t.Errorf("db base_images = %v", db.Metadata["base_images"])
 	}
 }
-
-
