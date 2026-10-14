@@ -2,7 +2,7 @@
   "schema": "gira-eval-ground-truth/2",
   "variant": "published",
   "reviewed": false,
-  "review_note": "Derived on 2026-10-13 by reading the vendored 3.1.0 sources (call sites, env wiring, compose depends_on), independently of gira output. Evidence rule: a runtime call site or env wiring when the caller's source is vendored; compose depends_on only when the caller's source is not vendored and nothing better exists. Re-checked on 2026-10-13 against the full upstream tree at upstream_sha (GIRA_EVAL_FULL_CORPUS=1): every anchor resolves, the vendored snapshot is byte-identical to upstream, and every expected id names a Component or proto/topic Contract that exists there. Not yet reviewed by a human; thresholds are reported, not enforced (spec part C, gate semantics).",
+  "review_note": "Derived on 2026-10-13 by reading the vendored 3.1.0 sources (call sites, env wiring, compose depends_on), independently of gira output. Evidence rule: a runtime call site or env wiring when the caller's source is vendored; compose depends_on only when the caller's source is not vendored and nothing better exists. Re-checked on 2026-10-13 against the full upstream tree at upstream_sha (GIRA_EVAL_FULL_CORPUS=1): every anchor resolves, the vendored snapshot is byte-identical to upstream, and every expected id names a Component or proto/topic Contract that exists there. Not yet reviewed by a human; thresholds are reported, not enforced (spec part C, gate semantics). Blind re-derivation on 2026-10-13: three subagents re-derived all 12 Impact Sets from the full tree at upstream_sha without seeing this file; 6 tasks matched exactly. Corrections decided by the owner (2026-10-13, \"sim\"): task-02 adds service:agent downstream; task-07 drops service:agent downstream and adds service:opamp-server upstream; task-11 replaces service:product-catalog with service:frontend upstream; task-05/06 add the broker service:kafka upstream; task-01 keeps the topic consumers downstream; task-11 keeps env-gated service:mcp.",
   "corpus": {
     "name": "opentelemetry-demo",
     "release": "3.1.0",
@@ -18,24 +18,78 @@
   ],
   "ignore_note": "Ambient dependencies (feature flags, telemetry sink) and the synthetic load generator touch nearly every Component; they are neither credited nor penalised.",
   "component_paths": [
-    {"path_prefix": "src/accounting/", "component": "service:accounting"},
-    {"path_prefix": "src/ad/", "component": "service:ad"},
-    {"path_prefix": "src/cart/", "component": "service:cart"},
-    {"path_prefix": "src/checkout/", "component": "service:checkout"},
-    {"path_prefix": "src/currency/", "component": "service:currency"},
-    {"path_prefix": "src/email/", "component": "service:email"},
-    {"path_prefix": "src/flagd-ui/", "component": "service:flagd-ui"},
-    {"path_prefix": "src/fraud-detection/", "component": "service:fraud-detection"},
-    {"path_prefix": "src/frontend/", "component": "service:frontend"},
-    {"path_prefix": "src/frontend-proxy/", "component": "service:frontend-proxy"},
-    {"path_prefix": "src/image-provider/", "component": "service:image-provider"},
-    {"path_prefix": "src/kafka/", "component": "service:kafka"},
-    {"path_prefix": "src/load-generator/", "component": "service:load-generator"},
-    {"path_prefix": "src/payment/", "component": "service:payment"},
-    {"path_prefix": "src/product-catalog/", "component": "service:product-catalog"},
-    {"path_prefix": "src/quote/", "component": "service:quote"},
-    {"path_prefix": "src/recommendation/", "component": "service:recommendation"},
-    {"path_prefix": "src/shipping/", "component": "service:shipping"}
+    {
+      "path_prefix": "src/accounting/",
+      "component": "service:accounting"
+    },
+    {
+      "path_prefix": "src/ad/",
+      "component": "service:ad"
+    },
+    {
+      "path_prefix": "src/cart/",
+      "component": "service:cart"
+    },
+    {
+      "path_prefix": "src/checkout/",
+      "component": "service:checkout"
+    },
+    {
+      "path_prefix": "src/currency/",
+      "component": "service:currency"
+    },
+    {
+      "path_prefix": "src/email/",
+      "component": "service:email"
+    },
+    {
+      "path_prefix": "src/flagd-ui/",
+      "component": "service:flagd-ui"
+    },
+    {
+      "path_prefix": "src/fraud-detection/",
+      "component": "service:fraud-detection"
+    },
+    {
+      "path_prefix": "src/frontend/",
+      "component": "service:frontend"
+    },
+    {
+      "path_prefix": "src/frontend-proxy/",
+      "component": "service:frontend-proxy"
+    },
+    {
+      "path_prefix": "src/image-provider/",
+      "component": "service:image-provider"
+    },
+    {
+      "path_prefix": "src/kafka/",
+      "component": "service:kafka"
+    },
+    {
+      "path_prefix": "src/load-generator/",
+      "component": "service:load-generator"
+    },
+    {
+      "path_prefix": "src/payment/",
+      "component": "service:payment"
+    },
+    {
+      "path_prefix": "src/product-catalog/",
+      "component": "service:product-catalog"
+    },
+    {
+      "path_prefix": "src/quote/",
+      "component": "service:quote"
+    },
+    {
+      "path_prefix": "src/recommendation/",
+      "component": "service:recommendation"
+    },
+    {
+      "path_prefix": "src/shipping/",
+      "component": "service:shipping"
+    }
   ],
   "component_paths_note": "Path to Component table shared by every tool in Layer 0 (spec B). A file belongs to the Component of its longest matching prefix; files under no prefix (shared proto, compose files) belong to none.",
   "flows": [
@@ -43,11 +97,32 @@
       "id": "order-flow",
       "title": "How an order flows from the cart to shipping",
       "entry": "service:frontend",
-      "steps": ["service:frontend", "service:checkout", "service:cart", "service:product-catalog", "service:currency", "service:payment", "service:shipping", "service:email", "service:kafka", "service:accounting", "service:fraud-detection"],
+      "steps": [
+        "service:frontend",
+        "service:checkout",
+        "service:cart",
+        "service:product-catalog",
+        "service:currency",
+        "service:payment",
+        "service:shipping",
+        "service:email",
+        "service:kafka",
+        "service:accounting",
+        "service:fraud-detection"
+      ],
       "anchors": [
-        {"path": "src/checkout/main.go", "contains": "func (cs *checkout) PlaceOrder("},
-        {"path": "src/checkout/main.go", "contains": "/send_order_confirmation"},
-        {"path": "src/checkout/kafka/producer.go", "contains": "return \"orders\""}
+        {
+          "path": "src/checkout/main.go",
+          "contains": "func (cs *checkout) PlaceOrder("
+        },
+        {
+          "path": "src/checkout/main.go",
+          "contains": "/send_order_confirmation"
+        },
+        {
+          "path": "src/checkout/kafka/producer.go",
+          "contains": "return \"orders\""
+        }
       ],
       "notes": "Read from checkout PlaceOrder: get the cart, price items in the catalog, convert currency, charge payment, ship, send the confirmation email, publish to the orders topic, which accounting and fraud-detection consume."
     }
@@ -61,13 +136,41 @@
       "depth": 1,
       "tier": "contracts",
       "ground_truth": {
-        "expected_upstream_services": ["service:cart", "service:currency", "service:email", "service:kafka", "service:payment", "service:product-catalog", "service:shipping"],
-        "expected_downstream_services": ["service:accounting", "service:fraud-detection", "service:frontend"],
-        "expected_affected_contracts": ["contract:CartService", "contract:CheckoutService", "contract:CurrencyService", "contract:PaymentService", "contract:ProductCatalogService", "contract:kafka:orders"],
+        "expected_upstream_services": [
+          "service:cart",
+          "service:currency",
+          "service:email",
+          "service:kafka",
+          "service:payment",
+          "service:product-catalog",
+          "service:shipping"
+        ],
+        "expected_downstream_services": [
+          "service:accounting",
+          "service:fraud-detection",
+          "service:frontend"
+        ],
+        "expected_affected_contracts": [
+          "contract:CartService",
+          "contract:CheckoutService",
+          "contract:CurrencyService",
+          "contract:PaymentService",
+          "contract:ProductCatalogService",
+          "contract:kafka:orders"
+        ],
         "anchors": [
-          {"path": "src/checkout/main.go", "contains": "pb.NewCartServiceClient"},
-          {"path": "src/checkout/main.go", "contains": "/send_order_confirmation"},
-          {"path": "src/checkout/kafka/producer.go", "contains": "return \"orders\""}
+          {
+            "path": "src/checkout/main.go",
+            "contains": "pb.NewCartServiceClient"
+          },
+          {
+            "path": "src/checkout/main.go",
+            "contains": "/send_order_confirmation"
+          },
+          {
+            "path": "src/checkout/kafka/producer.go",
+            "contains": "return \"orders\""
+          }
         ],
         "notes": "EmailService and ShippingService gRPC clients are constructed but never invoked; email and shipping are called over HTTP POST. Listing those proto contracts as affected is a false positive (the task-09/10 trap)."
       }
@@ -80,14 +183,39 @@
       "depth": 1,
       "tier": "contracts",
       "ground_truth": {
-        "expected_upstream_services": ["service:ad", "service:cart", "service:checkout", "service:currency", "service:product-catalog", "service:recommendation", "service:shipping"],
-        "expected_downstream_services": ["service:frontend-proxy", "service:mcp"],
-        "expected_affected_contracts": ["contract:AdService", "contract:CartService", "contract:CheckoutService", "contract:CurrencyService", "contract:ProductCatalogService", "contract:RecommendationService"],
-        "anchors": [
-          {"path": "src/frontend/gateways/rpc/Cart.gateway.ts", "contains": "new CartServiceClient(CART_ADDR"},
-          {"path": "compose.yaml", "contains": "- RECOMMENDATION_ADDR"}
+        "expected_upstream_services": [
+          "service:ad",
+          "service:cart",
+          "service:checkout",
+          "service:currency",
+          "service:product-catalog",
+          "service:recommendation",
+          "service:shipping"
         ],
-        "notes": "quote and image-provider appear only in frontend's compose depends_on (start ordering); frontend never calls them."
+        "expected_downstream_services": [
+          "service:agent",
+          "service:frontend-proxy",
+          "service:mcp"
+        ],
+        "expected_affected_contracts": [
+          "contract:AdService",
+          "contract:CartService",
+          "contract:CheckoutService",
+          "contract:CurrencyService",
+          "contract:ProductCatalogService",
+          "contract:RecommendationService"
+        ],
+        "anchors": [
+          {
+            "path": "src/frontend/gateways/rpc/Cart.gateway.ts",
+            "contains": "new CartServiceClient(CART_ADDR"
+          },
+          {
+            "path": "compose.yaml",
+            "contains": "- RECOMMENDATION_ADDR"
+          }
+        ],
+        "notes": "quote and image-provider appear only in frontend's compose depends_on (start ordering); frontend never calls them. agent and mcp both run src/shared/tools.py, which calls the frontend /api routes over HTTP (APPLICATION_ENDPOINT=frontend:8080); both exist only in the agent profile."
       }
     },
     {
@@ -98,12 +226,24 @@
       "depth": 1,
       "tier": "contracts",
       "ground_truth": {
-        "expected_upstream_services": ["service:payment"],
-        "expected_downstream_services": ["service:checkout"],
-        "expected_affected_contracts": ["contract:PaymentService"],
+        "expected_upstream_services": [
+          "service:payment"
+        ],
+        "expected_downstream_services": [
+          "service:checkout"
+        ],
+        "expected_affected_contracts": [
+          "contract:PaymentService"
+        ],
         "anchors": [
-          {"path": "pb/demo.proto", "contains": "service PaymentService"},
-          {"path": "src/checkout/main.go", "contains": "pb.NewPaymentServiceClient"}
+          {
+            "path": "pb/demo.proto",
+            "contains": "service PaymentService"
+          },
+          {
+            "path": "src/checkout/main.go",
+            "contains": "pb.NewPaymentServiceClient"
+          }
         ]
       }
     },
@@ -115,12 +255,25 @@
       "depth": 1,
       "tier": "contracts",
       "ground_truth": {
-        "expected_upstream_services": ["service:currency"],
-        "expected_downstream_services": ["service:checkout", "service:frontend"],
-        "expected_affected_contracts": ["contract:CurrencyService"],
+        "expected_upstream_services": [
+          "service:currency"
+        ],
+        "expected_downstream_services": [
+          "service:checkout",
+          "service:frontend"
+        ],
+        "expected_affected_contracts": [
+          "contract:CurrencyService"
+        ],
         "anchors": [
-          {"path": "pb/demo.proto", "contains": "service CurrencyService"},
-          {"path": "src/frontend/gateways/rpc/Currency.gateway.ts", "contains": "new CurrencyServiceClient"}
+          {
+            "path": "pb/demo.proto",
+            "contains": "service CurrencyService"
+          },
+          {
+            "path": "src/frontend/gateways/rpc/Currency.gateway.ts",
+            "contains": "new CurrencyServiceClient"
+          }
         ]
       }
     },
@@ -132,13 +285,28 @@
       "depth": 1,
       "tier": "contracts",
       "ground_truth": {
-        "expected_upstream_services": ["service:checkout"],
-        "expected_downstream_services": ["service:accounting", "service:fraud-detection"],
-        "expected_affected_contracts": ["contract:kafka:orders"],
+        "expected_upstream_services": [
+          "service:checkout",
+          "service:kafka"
+        ],
+        "expected_downstream_services": [
+          "service:accounting",
+          "service:fraud-detection"
+        ],
+        "expected_affected_contracts": [
+          "contract:kafka:orders"
+        ],
         "anchors": [
-          {"path": "src/checkout/kafka/producer.go", "contains": "return \"orders\""},
-          {"path": "compose.full.yaml", "contains": "KAFKA_ADDR"}
-        ]
+          {
+            "path": "src/checkout/kafka/producer.go",
+            "contains": "return \"orders\""
+          },
+          {
+            "path": "compose.full.yaml",
+            "contains": "KAFKA_ADDR"
+          }
+        ],
+        "notes": "service:kafka is the broker hosting the topic (compose.full.yaml), counted upstream as in task-01."
       }
     },
     {
@@ -149,10 +317,19 @@
       "depth": 1,
       "tier": "summary",
       "ground_truth": {
-        "expected_upstream_services": ["service:checkout"],
-        "expected_downstream_services": ["service:accounting", "service:fraud-detection"],
-        "expected_affected_contracts": ["contract:kafka:orders"],
-        "expected_freshness_status": "current"
+        "expected_upstream_services": [
+          "service:checkout",
+          "service:kafka"
+        ],
+        "expected_downstream_services": [
+          "service:accounting",
+          "service:fraud-detection"
+        ],
+        "expected_affected_contracts": [
+          "contract:kafka:orders"
+        ],
+        "expected_freshness_status": "current",
+        "notes": "service:kafka is the broker hosting the topic (compose.full.yaml), counted upstream as in task-01."
       }
     },
     {
@@ -163,14 +340,29 @@
       "depth": 1,
       "tier": "summary",
       "ground_truth": {
-        "expected_upstream_services": ["service:astronomy-db"],
-        "expected_downstream_services": ["service:agent", "service:checkout", "service:frontend", "service:recommendation"],
-        "expected_affected_contracts": ["contract:ProductCatalogService"],
-        "anchors": [
-          {"path": "src/product-catalog/main.go", "contains": "DB_CONNECTION_STRING"},
-          {"path": "compose.agent.yaml", "contains": "product-catalog:"}
+        "expected_upstream_services": [
+          "service:astronomy-db",
+          "service:opamp-server"
         ],
-        "notes": "agent depends on product-catalog only in the agent deployment profile (compose.agent.yaml)."
+        "expected_downstream_services": [
+          "service:checkout",
+          "service:frontend",
+          "service:recommendation"
+        ],
+        "expected_affected_contracts": [
+          "contract:ProductCatalogService"
+        ],
+        "anchors": [
+          {
+            "path": "src/product-catalog/main.go",
+            "contains": "DB_CONNECTION_STRING"
+          },
+          {
+            "path": "compose.agent.yaml",
+            "contains": "product-catalog:"
+          }
+        ],
+        "notes": "agent lists product-catalog only in compose.agent.yaml depends_on (start ordering); its source reaches the catalog through the frontend /api/products, so it is not a consumer. opamp-server: src/product-catalog/opamp.go connects to OPAMP_SERVER_ENDPOINT, set only in compose.observability.yaml (non-core profile, counted like the agent and full profiles)."
       }
     },
     {
@@ -181,11 +373,20 @@
       "depth": 1,
       "tier": "summary",
       "ground_truth": {
-        "expected_upstream_services": ["service:checkout"],
-        "expected_downstream_services": ["service:frontend"],
-        "expected_affected_contracts": ["contract:CheckoutService"],
+        "expected_upstream_services": [
+          "service:checkout"
+        ],
+        "expected_downstream_services": [
+          "service:frontend"
+        ],
+        "expected_affected_contracts": [
+          "contract:CheckoutService"
+        ],
         "anchors": [
-          {"path": "src/frontend/gateways/rpc/Checkout.gateway.ts", "contains": "CheckoutServiceClient"}
+          {
+            "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+            "contains": "CheckoutServiceClient"
+          }
         ]
       }
     },
@@ -198,12 +399,20 @@
       "tier": "deep",
       "ground_truth": {
         "expected_upstream_services": [],
-        "expected_downstream_services": ["service:checkout"],
+        "expected_downstream_services": [
+          "service:checkout"
+        ],
         "expected_affected_contracts": [],
         "flags_conflict": true,
         "anchors": [
-          {"path": "src/checkout/main.go", "contains": "cs.emailSvcAddr+\"/send_order_confirmation\""},
-          {"path": "src/email/email_server.rb", "contains": "send_order_confirmation"}
+          {
+            "path": "src/checkout/main.go",
+            "contains": "cs.emailSvcAddr+\"/send_order_confirmation\""
+          },
+          {
+            "path": "src/email/email_server.rb",
+            "contains": "send_order_confirmation"
+          }
         ],
         "notes": "The real contract is the HTTP route /send_order_confirmation, which no Wave 1 extractor covers."
       }
@@ -216,13 +425,24 @@
       "depth": 1,
       "tier": "deep",
       "ground_truth": {
-        "expected_upstream_services": ["service:quote"],
-        "expected_downstream_services": ["service:checkout", "service:frontend"],
+        "expected_upstream_services": [
+          "service:quote"
+        ],
+        "expected_downstream_services": [
+          "service:checkout",
+          "service:frontend"
+        ],
         "expected_affected_contracts": [],
         "flags_conflict": true,
         "anchors": [
-          {"path": "src/checkout/main.go", "contains": "cs.shippingSvcAddr+\"/ship-order\""},
-          {"path": "compose.yaml", "contains": "- QUOTE_ADDR"}
+          {
+            "path": "src/checkout/main.go",
+            "contains": "cs.shippingSvcAddr+\"/ship-order\""
+          },
+          {
+            "path": "compose.yaml",
+            "contains": "- QUOTE_ADDR"
+          }
         ]
       }
     },
@@ -234,13 +454,21 @@
       "depth": 1,
       "tier": "deep",
       "ground_truth": {
-        "expected_upstream_services": ["service:mcp", "service:product-catalog"],
-        "expected_downstream_services": ["service:chatbot"],
+        "expected_upstream_services": [
+          "service:frontend",
+          "service:mcp"
+        ],
+        "expected_downstream_services": [
+          "service:chatbot"
+        ],
         "expected_affected_contracts": [],
         "anchors": [
-          {"path": "compose.agent.yaml", "contains": "mcp:"}
+          {
+            "path": "compose.agent.yaml",
+            "contains": "mcp:"
+          }
         ],
-        "notes": "The core compose.yaml has no agent, mcp or chatbot; compose.agent.yaml adds them. Upstream edges are declared compose depends_on (agent sources are not vendored)."
+        "notes": "The core compose.yaml has no agent, mcp or chatbot; compose.agent.yaml adds them. agent calls the frontend over HTTP (src/shared/tools.py, APPLICATION_ENDPOINT); its depends_on on product-catalog is start ordering only. mcp is reached when MCP_ENABLED=True (env-gated, counted like checkout's KAFKA_ADDR path); chatbot posts prompts to agent."
       }
     },
     {
@@ -252,9 +480,17 @@
       "tier": "summary",
       "ground_truth": {
         "expected_upstream_services": [],
-        "expected_downstream_services": ["service:checkout", "service:frontend"],
-        "expected_affected_contracts": ["contract:CurrencyService"],
-        "expected_unsupported_paths": ["src/currency", "src/payment"]
+        "expected_downstream_services": [
+          "service:checkout",
+          "service:frontend"
+        ],
+        "expected_affected_contracts": [
+          "contract:CurrencyService"
+        ],
+        "expected_unsupported_paths": [
+          "src/currency",
+          "src/payment"
+        ]
       }
     }
   ]

@@ -1,8 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
-verified_at: "8db9304"
+status: completed
 spec: gira-agent-skills-and-eval@1
 ---
 
@@ -26,6 +25,7 @@ spec: gira-agent-skills-and-eval@1
 - divergence: spec Interfaces "no existing flag, field or tool changes meaning" vs SC4. Child 01 made `evidence[].discovered_at` the repository commit time instead of the wall-clock discovery time, because SC4 needs byte-identical cold indexes. Options: approve an exception and document the field's new meaning, or spec v2 adding a separate field.
 - approved: exception SC6 — measured on the tasks whose target exists in the index; tasks 05/06 (`contract:kafka:orders`, never extracted) are covered automatically once the extractors emit the topic, and `TestBudgetOnMissingTargetEmitsNothing` pins that a missing target emits nothing. Resolves the SC6 divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
 - approved: exception Interfaces/SC4 — `evidence[].discovered_at` is the commit time of the cited repository, documented on the field in `internal/domain/models.go`. Resolves the `discovered_at` divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
+- decided: ground-truth corrections after a blind re-derivation by three subagents (6/12 tasks matched exactly) → task-02 adds service:agent downstream; task-07 drops service:agent downstream and adds service:opamp-server upstream; task-11 replaces service:product-catalog with service:frontend upstream; task-05/06 add the broker service:kafka upstream; task-01 keeps the topic consumers downstream; task-11 keeps env-gated service:mcp; `reviewed` stays false (owner's call) by owner (2026-10-13, "sim")
 
 ## Objective
 
@@ -116,7 +116,7 @@ Review focus: (a) the reviewer found no circular path; (b) budgets: F1 was the o
 
 - as of: 2026-10-13, branch main, head 8db9304 plus this record, worktree clean after commit
 - done: children 01–11 verified; review findings fixed; SC1–SC16, R1 and V1 pass at 8db9304
-- next: owner reviews the ground truth (child 02 Outcome lists the items) and records `accepted:`
+- next: rerun SC1–SC16, R1 and V1 on the commit carrying the corrected ground truth, then `verified`; the owner then decides `reviewed: true` and records `accepted:`
 - done also: both divergences resolved by owner exceptions; parent verified at 8db9304
 - open: no push, no release; paid runs (Layer 1 frontier, UA indexing) not performed
 
@@ -128,9 +128,11 @@ Gate results on unreviewed ground truth (reported, not enforced):
 
 | Variant | Decision | Recall | Precision | Token reduction | Safety | Determinism |
 |---|---|---|---|---|---|---|
-| Published, hermetic | No-Go | 64.6% | 34.4% | 73.4% | 100% | 100% |
-| Perturbed, hermetic | No-Go | 62.3% | 32.2% | 75.8% | 100% | 100% |
-| Published, full corpus (opt-in, child 02, before F9) | No-Go | 64.6% | 31.1% | 99.3% | 100% | 100% |
+| Published, hermetic | No-Go | 58.8% | 32.8% | 73.4% | 100% | 100% |
+| Perturbed, hermetic | No-Go | 56.2% | 30.5% | 75.8% | 100% | 100% |
+| Published, full corpus (opt-in) | No-Go | 60.3% | 30.4% | 99.1% | 100% | 100% |
+
+These figures are against the corrected ground truth (see the `decided:` entry). Before the correction they were 64.6%, 62.3% and 64.6% recall. The drop comes from real facts GIRA does not extract yet: agent → frontend over HTTP, opamp, and the topic broker.
 
 The ADR 0007 gate is not met. This parent does not claim it.
 
