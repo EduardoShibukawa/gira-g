@@ -59,8 +59,10 @@ func Catalog() ([]Skill, error) {
 
 // Parse reads a SKILL.md and checks the fields every skill must declare: a trigger
 // description, the operations it uses, its output contract and its budget.
+// CRLF line endings are normalized so files checked out or edited on Windows
+// parse the same as on LF platforms.
 func Parse(data []byte) (Skill, error) {
-	text := string(data)
+	text := strings.ReplaceAll(string(data), "\r\n", "\n")
 	if !strings.HasPrefix(text, "---\n") {
 		return Skill{}, fmt.Errorf("missing frontmatter")
 	}

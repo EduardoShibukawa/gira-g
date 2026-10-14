@@ -117,7 +117,11 @@ func (m *Manifest) Validate() error {
 			repo.PathScope = "."
 		} else {
 			cleanScope := filepath.Clean(scope)
-			if cleanScope == ".." || strings.HasPrefix(cleanScope, ".."+string(filepath.Separator)) || strings.HasPrefix(cleanScope, "/") || filepath.IsAbs(cleanScope) {
+			// The separator-prefixed check is platform-specific by construction:
+			// on Linux it duplicates the "/" check below, on Windows it catches
+			// rooted scopes such as "\etc\passwd", which filepath.Clean produces
+			// from "/etc/passwd" and filepath.IsAbs does not report as absolute.
+			if cleanScope == ".." || strings.HasPrefix(cleanScope, ".."+string(filepath.Separator)) || strings.HasPrefix(cleanScope, "/") || strings.HasPrefix(cleanScope, string(filepath.Separator)) || filepath.IsAbs(cleanScope) {
 				return fmt.Errorf("repository %q has unsafe path_scope %q", repo.ID, repo.PathScope)
 			}
 			repo.PathScope = filepath.ToSlash(cleanScope)
