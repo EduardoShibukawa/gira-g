@@ -1,11 +1,11 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
 parent: 2026-10-14-gira-evidence-gate
 spec: gira-evidence-gate@1
 depends_on: [2026-10-14-gira-evidence-gate-01-l1-artifact-verified]
-verified_at: "c457d0d"
+verified_at: "a389d21"
 ---
 
 # L2 control-total and seeded sampling (F2)
@@ -31,10 +31,10 @@ Out of scope: the other children's features; ground-truth changes.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + bench + validator before change | pass | 4f8261f | 01 verified; root/bench/validator green at 4f8261f |
-| AC1 | `go test ./internal/eval -run SCL2ControlSample -v` | pass | c457d0d | failed first (undefined symbols), passes after control.go; plug/drop/force-match + frozen drift all fail as required |
-| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | c457d0d | root/bench green, validator pass; no extractor change so E0 unaffected |
-| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | c457d0d | touched pkgs pass; `gira eval --control-total --seed` emits control line + closing line |
-| V1 | diff read against AC1–AC2 + spec F2 | pass | c457d0d | additive only: control.go, eval flags, get_control_total; no existing meaning change |
+| AC1 | `go test ./internal/eval -run SCL2ControlSample -v` | pass | a389d21 | re-verified after F3/F4 fix batch: plugs rejected both sides, ControlTotal.Validate, CLI seeded sample+blind round, MCP consistency gate |
+| AC2 | `go test -race ./...` + bench + validator, no E0 dip | pass | a389d21 | root/bench green, validator pass; R82.4/P90.3 unchanged, no extractor change |
+| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | a389d21 | touched pkgs pass; `gira eval --control-total --seed` runs genuine blind round + closing line |
+| V1 | diff read against AC1–AC2 + spec F2 | pass | a389d21 | blind round over frozen inputs, Validate before emit; no existing meaning change |
 
 ## Constraints and budget
 
@@ -50,4 +50,4 @@ Out of scope: the other children's features; ground-truth changes.
 
 ## Outcome
 
-F2 delivered: control-total `{total,matched,mismatched,sampled_n,seed}`, seeded `max(20,5%)` sampler, blind re-derivation with never-plug/drop/force-match, frozen compare first. 03+04 unblocked.
+F2 delivered + F3/F4 sealed: control-total `{total,matched,mismatched,sampled_n,seed}`, seeded `max(20,5%)` sampler, blind re-derivation with never-plug/drop/force-match both sides, frozen compare first, `ControlTotal.Validate` gating CLI/MCP. Re-verified at a389d21; 03+04 unblocked.
