@@ -215,8 +215,8 @@ func TestKafkaTopicFromComposeWiring(t *testing.T) {
 		TargetFile{Repo: "r", Path: ".env", Content: []byte("KAFKA_HOST=kafka\nKAFKA_ADDR=${KAFKA_HOST}:9092\nKAFKA_TOPIC=orders\n")},
 	)
 	want := map[string]string{
-		"service:checkout provides contract:kafka:orders":  "extracted@src/checkout/main.go#L16 declared@compose.yaml#L5",
-		"service:kafka provides contract:kafka:orders":     "declared@compose.yaml#L4",
+		"service:checkout provides contract:kafka:orders":   "extracted@src/checkout/main.go#L16 declared@compose.yaml#L5",
+		"service:kafka provides contract:kafka:orders":      "declared@compose.yaml#L4",
 		"service:accounting consumes contract:kafka:orders": "inferred@compose.yaml#L10",
 	}
 	if len(rels) != len(want) {
@@ -309,5 +309,59 @@ func (s *svc) run() {
 	}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("got\n%v\nwant\n%v\n(NOT_WIRED_ADDR has no value; OTEL_SERVICE_NAME is not an address; SELF_ADDR is the service itself)", got, want)
+	}
+}
+
+// SC2 (J2): a depends_on-only edge is start ordering, not consumption: it
+// must never reach the Macro Map. A corroborated edge (env wiring here)
+// must survive with both lines cited. Test-first: fails while every
+// depends_on becomes consumes.
+func TestDependsOnNeedsCorroboration(t *testing.T) {
+	compose := `services:
+  frontend:
+    image: demo/frontend:1.0
+    depends_on:
+      - quote
+  quote:
+    image: demo/quote:1.0
+  backend:
+    image: demo/backend:1.0
+    depends_on:
+      - db-api
+    environment:
+      - API_URL=http://db-api:8000
+  db-api:
+    image: demo/db-api:1.0
+  app:
+    image: demo/app:1.0
+    depends_on:
+      - cache
+  cache:
+    image: redis:7
+`
+	files := []TargetFile{
+		{Repo: "r", CommitSHA: "c", Path: "compose.yaml", Content: []byte(compose)},
+	}
+	mm, err := NewPipeline(NewComposeExtractor()).ProcessFiles(context.Background(), "t", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rels := map[string]domain.Relationship{}
+	for _, rel := range mm.Relationships {
+		rels[rel.SourceID+"\x00"+rel.TargetID] = rel
+	}
+	if _, ok := rels["service:frontend\x00service:quote"]; ok {
+		t.Fatalf("ordering-only frontend->quote must not reach the map")
+	}
+	corroborated, ok := rels["service:backend\x00service:db-api"]
+	if !ok {
+		t.Fatalf("corroborated backend->db-api must survive")
+	}
+	if len(corroborated.Evidence) < 2 {
+		t.Fatalf("corroborated edge must cite both lines, got %d evidence records", len(corroborated.Evidence))
+	}
+	infra, ok := rels["service:app\x00service:cache"]
+	if !ok || infra.Verb != domain.VerbAccesses {
+		t.Fatalf("infrastructure wiring must stay accesses")
 	}
 }
