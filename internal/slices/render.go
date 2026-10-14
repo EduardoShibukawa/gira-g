@@ -131,6 +131,7 @@ func (er *EvidenceReport) CanonicalJSON() ([]byte, error) {
 		DeploymentProfiles: sortedProfiles,
 		Origins:            sortedOrigins,
 		Statuses:           sortedStatuses,
+		Budget:             er.Budget,
 	}
 
 	var buf bytes.Buffer

@@ -174,9 +174,9 @@ func (e *GoModExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 
 		nodeID := fmt.Sprintf("library:%s", dep.pkg)
 		node := domain.Node{
-			ID:   nodeID,
-			Kind: domain.NodeLibrary,
-			Name: dep.pkg,
+			ID:       nodeID,
+			Kind:     domain.NodeLibrary,
+			Name:     dep.pkg,
 			Metadata: metadata,
 			Evidence: []domain.EvidenceRecord{
 				{

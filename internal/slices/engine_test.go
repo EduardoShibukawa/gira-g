@@ -1025,4 +1025,3 @@ func TestEngine_GetContextSliceWithView(t *testing.T) {
 		t.Errorf("expected 1 relationship in ViewGovernance, got %+v", sliceGov.Relationships)
 	}
 }
-

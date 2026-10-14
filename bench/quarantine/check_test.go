@@ -133,3 +133,36 @@ func TestCheckCatchesViolations(t *testing.T) {
 		t.Fatalf("floating tag and branch pin must both fail: %v", rv)
 	}
 }
+
+// E3: the walk ignores .claude/worktrees/, which embeds a copy of the
+// repository, so a harness worktree never trips the static check. A guarded file
+// outside it still does (control).
+func TestWorktreesAreIgnored(t *testing.T) {
+	root := t.TempDir()
+	inside := filepath.Join(root, ".claude", "worktrees", "x", "internal", "x", "x.go")
+	if err := os.MkdirAll(filepath.Dir(inside), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(inside, []byte("package x // see gira-bench\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	control := filepath.Join(root, "internal", "y", "y.go")
+	if err := os.MkdirAll(filepath.Dir(control), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(control, []byte("package y // see gira-bench\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v, err := References(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range v {
+		if strings.Contains(line, ".claude/worktrees/") {
+			t.Fatalf(".claude/worktrees/ must be ignored, got %q", line)
+		}
+	}
+	if len(v) != 1 {
+		t.Fatalf("control violation must be reported once, got %v", v)
+	}
+}

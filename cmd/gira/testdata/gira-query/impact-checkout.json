@@ -164,13 +164,15 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 1364,
+    "estimated": 1377,
     "truncated": true,
     "dropped": {
       "nodes": 54,
       "relationships": 55,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 31823: rerun with budget >= 31823"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 31865: rerun with budget >= 31865",
+    "estimator": "bytes/4",
+    "measured": false
   }
 }

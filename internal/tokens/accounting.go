@@ -10,6 +10,8 @@ package tokens
 import (
 	"fmt"
 	"strings"
+
+	"github.com/EduardoShibukawa/gira-g/internal/tools"
 )
 
 // Labels for claim provenance.
@@ -20,6 +22,7 @@ const (
 
 // ToolDefinitions is the single source for counting: every counting path
 // derives from this list, so budget checks and eval scores cannot disagree.
+// Kept for backward compatibility; use tools.Registry for new code.
 var ToolDefinitions = []string{
 	"get_impact_briefing",
 	"get_pr_impact",
@@ -33,6 +36,11 @@ var ToolDefinitions = []string{
 	"get_findings_register",
 	"get_token_accounting",
 	"gate_status",
+}
+
+// ListTools returns all tool definitions from the single registry.
+func ListTools() []tools.Tool {
+	return tools.Registry
 }
 
 // TokenReport shows gross, expansions, net and provenance. Net may be negative.

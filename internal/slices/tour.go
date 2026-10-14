@@ -14,11 +14,11 @@ import (
 // computed from the graph, never generated: the walk, the ordering and every
 // `why` sentence come from fixed rules and templates.
 type Tour struct {
-	Focus string     `json:"focus,omitempty"`
-	Entry []string   `json:"entry_points"`
-	Steps []TourStep `json:"steps"`
-	// Truncated is set when --max-steps cut the walk short.
-	Truncated bool `json:"truncated,omitempty"`
+	Focus     string     `json:"focus,omitempty"`
+	Entry     []string   `json:"entry_points"`
+	Steps     []TourStep `json:"steps"`
+	Truncated bool       `json:"truncated,omitempty"`
+	Budget    *Budget    `json:"budget,omitempty"`
 }
 
 // TourStep is one stop of a tour. Why is WhyTemplate rendered with WhyArgs.
@@ -391,6 +391,68 @@ func (t *Tour) CanonicalJSON() ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+// Emit renders a tour in format exactly as the CLI writes it, fitted to limit
+// when limit > 0. Steps are dropped from the end first (trailing steps), then
+// extra read locators per step. The focal node (focus or first entry point) is
+// never dropped.
+func (t *Tour) Emit(format Format, limit int) ([]byte, error) {
+	render := func(tr *Tour) ([]byte, error) {
+		if format == FormatMarkdown {
+			return []byte(tr.RenderMarkdown() + "\n"), nil
+		}
+		return tr.CanonicalJSON()
+	}
+	if limit <= 0 {
+		return render(t)
+	}
+	// Build drop order: trailing steps first, then extra read locators per step.
+	// The focal node is the first step (focus or first entry point).
+	// We drop steps from the end, then trim read locators.
+	var drops []string
+	// Trailing steps (from end to 1, keeping step 0 as focal)
+	for i := len(t.Steps) - 1; i >= 1; i-- {
+		drops = append(drops, fmt.Sprintf("step:%d", i))
+	}
+	// Extra read locators per step (beyond first)
+	for i := range t.Steps {
+		if len(t.Steps[i].Read) > 1 {
+			for r := len(t.Steps[i].Read) - 1; r >= 1; r-- {
+				drops = append(drops, fmt.Sprintf("step:%d:read:%d", i, r))
+			}
+		}
+	}
+	return fit(limit, drops, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
+		var d Dropped
+		tr := *t
+		tr.Steps = nil
+		for i, s := range t.Steps {
+			key := fmt.Sprintf("step:%d", i)
+			keyRead := func(r int) string { return fmt.Sprintf("step:%d:read:%d", i, r) }
+			if drop[key] {
+				d.Nodes++
+				continue
+			}
+			ns := s
+			newRead := []string{}
+			for r, read := range s.Read {
+				if drop[keyRead(r)] {
+					d.Evidence++
+					continue
+				}
+				newRead = append(newRead, read)
+			}
+			ns.Read = newRead
+			tr.Steps = append(tr.Steps, ns)
+		}
+		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
+			tr.Budget = b
+			return render(&tr)
+		}, d
+	})
 }
 
 // RenderMarkdown renders a tour as a numbered reading list.
