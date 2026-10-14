@@ -37,3 +37,81 @@ jobs:
 
       - name: Run test suite with race detector
         run: go test -v -race ./...
+
+  # E3: bench race on ubuntu-latest only
+  bench:
+    name: bench race
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@v5
+
+      - name: Run bench race tests
+        working-directory: bench
+        run: go test -v -race ./...
+
+  # E3: validator on ubuntu-latest only
+  validate:
+    name: validator
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run G-Ingá standalone validator
+        run: node tools/validate/validate.js
+
+  # E3: gate-lint warn-only in CI
+  gate-lint:
+    name: gate-lint (warn-only)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@v5
+
+      - name: Run gate-lint (warn-only)
+        run: |
+          go run ./cmd/gira gate-lint || true
+        continue-on-error: true
+
+  # E3: opt-in floor guard (env-gated)
+  floor-guard:
+    name: floor guard (opt-in)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    env:
+      E3_FLOOR_GUARD: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up mise toolchain
+        uses: jdx/mise-action@v5
+
+      - name: Run floor guard
+        if: env.E3_FLOOR_GUARD == '1'
+        run: |
+          go run ./cmd/gira eval --floor-guard || true
+        continue-on-error: true

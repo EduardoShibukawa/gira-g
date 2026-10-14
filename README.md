@@ -19,4 +19,4 @@ gira serve                          # Servidor MCP stdio para agentes
 - [**CONTEXT.md**](CONTEXT.md): Glossário e definições de domínio do projeto.
 - [**docs/adr/**](docs/adr/): Architectural Decision Records (ADRs).
 - [**docs/prior-art/**](docs/prior-art/): Análises de referências técnicas (Graphify, Understand Anything).
-- [**Mapa e Rastreamento de Decisões**](../../.scratch/system-context-harness/map.md): Issues e roadmap no issue tracker local.
+- [**Mapa e Rastreamento de Decisões**](docs/decisions.md): Issues e roadmap no issue tracker local.

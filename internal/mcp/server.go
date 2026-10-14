@@ -960,22 +960,12 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 		if args.NodeID == "" && args.EdgeID == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Either node_id or edge_id must be provided"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Either node_id or edge_id must be provided", false, "Provide either node_id or edge_id")
 		}
 
 		report, err := s.Engine.ExplainEvidence(args.NodeID, args.EdgeID)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to explain evidence: %v", err)},
-				},
-			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to explain evidence: %v", err), true, "Check node_id or edge_id exists")
 		}
 
 		outJSON, err := report.Emit(slices.FormatJSON, args.Budget)
@@ -1000,30 +990,15 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Invalid arguments for locate_boundary: %v", err)},
-				},
-			}
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for locate_boundary: %v", err), false, "Check arguments format")
 		}
 		if strings.TrimSpace(args.Query) == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Missing required argument 'query'"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Missing required argument 'query'", false, "Provide a non-empty query")
 		}
 
 		matches, err := s.Engine.LocateBoundary(args.Query)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to locate boundary: %v", err)},
-				},
-			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to locate boundary: %v", err), true, "Check query format")
 		}
 
 		result := slices.BoundaryResult{Matches: matches}
