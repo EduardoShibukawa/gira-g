@@ -469,7 +469,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 		},
 		{
 			Name:        "get_control_total",
-			Description: "F2: returns control:{total,matched,mismatched,sampled_n,seed} with the seeded max(20,5%) rule.",
+			Description: "F2: validates control:{total,matched,mismatched,sampled_n,seed} against the seeded max(20,5%) rule. Format validation only: it rejects inconsistent lines but does not derive a measurement (derivation lives in gira eval --control-total).",
 			InputSchema: InputSchema{
 				Type: "object",
 				Properties: map[string]PropertyDef{
