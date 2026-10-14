@@ -207,8 +207,10 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 	for _, id := range level {
 		visited[id] = true
 	}
-	// fanned marks stops reached by the topic fan-out: they do not fan out again,
-	// so the fan-out is one hop (no transitive consumer chains).
+	// Only the flow's own producers and consumers fan out, one hop from the topic
+	// they meet: a stop fans out when it is a Service (the broker hosting every
+	// topic is Infrastructure, however it is reached) and it was not itself
+	// reached through a topic (as a consumer or as another provider of it).
 	fanned := map[string]bool{}
 	for len(level) > 0 {
 		var next []string
@@ -217,13 +219,14 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 				tour.Truncated = true
 				return tour, nil
 			}
-			step, reached := e.tourStep(id, why[id], visited, !fanned[id])
+			fanOut := !fanned[id] && e.nodesByID[id].Kind == domain.NodeService
+			step, reached := e.tourStep(id, why[id], visited, fanOut)
 			step.Order = len(tour.Steps) + 1
 			tour.Steps = append(tour.Steps, step)
 			for _, r := range reached {
 				visited[r.id] = true
 				why[r.id] = r.why
-				if r.why.WhyTemplate == WhyConsumer {
+				if r.viaTopic {
 					fanned[r.id] = true
 				}
 				next = append(next, r.id)
@@ -238,6 +241,8 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 type reach struct {
 	id  string
 	why TourStep // WhyTemplate, WhyArgs and WhyLocator of the reached stop
+	// viaTopic is set when the stop was reached through a Kafka topic contract.
+	viaTopic bool
 }
 
 // isTopic reports whether a Contract is a Kafka topic (`contract:kafka:<topic>`).
@@ -303,7 +308,7 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool, fanOut
 
 	seen := map[string]bool{}
 	var out []reach
-	add := func(target string, why TourStep, evs []domain.EvidenceRecord) {
+	add := func(target string, why TourStep, evs []domain.EvidenceRecord, viaTopic bool) {
 		t, ok := e.nodesByID[target]
 		if !ok || !tourable(t) || visited[target] || seen[target] || target == id {
 			return
@@ -313,7 +318,7 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool, fanOut
 		if why.WhyLocator == "" && len(evs) > 0 {
 			why.WhyLocator = evs[0].Locator.String()
 		}
-		out = append(out, reach{target, why})
+		out = append(out, reach{target, why, viaTopic})
 	}
 	reached := func(target, verb string) TourStep {
 		return TourStep{WhyTemplate: WhyReached, WhyArgs: []string{target, id, verb}}
@@ -337,7 +342,7 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool, fanOut
 					provider = p.TargetID
 				}
 				if provider != id {
-					add(provider, reached(provider, verb+" "+t.ID+" from"), p.Evidence)
+					add(provider, reached(provider, verb+" "+t.ID+" from"), p.Evidence, isTopic(t))
 				}
 			}
 			if !fanOut || !isTopic(t) {
@@ -356,11 +361,11 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool, fanOut
 					why.WhyArgs[2] = string(c.Evidence[0].Origin)
 					why.WhyLocator = e.blockLocator(e.nodesByID[consumer], c.Evidence[0])
 				}
-				add(consumer, why, c.Evidence)
+				add(consumer, why, c.Evidence, true)
 			}
 			continue
 		}
-		add(r.TargetID, reached(r.TargetID, verb), r.Evidence)
+		add(r.TargetID, reached(r.TargetID, verb), r.Evidence, false)
 	}
 	for c := range contracts {
 		step.NodeIDs = append(step.NodeIDs, c)

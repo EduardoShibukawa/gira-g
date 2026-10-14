@@ -36,10 +36,12 @@ func fanoutMap(t *testing.T) *domain.MacroMap {
 	svc("service:checkout", "compose.yaml", 10)
 	svc("service:cart", "compose.yaml", 20)
 	svc("service:admin", "compose.yaml", 30)
-	svc("service:kafka", "compose.full.yaml", 100)
 	svc("service:accounting", "compose.full.yaml", 12)
 	svc("service:fraud-detection", "compose.full.yaml", 47)
 	svc("service:audit", "compose.full.yaml", 200)
+	if err := m.AddNode(domain.Node{ID: "service:kafka", Kind: domain.NodeInfrastructure, Name: "kafka", Evidence: ev("compose.full.yaml", 100, domain.OriginExtracted)}); err != nil {
+		t.Fatal(err)
+	}
 	for _, c := range []domain.Node{
 		{ID: "contract:CartService", Kind: domain.NodeContract, Name: "CartService", Evidence: ev("pb/demo.proto", 5, domain.OriginExtracted)},
 		{ID: "contract:kafka:orders", Kind: domain.NodeContract, Name: "orders", Metadata: map[string]any{"protocol": "kafka", "topic": "orders"}, Evidence: ev("src/checkout/main.go", 671, domain.OriginExtracted)},
@@ -152,6 +154,72 @@ func TestTourFanoutCitationStaysInOwnBlock(t *testing.T) {
 	for _, s := range tour.Steps {
 		if s.NodeIDs[0] == "service:fraud-detection" && s.WhyLocator != "demo@abc1234:compose.full.yaml#L66-L66" {
 			t.Errorf("fraud-detection why_locator %q spans sidecar's declaration, want L66 alone", s.WhyLocator)
+		}
+	}
+}
+
+// The broker hosts every topic (resolve_kafka makes it provide each one), so it
+// is never the producer or consumer of the flow: reached through a topic or by
+// an accesses edge, it must not fan out to the consumers of the other topics it
+// hosts. Neither may a co-producer reached through the visited topic.
+func TestTourFanoutBrokerDoesNotFanOut(t *testing.T) {
+	m := fanoutMap(t)
+	ev := func(path string, line int, origin domain.DerivationOrigin) []domain.EvidenceRecord {
+		return []domain.EvidenceRecord{{Locator: domain.Locator{Repo: "demo", CommitSHA: "abc1234", Path: path, StartLine: line, EndLine: line}, Origin: origin, Status: domain.StatusCurrent}}
+	}
+	for _, n := range []domain.Node{
+		{ID: "service:analytics", Kind: domain.NodeService, Name: "analytics", Evidence: ev("compose.full.yaml", 300, domain.OriginExtracted)},
+		{ID: "service:replayer", Kind: domain.NodeService, Name: "replayer", Evidence: ev("compose.full.yaml", 400, domain.OriginExtracted)},
+		{ID: "service:archiver", Kind: domain.NodeService, Name: "archiver", Evidence: ev("compose.full.yaml", 500, domain.OriginExtracted)},
+		{ID: "contract:kafka:clicks", Kind: domain.NodeContract, Name: "clicks", Metadata: map[string]any{"protocol": "kafka", "topic": "clicks"}, Evidence: ev("compose.full.yaml", 150, domain.OriginDeclared)},
+		{ID: "contract:kafka:replays", Kind: domain.NodeContract, Name: "replays", Metadata: map[string]any{"protocol": "kafka", "topic": "replays"}, Evidence: ev("src/replayer/main.go", 3, domain.OriginExtracted)},
+	} {
+		if err := m.AddNode(n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, r := range []domain.Relationship{
+		// The broker hosts two more topics whose consumers are off the flow.
+		{ID: "rel:kafka-provides-ledger", SourceID: "service:kafka", TargetID: "contract:kafka:ledger", Verb: domain.VerbProvides, Evidence: ev("compose.full.yaml", 133, domain.OriginDeclared)},
+		{ID: "rel:kafka-provides-clicks", SourceID: "service:kafka", TargetID: "contract:kafka:clicks", Verb: domain.VerbProvides, Evidence: ev("compose.full.yaml", 134, domain.OriginDeclared)},
+		{ID: "rel:analytics-consumes-clicks", SourceID: "service:analytics", TargetID: "contract:kafka:clicks", Verb: domain.VerbConsumes, Evidence: ev("compose.full.yaml", 310, domain.OriginInferred)},
+		// A second producer of orders, reached through the topic, also produces replays.
+		{ID: "rel:replayer-provides-orders", SourceID: "service:replayer", TargetID: "contract:kafka:orders", Verb: domain.VerbProvides, Evidence: ev("src/replayer/main.go", 2, domain.OriginExtracted)},
+		{ID: "rel:replayer-provides-replays", SourceID: "service:replayer", TargetID: "contract:kafka:replays", Verb: domain.VerbProvides, Evidence: ev("src/replayer/main.go", 3, domain.OriginExtracted)},
+		{ID: "rel:archiver-consumes-replays", SourceID: "service:archiver", TargetID: "contract:kafka:replays", Verb: domain.VerbConsumes, Evidence: ev("compose.full.yaml", 510, domain.OriginInferred)},
+	} {
+		if err := m.AddRelationship(r); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, viaAccesses := range []bool{false, true} {
+		mm := *m
+		mm.Relationships = append([]domain.Relationship(nil), m.Relationships...)
+		if viaAccesses {
+			// checkout reaches the broker by an accesses edge, listed first, so
+			// the walk meets the broker as a direct target, not as a provider.
+			mm.Relationships = append([]domain.Relationship{{ID: "rel:checkout-accesses-kafka", SourceID: "service:checkout", TargetID: "service:kafka", Verb: domain.VerbAccesses, Evidence: ev("compose.full.yaml", 135, domain.OriginExtracted)}}, mm.Relationships...)
+		}
+		tour, err := slices.NewEngine(&mm).GetTour("service:frontend", 50)
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := map[string]slices.TourStep{}
+		for _, s := range tour.Steps {
+			got[s.NodeIDs[0]] = s
+		}
+		for _, id := range []string{"service:accounting", "service:fraud-detection", "service:kafka"} {
+			if _, ok := got[id]; !ok {
+				t.Errorf("accesses=%v: %s is not a tour stop", viaAccesses, id)
+			}
+		}
+		if k := got["service:kafka"]; viaAccesses && (len(k.WhyArgs) < 3 || k.WhyArgs[2] != "accesses") {
+			t.Errorf("accesses=true: the broker was reached by %q, want the accesses edge", k.Why)
+		}
+		for _, id := range []string{"service:audit", "service:analytics", "service:archiver"} {
+			if s, ok := got[id]; ok {
+				t.Errorf("accesses=%v: %s reached by step %d (%s): only the flow's producer fans out, one hop from the visited topic", viaAccesses, id, s.Order, s.Why)
+			}
 		}
 	}
 }
