@@ -37,4 +37,10 @@ func TestSCGateLintStrictness(t *testing.T) {
 	if res.Pass || res.Error == "" {
 		t.Fatalf("strict local drift must fail closed, got %+v", res)
 	}
+
+	// N4 residual: CI warn-only must preserve the status for reporting.
+	res = gate.LintFile(p, "STALE", gate.LintOptions{Strict: true, CI: true})
+	if !res.Pass || res.Status != gate.StatusAllMet {
+		t.Fatalf("CI warn-only must preserve status, got %+v", res)
+	}
 }

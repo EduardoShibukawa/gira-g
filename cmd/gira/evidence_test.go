@@ -57,6 +57,26 @@ func TestCLI_EvalControlHonest(t *testing.T) {
 	}
 }
 
+// N3 residual: verify with default fingerprint must re-derive an eval
+// closing line (same frozen-input rule incl. gira.yaml when present).
+func TestCLI_VerifyDefaultRederivesEval(t *testing.T) {
+	var stdout, stderr bytes.Buffer
+	if err := Run([]string{"eval", "--check", "n3demo", "--expect", "ok", "--taxonomy", "measured"}, nil, &stdout, &stderr); err != nil {
+		t.Fatalf("eval failed: %v", err)
+	}
+	lines := strings.Split(strings.TrimRight(stdout.String(), "\n"), "\n")
+	closing := lines[len(lines)-1]
+	cwd, _ := os.Getwd()
+	stdout.Reset()
+	stderr.Reset()
+	if err := Run([]string{"verify", "--check", "n3demo", "--expect", "ok", "--cwd", cwd, "--taxonomy", "measured"}, nil, &stdout, &stderr); err != nil {
+		t.Fatalf("verify failed: %v", err)
+	}
+	if strings.TrimSpace(stdout.String()) != closing {
+		t.Fatalf("verify default must re-derive eval closing line:\neval:   %q\nverify: %q", closing, strings.TrimSpace(stdout.String()))
+	}
+}
+
 // F3/F7: fix-check reads the real path against --expect-content.
 func TestCLI_ReviewFixCheckReadsPath(t *testing.T) {
 	dir := t.TempDir()

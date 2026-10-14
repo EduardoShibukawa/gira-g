@@ -51,7 +51,7 @@ func runEval(args []string, stdout io.Writer, stderr io.Writer) error {
 	// Frozen inputs: the manifest + working-tree pin when present. Minimal and
 	// additive; the fingerprint still covers command/expect/cwd+exit.
 	inputs := map[string][]byte{
-		"CHECK": []byte(check),
+		"CHECK":  []byte(check),
 		"EXPECT": []byte(expect),
 	}
 	if data, err := os.ReadFile("gira.yaml"); err == nil {
@@ -139,9 +139,16 @@ func runVerify(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("unknown --taxonomy %q: want measured|checked|inferred|assumed", taxonomy)
 	}
 	if fingerprint == "" {
-		fingerprint = eval.FingerprintInputs(map[string][]byte{
+		// Same frozen-input rule as runEval (N3): CHECK/EXPECT plus
+		// gira.yaml when present, so the default re-derives the closing
+		// line instead of silently disagreeing with it.
+		inputs := map[string][]byte{
 			"CHECK": []byte(check), "EXPECT": []byte(expect),
-		})
+		}
+		if data, err := os.ReadFile("gira.yaml"); err == nil {
+			inputs["gira.yaml"] = data
+		}
+		fingerprint = eval.FingerprintInputs(inputs)
 	}
 	digest := eval.ArtifactDigest(check, expect, cwd, exitCode, fingerprint, taxonomy)
 	_, err := fmt.Fprintln(stdout, eval.FormatClosingLine(digest))

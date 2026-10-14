@@ -102,15 +102,15 @@ func LintFile(path, expectedDigest string, opts LintOptions) LintResult {
 	warn := func(status, msg string) LintResult {
 		return LintResult{Pass: true, Status: status, Warnings: []string{msg}}
 	}
-	fail := func(msg string) LintResult {
+	fail := func(status, msg string) LintResult {
 		if opts.CI {
-			return warn("", msg)
+			return warn(status, msg)
 		}
 		return LintResult{Error: msg}
 	}
 	soft := func(status, msg string) LintResult {
 		if opts.Strict {
-			return fail(msg)
+			return fail(status, msg)
 		}
 		return warn(status, msg)
 	}

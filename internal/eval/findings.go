@@ -154,22 +154,34 @@ func splitRow(line string) []string {
 
 // LoadRegister reads a register written by Save and validates every row:
 // unknown taxonomies, missing severities and dangling repro claims fail
-// closed instead of loading silently.
+// closed instead of loading silently. Header lines are matched exactly by
+// position (never by substring): data rows containing "---" or "ID" must
+// survive (N1). Truncated rows, empty IDs/statuses and duplicate IDs fail
+// closed (N2).
 func LoadRegister(path string) (Register, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Register{}, err
 	}
+	const headerRow = "| ID | taxonomy | coordinator | reviewer | status | repro | summary |"
+	const separatorRow = "|---|---|---|---|---|---|---|"
 	var out Register
+	seen := map[string]bool{}
 	for _, line := range strings.Split(string(data), "\n") {
 		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "|") || strings.Contains(line, "---") || strings.Contains(line, "ID |") {
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		if line == headerRow || line == separatorRow {
+			continue
+		}
+		if !strings.HasPrefix(line, "|") {
 			continue
 		}
 		parts := splitRow(line)
 		// leading + trailing empty cells
 		if len(parts) < 9 {
-			continue
+			return Register{}, fmt.Errorf("loading register %s: truncated row %q fails closed", path, line)
 		}
 		for i := range parts {
 			parts[i] = strings.TrimSpace(parts[i])
@@ -182,6 +194,16 @@ func LoadRegister(path string) (Register, error) {
 		if err := f.Validate(); err != nil {
 			return Register{}, fmt.Errorf("loading register %s: %w", path, err)
 		}
+		if strings.TrimSpace(f.ID) == "" {
+			return Register{}, fmt.Errorf("loading register %s: empty ID fails closed", path)
+		}
+		if strings.TrimSpace(f.Status) == "" {
+			return Register{}, fmt.Errorf("loading register %s: finding %q empty status fails closed", path, f.ID)
+		}
+		if seen[f.ID] {
+			return Register{}, fmt.Errorf("loading register %s: duplicate ID %q fails closed", path, f.ID)
+		}
+		seen[f.ID] = true
 		out.Findings = append(out.Findings, f)
 	}
 	return out, nil
