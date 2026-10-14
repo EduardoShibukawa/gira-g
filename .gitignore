@@ -22,3 +22,8 @@ architecture.html
 *.swp
 *~
 .DS_Store
+
+# Local run outputs and agent worktrees
+results.tsv
+run.log
+.claude/worktrees/

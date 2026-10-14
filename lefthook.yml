@@ -1,13 +1,20 @@
+# Fail closed: without this, a hook that can't find lefthook prints a warning and lets the commit through.
+assert_lefthook_installed: true
+
 pre-commit:
   parallel: true
   commands:
     gofmt:
       glob: "*.go"
-      run: gofmt -w {staged_files}
-    tests:
-      run: go test -race ./...
+      run: mise exec -- gofmt -w {staged_files}
+      stage_fixed: true
+    validate:
+      run: mise exec -- node tools/validate/validate.js
 
 pre-push:
   commands:
-    quality-suite:
-      run: go test -race ./...
+    tests:
+      run: mise exec -- go test -race ./...
+    lint:
+      # main carries pre-existing lint debt; block only issues new since origin/main.
+      run: mise exec -- golangci-lint run --new-from-rev=origin/main
