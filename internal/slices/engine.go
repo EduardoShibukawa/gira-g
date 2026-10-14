@@ -845,6 +845,12 @@ func cloneNode(n domain.Node) domain.Node {
 
 func cloneRel(r domain.Relationship) domain.Relationship {
 	c := r
+	if r.Metadata != nil {
+		c.Metadata = make(map[string]any, len(r.Metadata))
+		for k, v := range r.Metadata {
+			c.Metadata[k] = v
+		}
+	}
 	if r.Evidence != nil {
 		c.Evidence = make([]domain.EvidenceRecord, len(r.Evidence))
 		copy(c.Evidence, r.Evidence)

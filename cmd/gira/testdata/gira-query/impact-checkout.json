@@ -125,6 +125,6 @@
       "relationships": 56,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32216: rerun with budget >= 32216"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 33684: rerun with budget >= 33684"
   }
 }

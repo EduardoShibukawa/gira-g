@@ -132,21 +132,21 @@
       "from": "service:email",
       "to": "service:notify",
       "kind": "Service",
-      "score": 0.833,
+      "score": 1,
       "origin": "inferred"
     },
     {
       "from": "service:frontend",
       "to": "service:storefront",
       "kind": "Service",
-      "score": 0.9,
+      "score": 0.929,
       "origin": "inferred"
     },
     {
       "from": "service:frontend-proxy",
       "to": "service:storefront-proxy",
       "kind": "Service",
-      "score": 1.333,
+      "score": 1.485,
       "origin": "inferred"
     },
     {
@@ -167,7 +167,7 @@
       "from": "service:shipping",
       "to": "service:dispatch",
       "kind": "Service",
-      "score": 0.833,
+      "score": 0.929,
       "origin": "inferred"
     },
     {

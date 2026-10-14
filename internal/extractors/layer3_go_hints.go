@@ -328,6 +328,14 @@ func (g *goHints) call(call *ast.CallExpr) {
 	if p == "" {
 		return
 	}
+	if p == "net/http" {
+		if i, ok := httpURLArg[name]; ok && i < len(call.Args) {
+			if ref, route := g.urlParts(call.Args[i]); ref != "" {
+				g.add(Hint{Kind: HintHTTPCall, Key: ref, Value: route}, call)
+			}
+		}
+		return
+	}
 	if kafkaClients[p] && kafkaProducerCtors[name] && len(call.Args) > 0 {
 		g.broker(call.Args[0], call)
 		return
@@ -429,4 +437,19 @@ func (g *goHints) producerMessage(lit *ast.CompositeLit) {
 		}
 		g.add(h, kv)
 	}
+}
+
+// httpURLArg is the URL argument's position in the net/http request functions.
+var httpURLArg = map[string]int{"NewRequest": 1, "NewRequestWithContext": 2, "Get": 0, "Head": 0, "Post": 0, "PostForm": 0}
+
+// urlParts splits a request URL expression addr + "/route" into the field or
+// variable holding the address and the literal route ("" for addr alone).
+func (g *goHints) urlParts(expr ast.Expr) (ref, route string) {
+	if b, ok := expr.(*ast.BinaryExpr); ok && b.Op == token.ADD {
+		if s, ok := stringLit(b.Y); ok && strings.HasPrefix(s, "/") {
+			return g.localRef(b.X), s
+		}
+		return "", ""
+	}
+	return g.localRef(expr), ""
 }

@@ -50,6 +50,9 @@ const (
 	HintGoAlias HintKind = "go_alias"
 	// HintGoMethodCall is a call of exported method Value on field or variable Key.
 	HintGoMethodCall HintKind = "go_method_call"
+	// HintHTTPCall is a net/http request whose URL is field or variable Key plus
+	// the literal route Value ("" when the URL is the address alone).
+	HintHTTPCall HintKind = "http_call"
 )
 
 // Hint is an internal resolution record an Extractor emits next to its facts.
@@ -109,6 +112,8 @@ func resolve(r *resolution) {
 	w := newWiring(r.hints, env)
 	resolveKafkaTopics(r, w)
 	resolveGRPCCalls(r, w)
+	resolveHTTPCalls(r, w)
+	resolveEnvWiring(r, w)
 }
 
 // envScopes holds each compose project's .env, keyed by repo and directory.

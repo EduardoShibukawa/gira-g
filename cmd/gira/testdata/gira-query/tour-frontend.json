@@ -27,7 +27,10 @@
         "service:otel-collector"
       ],
       "read": [
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.full.yaml#L139-L139"
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.full.yaml#L139-L139",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.full.yaml#L150-L150",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L866-L866",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L873-L873"
       ],
       "why": "`service:otel-collector` is reached because `service:frontend` accesses it.",
       "why_template": "reached",
@@ -80,17 +83,17 @@
     },
     {
       "order": 5,
-      "title": "cart (Service)",
+      "title": "image-provider (Service)",
       "node_ids": [
-        "service:cart"
+        "service:image-provider"
       ],
       "read": [
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L80-L80"
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L387-L387"
       ],
-      "why": "`service:cart` is reached because `service:frontend` consumes it.",
+      "why": "`service:image-provider` is reached because `service:frontend` consumes it.",
       "why_template": "reached",
       "why_args": [
-        "service:cart",
+        "service:image-provider",
         "service:frontend",
         "consumes"
       ],

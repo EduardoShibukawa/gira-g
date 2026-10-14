@@ -211,3 +211,39 @@ func origins(r domain.Relationship) string {
 	}
 	return strings.Join(out, " ")
 }
+
+// SC5: Go HTTP calls to an env-bound address plus a route are consumes edges
+// with protocol and routes, extracted at the request line; compose env wiring
+// that names another service is a declared edge at the env line; nothing cites
+// unsupported-language source.
+func TestSC5HTTPAndEnvWiring(t *testing.T) {
+	for _, v := range hermeticVariants(t) {
+		checkout, email, shipping, agent, frontend := "service:checkout", "service:email", "service:shipping", "service:agent", "service:frontend"
+		if v.name == "perturbed" {
+			checkout, email, shipping, frontend = "service:ordering", "service:notify", "service:dispatch", "service:storefront"
+		}
+		for target, routes := range map[string][]string{email: {"/send_order_confirmation"}, shipping: {"/get-quote", "/ship-order"}} {
+			r, ok := edgeTo(v.mm, checkout, domain.VerbConsumes, target)
+			if !ok || !hasEvidence(r.Evidence, domain.OriginExtracted, "main.go") {
+				t.Errorf("%s: %s must consume %s at the request line: %s", v.name, checkout, target, origins(r))
+				continue
+			}
+			got, _ := r.Metadata["routes"].([]string)
+			if r.Metadata["protocol"] != "http" || strings.Join(got, " ") != strings.Join(routes, " ") {
+				t.Errorf("%s: %s -> %s metadata %v, want http %v", v.name, checkout, target, r.Metadata, routes)
+			}
+		}
+		if r, ok := edgeTo(v.mm, agent, domain.VerbConsumes, frontend); !ok || !hasEvidence(r.Evidence, domain.OriginDeclared, "compose.agent.yaml") {
+			t.Errorf("%s: %s must consume %s through APPLICATION_ENDPOINT, declared: %s", v.name, agent, frontend, origins(r))
+		}
+		for _, r := range v.mm.Relationships {
+			for _, ev := range r.Evidence {
+				switch path.Ext(ev.Locator.Path) {
+				case ".go", ".proto", ".yaml", ".yml", "", ".mod":
+				default:
+					t.Errorf("%s: %s cites %s", v.name, r.ID, ev.Locator.Path)
+				}
+			}
+		}
+	}
+}

@@ -97,10 +97,12 @@ type Node struct {
 
 // Relationship represents a directional, evidence-backed connection between two nodes.
 type Relationship struct {
-	ID       string           `json:"id"`
-	SourceID string           `json:"source_id"`
-	TargetID string           `json:"target_id"`
-	Verb     RelationVerb     `json:"verb"`
+	ID       string       `json:"id"`
+	SourceID string       `json:"source_id"`
+	TargetID string       `json:"target_id"`
+	Verb     RelationVerb `json:"verb"`
+	// Metadata qualifies the edge, e.g. protocol "http" and the routes called.
+	Metadata map[string]any   `json:"metadata,omitempty"`
 	Evidence []EvidenceRecord `json:"evidence"`
 }
 

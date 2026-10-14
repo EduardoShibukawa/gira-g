@@ -251,3 +251,63 @@ func TestKafkaTopicThatDoesNotResolveEmitsNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestHTTPCallsAndEnvWiring(t *testing.T) {
+	checkout := `package main
+
+import (
+	"net/http"
+	"os"
+)
+
+type svc struct{ emailAddr, quoteAddr, unknownAddr string }
+
+func mustMapEnv(target *string, key string) { *target = os.Getenv(key) }
+
+func (s *svc) run() {
+	mustMapEnv(&s.emailAddr, "EMAIL_ADDR")
+	s.quoteAddr = os.Getenv("QUOTE_ADDR")
+	mustMapEnv(&s.unknownAddr, "NOT_WIRED_ADDR")
+	http.NewRequest("POST", s.emailAddr+"/confirm", nil)
+	http.Post(s.emailAddr+"/bounce", "application/json", nil)
+	http.Get(s.quoteAddr)
+	http.Get(s.unknownAddr + "/x")
+}
+`
+	compose := `services:
+  checkout:
+    environment:
+      - EMAIL_ADDR
+      - QUOTE_ADDR
+      - NOT_WIRED_ADDR
+      - OTEL_SERVICE_NAME=email
+      - SELF_ADDR=checkout:1
+  email:
+    environment:
+      - CACHE_HOST=redis
+  quote:
+    image: quote
+  redis:
+    image: redis
+`
+	mm, err := NewPipeline(NewComposeExtractor(), NewEnvFileExtractor(), NewGoASTExtractor()).ProcessFiles(context.Background(), "t", []TargetFile{
+		{Repo: "r", Path: "compose.yaml", Content: []byte(compose)},
+		{Repo: "r", Path: ".env", Content: []byte("EMAIL_ADDR=http://email:8080\nQUOTE_ADDR=quote:9\n")},
+		{Repo: "r", Path: "src/checkout/main.go", Content: []byte(checkout)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, r := range mm.Relationships {
+		got[r.SourceID+" "+string(r.Verb)+" "+r.TargetID] = fmt.Sprintf("%v %s", r.Metadata, origins(r))
+	}
+	want := map[string]string{
+		"service:checkout consumes service:email": "map[protocol:http routes:[/bounce /confirm]] extracted@src/checkout/main.go#L16 extracted@src/checkout/main.go#L17 declared@compose.yaml#L4",
+		"service:checkout consumes service:quote": "map[protocol:http] extracted@src/checkout/main.go#L18 declared@compose.yaml#L5",
+		"service:email accesses service:redis":    "map[] declared@compose.yaml#L11",
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("got\n%v\nwant\n%v\n(NOT_WIRED_ADDR has no value; OTEL_SERVICE_NAME is not an address; SELF_ADDR is the service itself)", got, want)
+	}
+}

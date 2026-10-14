@@ -20,6 +20,7 @@ type wiring struct {
 	env      map[string]map[string]envEntry // service → variable → entry
 	bindings map[string]map[string]string   // service → field/var → variable ("" when ambiguous)
 	vars     map[string]Hint                // package dir + "\x00" + var → HintGoEnvVar
+	scopes   envScopes
 	hints    []Hint
 }
 
@@ -28,16 +29,13 @@ func newWiring(hints []Hint, scopes envScopes) *wiring {
 		env:      map[string]map[string]envEntry{},
 		bindings: map[string]map[string]string{},
 		vars:     map[string]Hint{},
+		scopes:   scopes,
 		hints:    hints,
 	}
 	for _, h := range hints {
 		switch h.Kind {
 		case HintComposeEnv:
-			raw := "${" + h.Key + "}"
-			if h.Inline {
-				raw = h.Value
-			}
-			v, ok := scopes.interpolate(h.Locator.Repo, path.Dir(h.Locator.Path), raw)
+			v, ok := scopes.envValue(h)
 			if !ok {
 				continue
 			}
@@ -105,14 +103,42 @@ func evidenceAt(loc domain.Locator, origin domain.DerivationOrigin, profile stri
 
 func composeProfile(loc domain.Locator) string { return "compose:" + path.Base(loc.Path) }
 
-// addEdge adds a relationship, or appends its evidence when it already exists.
-func (r *resolution) addEdge(source string, verb domain.RelationVerb, target string, evs ...domain.EvidenceRecord) {
+// envValue is a compose environment entry's value: inline, or else the project
+// .env's, interpolated; false when any variable is undefined.
+func (s envScopes) envValue(h Hint) (string, bool) {
+	raw := "${" + h.Key + "}"
+	if h.Inline {
+		raw = h.Value
+	}
+	return s.interpolate(h.Locator.Repo, path.Dir(h.Locator.Path), raw)
+}
+
+// addEdge adds a relationship, or appends its evidence when it already exists,
+// and returns it.
+func (r *resolution) addEdge(source string, verb domain.RelationVerb, target string, evs ...domain.EvidenceRecord) *domain.Relationship {
 	id := relID(source, verb, target)
 	if rel, ok := r.rels[id]; ok {
 		rel.Evidence = append(rel.Evidence, evs...)
-		return
+		return rel
 	}
-	r.rels[id] = &domain.Relationship{ID: id, SourceID: source, TargetID: target, Verb: verb, Evidence: evs}
+	rel := &domain.Relationship{ID: id, SourceID: source, TargetID: target, Verb: verb, Evidence: evs}
+	r.rels[id] = rel
+	return rel
+}
+
+// serviceEdgeVerb is the verb for an edge to target: accesses for
+// Infrastructure, consumes for a Service. ok is false for any other node.
+func (r *resolution) serviceEdgeVerb(target string) (domain.RelationVerb, bool) {
+	n, exists := r.nodes[target]
+	switch {
+	case !exists:
+		return "", false
+	case n.Kind == domain.NodeInfrastructure:
+		return domain.VerbAccesses, true
+	case n.Kind == domain.NodeService:
+		return domain.VerbConsumes, true
+	}
+	return "", false
 }
 
 // relID follows the extractors' relationship IDs: bare service names, as compose
