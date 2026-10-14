@@ -20,11 +20,20 @@ func TestSCStaleness(t *testing.T) {
 
 	// The indexed-commit banner is always on stderr.
 	var out, errOut bytes.Buffer
-	if err := Run([]string{"slice", "service:checkout", "--index", index, "--format", "md", "--repo", ""}, strings.NewReader(""), &out, &errOut); err != nil {
+	if err := Run([]string{"slice", "service:checkout", "--index", index, "--format", "md", "--checkout", ""}, strings.NewReader(""), &out, &errOut); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(errOut.String(), "indexed commit:") {
 		t.Fatalf("missing the indexed-commit banner: %q", errOut.String())
+	}
+
+	// Without --checkout the banner never guesses the cwd as the checkout.
+	var outNoCk, errNoCk bytes.Buffer
+	if err := Run([]string{"slice", "service:checkout", "--index", index, "--format", "md"}, strings.NewReader(""), &outNoCk, &errNoCk); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(errNoCk.String(), "stale:") {
+		t.Fatalf("no --checkout must not flag the cwd as stale: %q", errNoCk.String())
 	}
 
 	// A checkout whose HEAD the index does not cite is stale.
@@ -32,7 +41,7 @@ func TestSCStaleness(t *testing.T) {
 	gitIn(t, dir, "init", "-q")
 	gitIn(t, dir, "commit", "-q", "--allow-empty", "-m", "unrelated")
 	var out2, err2 bytes.Buffer
-	if err := Run([]string{"slice", "service:checkout", "--index", index, "--format", "md", "--repo", dir}, strings.NewReader(""), &out2, &err2); err != nil {
+	if err := Run([]string{"slice", "service:checkout", "--index", index, "--format", "md", "--checkout", dir}, strings.NewReader(""), &out2, &err2); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(err2.String(), "stale:") {

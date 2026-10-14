@@ -69,4 +69,25 @@ func TestSCExplainSource(t *testing.T) {
 	if !strings.Contains(string(out3), slices.SourceUnavailable) {
 		t.Fatalf("missing checkout must report source unavailable:\n%s", out3)
 	}
+
+	// A Git checkout that does not contain the cited commit must not be used,
+	// even when it has a same-named file (F2 review finding).
+	grepo := t.TempDir()
+	gitIn(t, grepo, "init", "-q")
+	gfull := filepath.Join(grepo, filepath.FromSlash(path))
+	if err := os.MkdirAll(filepath.Dir(gfull), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(gfull, []byte("OTHER CONTENT\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, grepo, "add", "-A")
+	gitIn(t, grepo, "commit", "-q", "-m", "unrelated")
+	out4, err := runCLI(t, "explain", "service:checkout", "--index", index, "--format", "md", "--repo", grepo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(out4), slices.SourceUnavailable) {
+		t.Fatalf("an unrelated git checkout must not masquerade as the source:\n%s", out4)
+	}
 }

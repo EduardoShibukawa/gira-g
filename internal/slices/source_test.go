@@ -51,4 +51,26 @@ func TestSCExplainSource(t *testing.T) {
 	if _, ok := Excerpt("", loc, 2); ok {
 		t.Fatal("empty checkout root must be unavailable")
 	}
+
+	// A single-point locator (EndLine == 0) still shows the cited line.
+	one, ok := Excerpt(dir, domain.Locator{Path: "a/b.go", StartLine: 100, EndLine: 0}, 2)
+	if !ok {
+		t.Fatal("single-point locator must read")
+	}
+	if !strings.Contains(one, "line 100") {
+		t.Fatalf("single-point locator must show the cited line:\n%s", one)
+	}
+
+	// A symlink escaping the checkout is rejected.
+	secret := filepath.Join(t.TempDir(), "secret.txt")
+	if err := os.WriteFile(secret, []byte("secret\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "link.txt")
+	if err := os.Symlink(secret, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := Excerpt(dir, domain.Locator{Path: "link.txt", StartLine: 1, EndLine: 1}, 2); ok {
+		t.Fatal("a symlink escaping the checkout must be unavailable")
+	}
 }
