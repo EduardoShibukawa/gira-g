@@ -12,7 +12,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/cart/src/Program.cs"
       }
     },
@@ -21,7 +21,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/currency/src/server.cpp"
       }
     },
@@ -30,7 +30,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/email/email_server.rb"
       }
     },
@@ -39,7 +39,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/Cart.gateway.ts"
       }
     },
@@ -48,7 +48,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
       }
     },
@@ -57,7 +57,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/Currency.gateway.ts"
       }
     },
@@ -66,7 +66,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/ProductCatalog.gateway.ts"
       }
     },
@@ -75,7 +75,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/payment/charge.js"
       }
     },
@@ -84,7 +84,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/payment/index.js"
       }
     },
@@ -93,7 +93,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/shipping/src/main.rs"
       }
     }
@@ -107,6 +107,6 @@
       "relationships": 55,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32293: rerun with budget >= 32293"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32784: rerun with budget >= 32784"
   }
 }

@@ -46,7 +46,7 @@
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "compose.full.yaml",
           "start_line": 130,
           "end_line": 130
@@ -59,7 +59,7 @@
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "compose.yaml",
           "start_line": 116,
           "end_line": 116
@@ -72,7 +72,7 @@
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "src/checkout/Dockerfile",
           "start_line": 24,
           "end_line": 24
@@ -85,7 +85,7 @@
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "src/checkout/kafka/producer.go",
           "start_line": 3,
           "end_line": 3
@@ -98,7 +98,7 @@
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "src/checkout/main.go",
           "start_line": 3,
           "end_line": 3
@@ -114,7 +114,7 @@
     {
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "compose.full.yaml",
         "start_line": 130,
         "end_line": 130
@@ -127,7 +127,7 @@
     {
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "compose.yaml",
         "start_line": 116,
         "end_line": 116
@@ -140,7 +140,7 @@
     {
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/checkout/Dockerfile",
         "start_line": 24,
         "end_line": 24
@@ -153,7 +153,7 @@
     {
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/checkout/kafka/producer.go",
         "start_line": 3,
         "end_line": 3
@@ -166,7 +166,7 @@
     {
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/checkout/main.go",
         "start_line": 3,
         "end_line": 3

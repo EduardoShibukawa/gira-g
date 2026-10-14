@@ -85,3 +85,36 @@ func TestSC1ImpactSetHoldsOnlyServices(t *testing.T) {
 		}
 	}
 }
+
+// SC2: a Dockerfile a compose service builds is attributed to that compose service.
+// In the hermetic corpus every Dockerfile is compose-built, so every Service with
+// Dockerfile evidence must also be declared in a compose file, and cart's
+// Dockerfile (src/cart/src/) is service:cart, never service:src.
+func TestSC2DockerfilesTakeTheirComposeName(t *testing.T) {
+	for _, v := range hermeticVariants(t) {
+		cart := "service:cart"
+		if v.name == "perturbed" {
+			cart = "service:basket"
+		}
+		found := false
+		for _, n := range v.mm.Nodes {
+			if n.ID == "service:src" {
+				t.Errorf("%s: cart's Dockerfile named by its directory: service:src", v.name)
+			}
+			var dockerfile, compose bool
+			for _, ev := range n.Evidence {
+				dockerfile = dockerfile || isDockerfile(ev.Locator.Path)
+				compose = compose || strings.HasPrefix(path.Base(ev.Locator.Path), "compose")
+			}
+			if dockerfile && !compose {
+				t.Errorf("%s: %s comes from a Dockerfile but no compose service of that name builds it", v.name, n.ID)
+			}
+			if n.ID == cart && dockerfile {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s: %s does not cite its Dockerfile", v.name, cart)
+		}
+	}
+}

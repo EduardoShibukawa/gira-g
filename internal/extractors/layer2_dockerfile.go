@@ -403,3 +403,16 @@ func (e *DockerfileExtractor) Extract(ctx context.Context, file TargetFile) ([]d
 	}}
 	return nodes, nil, nil, nil
 }
+
+// Hints reports which Service node the Dockerfile produced, so the resolution
+// step can rename it to the compose service that builds this file (ADR 0013).
+func (e *DockerfileExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, error) {
+	if len(parseDockerfileInstructions(file.Content)) == 0 {
+		return nil, nil
+	}
+	return []Hint{{
+		Kind:    HintDockerfileService,
+		Locator: domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path},
+		Service: "service:" + deriveDefaultServiceName(file.Path),
+	}}, nil
+}

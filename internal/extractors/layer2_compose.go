@@ -202,3 +202,54 @@ func (e *ComposeExtractor) Extract(ctx context.Context, file TargetFile) ([]doma
 
 	return nodes, relationships, nil, nil
 }
+
+// Hints returns, for every compose service with a build section, its
+// build.dockerfile and build.context before interpolation, located at the
+// dockerfile line (or the build line when only a context is given).
+func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, error) {
+	var root yaml.Node
+	if err := yaml.Unmarshal(file.Content, &root); err != nil || len(root.Content) == 0 {
+		return nil, nil
+	}
+	services := mappingValue(root.Content[0], "services")
+	if services == nil || services.Kind != yaml.MappingNode {
+		return nil, nil
+	}
+	var hints []Hint
+	for i := 0; i+1 < len(services.Content); i += 2 {
+		name, def := services.Content[i].Value, services.Content[i+1]
+		build := mappingValue(def, "build")
+		if build == nil {
+			continue
+		}
+		h := Hint{Kind: HintComposeBuild, Service: "service:" + name, Value: "Dockerfile", Context: "."}
+		line := build.Line
+		switch build.Kind {
+		case yaml.ScalarNode:
+			h.Context = build.Value
+		case yaml.MappingNode:
+			if c := mappingValue(build, "context"); c != nil {
+				h.Context = c.Value
+			}
+			if d := mappingValue(build, "dockerfile"); d != nil {
+				h.Value, line = d.Value, d.Line
+			}
+		}
+		h.Locator = domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path, StartLine: line, EndLine: line}
+		hints = append(hints, h)
+	}
+	return hints, nil
+}
+
+// mappingValue returns the value node of key in a YAML mapping, or nil.
+func mappingValue(m *yaml.Node, key string) *yaml.Node {
+	if m == nil || m.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Value == key {
+			return m.Content[i+1]
+		}
+	}
+	return nil
+}

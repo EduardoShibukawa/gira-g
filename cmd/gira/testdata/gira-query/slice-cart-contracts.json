@@ -4,13 +4,54 @@
     "kind": "Service",
     "name": "cart",
     "metadata": {
-      "image": "${IMAGE_NAME}:${DEMO_VERSION}-cart"
+      "base_image": "mcr.microsoft.com/dotnet/runtime-deps:10.0.12-alpine3.23@sha256:90fa8d0a47833fdc9544fcc76b833d287d4d809625b1523a3227fa6595a4ed91",
+      "base_images": [
+        {
+          "image": "mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d",
+          "locator": "src/cart/src/Dockerfile#L18"
+        },
+        {
+          "image": "ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.57@sha256:f77f1257805ecb57f1f0c36c5825d3c2e47aa81cce87128675e768463ed6487a",
+          "locator": "src/cart/src/Dockerfile#L43"
+        },
+        {
+          "image": "mcr.microsoft.com/dotnet/runtime-deps:10.0.12-alpine3.23@sha256:90fa8d0a47833fdc9544fcc76b833d287d4d809625b1523a3227fa6595a4ed91",
+          "locator": "src/cart/src/Dockerfile#L45"
+        }
+      ],
+      "entrypoint": "[ \"./cart\" ]",
+      "image": "${IMAGE_NAME}:${DEMO_VERSION}-cart",
+      "ports": [
+        "${CART_PORT}"
+      ],
+      "stages": [
+        {
+          "locator": "src/cart/src/Dockerfile#L18",
+          "name": "base"
+        },
+        {
+          "locator": "src/cart/src/Dockerfile#L28",
+          "name": "test"
+        },
+        {
+          "locator": "src/cart/src/Dockerfile#L33",
+          "name": "builder"
+        },
+        {
+          "locator": "src/cart/src/Dockerfile#L43",
+          "name": "grpc-health-probe"
+        },
+        {
+          "locator": "src/cart/src/Dockerfile#L45",
+          "name": "stage-4"
+        }
+      ]
     },
     "evidence": [
       {
         "locator": {
           "repo": "opentelemetry-demo",
-          "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+          "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
           "path": "compose.yaml",
           "start_line": 80,
           "end_line": 80
@@ -69,7 +110,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "compose.full.yaml",
             "start_line": 130,
             "end_line": 130
@@ -80,53 +121,9 @@
           "discovered_at": "2026-01-01T00:00:00Z"
         }
       ]
-    },
-    {
-      "id": "service:flagd",
-      "kind": "Infrastructure",
-      "name": "flagd",
-      "metadata": {
-        "image": "${FLAGD_IMAGE}"
-      },
-      "evidence": [
-        {
-          "locator": {
-            "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
-            "path": "compose.yaml",
-            "start_line": 697,
-            "end_line": 697
-          },
-          "origin": "extracted",
-          "deployment_profile": "compose:compose.yaml",
-          "status": "current",
-          "discovered_at": "2026-01-01T00:00:00Z"
-        }
-      ]
     }
   ],
   "relationships": [
-    {
-      "id": "rel:cart-accesses-flagd",
-      "source_id": "service:cart",
-      "target_id": "service:flagd",
-      "verb": "accesses",
-      "evidence": [
-        {
-          "locator": {
-            "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
-            "path": "compose.yaml",
-            "start_line": 80,
-            "end_line": 80
-          },
-          "origin": "extracted",
-          "deployment_profile": "compose:compose.yaml",
-          "status": "current",
-          "discovered_at": "2026-01-01T00:00:00Z"
-        }
-      ]
-    },
     {
       "id": "rel:checkout-consumes-cart",
       "source_id": "service:checkout",
@@ -136,7 +133,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "compose.yaml",
             "start_line": 116,
             "end_line": 116
@@ -151,13 +148,13 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 1185,
+    "estimated": 1240,
     "truncated": true,
     "dropped": {
-      "nodes": 3,
-      "relationships": 3,
+      "nodes": 4,
+      "relationships": 4,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2372: rerun with budget >= 2372"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2734: rerun with budget >= 2734"
   }
 }
