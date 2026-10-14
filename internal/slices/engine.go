@@ -1,6 +1,8 @@
 package slices
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"sort"
@@ -66,6 +68,7 @@ type EvidenceReport struct {
 	DeploymentProfiles []string                  `json:"deployment_profiles"`
 	Origins            []domain.DerivationOrigin `json:"origins"`
 	Statuses           []domain.FreshnessStatus  `json:"statuses"`
+	Budget             *Budget                   `json:"budget,omitempty"`
 }
 
 // BoundaryMatch represents a discovery match across graph components or unhandled files.
@@ -77,6 +80,70 @@ type BoundaryMatch struct {
 	Details     string                      `json:"details,omitempty"`
 	Node        *domain.Node                `json:"node,omitempty"`
 	Unsupported *domain.UnsupportedBoundary `json:"unsupported,omitempty"`
+}
+
+// BoundaryResult wraps boundary matches with an optional budget envelope.
+type BoundaryResult struct {
+	Matches []BoundaryMatch `json:"matches"`
+	Budget  *Budget         `json:"budget,omitempty"`
+}
+
+// Emit renders a boundary result in format exactly as the CLI writes it, fitted to limit
+// when limit > 0. Matches are dropped from the end first (highest ID), never dropping
+// unsupported boundaries before graph components.
+func (br *BoundaryResult) Emit(format Format, limit int) ([]byte, error) {
+	render := func(r *BoundaryResult) ([]byte, error) {
+		if format == FormatMarkdown {
+			// No markdown format for boundary result yet
+			return r.CanonicalJSON()
+		}
+		return r.CanonicalJSON()
+	}
+	if limit <= 0 {
+		return render(br)
+	}
+	// Build drop order: matches from the end (highest ID) first.
+	// Unsupported boundaries are never dropped before graph components.
+	var drops []string
+	for i := len(br.Matches) - 1; i >= 0; i-- {
+		if br.Matches[i].Unsupported == nil {
+			drops = append(drops, fmt.Sprintf("match:%d", i))
+		}
+	}
+	// Then unsupported boundaries from the end.
+	for i := len(br.Matches) - 1; i >= 0; i-- {
+		if br.Matches[i].Unsupported != nil {
+			drops = append(drops, fmt.Sprintf("match:%d", i))
+		}
+	}
+	return fit(limit, drops, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
+		var d Dropped
+		r := *br
+		r.Matches = nil
+		for i, m := range br.Matches {
+			if drop[fmt.Sprintf("match:%d", i)] {
+				d.Nodes++
+				continue
+			}
+			r.Matches = append(r.Matches, m)
+		}
+		return func(b *Budget) ([]byte, error) {
+			r.Budget = b
+			return render(&r)
+		}, d
+	})
+}
+
+// CanonicalJSON renders a boundary result as indented, byte-deterministic JSON.
+func (br *BoundaryResult) CanonicalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(br); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 // Engine implements fast context slicing and impact analysis over a domain.MacroMap.
@@ -667,6 +734,55 @@ func (e *Engine) ExplainEvidence(nodeID string, edgeID string) (*EvidenceReport,
 
 	return report, nil
 }
+
+// Emit renders an evidence report in format exactly as the CLI writes it, fitted to limit
+// when limit > 0. Evidence records beyond the first per fact are dropped first.
+func (er *EvidenceReport) Emit(format Format, limit int) ([]byte, error) {
+	render := func(r *EvidenceReport) ([]byte, error) {
+		if format == FormatMarkdown {
+			// No markdown format for evidence report yet
+			return r.CanonicalJSON()
+		}
+		return r.CanonicalJSON()
+	}
+	if limit <= 0 {
+		return render(er)
+	}
+	// Build drop order: evidence records beyond the first per fact.
+	// Group evidence by (node/edge + origin + status) as "facts".
+	type evKey struct {
+		target string
+		origin domain.DerivationOrigin
+		status domain.FreshnessStatus
+	}
+	firstIdx := make(map[evKey]int)
+	var drops []string
+	for i, ev := range er.Evidence {
+		key := evKey{target: er.TargetID, origin: ev.Origin, status: ev.Status}
+		if _, ok := firstIdx[key]; !ok {
+			firstIdx[key] = i
+		} else {
+			drops = append(drops, fmt.Sprintf("evidence:%d", i))
+		}
+	}
+	return fit(limit, drops, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
+		var d Dropped
+		r := *er
+		r.Evidence = nil
+		for i, ev := range er.Evidence {
+			if drop[fmt.Sprintf("evidence:%d", i)] {
+				d.Evidence++
+				continue
+			}
+			r.Evidence = append(r.Evidence, ev)
+		}
+		return func(b *Budget) ([]byte, error) {
+			r.Budget = b
+			return render(&r)
+		}, d
+	})
+}
+
 
 // LocateBoundary performs substring and exact case-insensitive search across nodes, methods, and unhandled files.
 func (e *Engine) LocateBoundary(query string) ([]BoundaryMatch, error) {

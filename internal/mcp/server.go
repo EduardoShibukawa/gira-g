@@ -354,6 +354,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "integer",
 						Description: "Maximum number of steps (default 20).",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 			},
 		},
@@ -370,6 +374,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					"index_b": {
 						Type:        "string",
 						Description: "Path to the later macro-map.json.",
+					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 					},
 				},
 				Required: []string{"index_a", "index_b"},
@@ -417,6 +425,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Optional edge / relationship ID to explain evidence records for.",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 			},
 		},
@@ -429,6 +441,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					"query": {
 						Type:        "string",
 						Description: "Substring query to search across node IDs, names, contract methods, and unsupported files.",
+					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 					},
 				},
 				Required: []string{"query"},
@@ -784,6 +800,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			Focus    string `json:"focus"`
 			MaxSteps int    `json:"max_steps"`
+			Budget   int    `json:"budget"`
 		}
 		if len(params.Arguments) > 0 {
 			if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -794,7 +811,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		if err != nil {
 			return errorResult(fmt.Sprintf("Failed to get tour: %v", err))
 		}
-		out, err := tour.CanonicalJSON()
+		out, err := tour.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
 		}
@@ -890,6 +907,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			NodeID string `json:"node_id"`
 			EdgeID string `json:"edge_id"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -918,7 +936,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 
-		outJSON, err := report.CanonicalJSON()
+		outJSON, err := report.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
@@ -936,7 +954,8 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 	case "locate_boundary":
 		var args struct {
-			Query string `json:"query"`
+			Query  string `json:"query"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -965,7 +984,8 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 
-		data, err := json.MarshalIndent(matches, "", "  ")
+		result := slices.BoundaryResult{Matches: matches}
+		out, err := result.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
@@ -977,7 +997,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 		return CallToolResult{
 			Content: []ToolContent{
-				{Type: "text", Text: string(data)},
+				{Type: "text", Text: string(out)},
 			},
 		}
 

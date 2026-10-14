@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
 spec: gira-envelopes-hygiene@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Envelope on all tools (R1, R2; SC1, SC2)
@@ -30,12 +30,12 @@ Out of scope: honesty labels (02), structured errors (03), single registry (04),
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | not run | | |
-| AC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -v -count=1` | not run | | |
-| AC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -v -count=1` | not run | | |
-| AC3 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | not run | | |
-| R1 | `go test ./internal/mcp ./internal/slices ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1–AC3 + spec R1, R2 | not run | | |
+| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pass | HEAD~1 | root 16 pkgs ok, bench ok, validator pass |
+| AC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -v -count=1` | pass | HEAD | all 5 MCP tools have budget envelope |
+| AC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -v -count=1` | pass | HEAD | same index + budget → byte-identical |
+| AC3 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pass | HEAD | race ok (excl. pre-existing cmd/gira markdown), validator pass |
+| R1 | `go test ./internal/mcp ./internal/slices ./cmd/gira -count=1` | pass | HEAD | all touched pkgs pass |
+| V1 | diff read against AC1–AC3 + spec R1, R2 | pass | HEAD | additive only; no ground-truth changes |
 
 ## Constraints and budget
 
@@ -56,3 +56,5 @@ Out of scope: honesty labels (02), structured errors (03), single registry (04),
 6. Run AC1, AC2, AC3, R1, V1; commit; validator.
 
 ## Outcome
+
+Child 01 delivered: envelope coverage (SC1) and determinism (SC2) for all agent-facing MCP tools (get_tour, diff_maps, explain_evidence, locate_boundary, get_context_slice). Each tool accepts optional `budget` parameter; absent/0 keeps byte-identical output. With budget>0, output includes budget object with limit, estimated, truncated, dropped, escalate_hint. Deterministic drop order implemented for Tour (trailing steps then extra reads), EvidenceReport (extra evidence per fact), BoundaryResult (matches from end, unsupported last). Focal elements never dropped. Unbudgeted calls byte-identical.

@@ -1,0 +1,16 @@
+ok  	github.com/EduardoShibukawa/gira-g/cmd/gira	15.848s
+ok  	github.com/EduardoShibukawa/gira-g/internal/archdiff	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/corpus	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/domain	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/eval	7.878s
+ok  	github.com/EduardoShibukawa/gira-g/internal/extractors	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/gate	1.007s
+ok  	github.com/EduardoShibukawa/gira-g/internal/gitcache	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/gitdiff	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/indexer	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/manifest	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/mcp	1.012s
+ok  	github.com/EduardoShibukawa/gira-g/internal/skills	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/slices	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/store	(cached)
+ok  	github.com/EduardoShibukawa/gira-g/internal/tokens	(cached)

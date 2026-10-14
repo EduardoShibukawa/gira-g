@@ -187,14 +187,18 @@ type candidate func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]b
 // never dropped. If they alone exceed limit, fit returns ErrBudgetExceeded.
 func fit(limit int, order []string, build candidate) ([]byte, error) {
 	render, _ := build(false, nil)
-	full, fullEst, err := settle(&Budget{Limit: limit}, render)
+	_, fullEst, err := settle(&Budget{Limit: limit}, render)
 	if err != nil {
 		return nil, err
 	}
-	if fullEst <= limit {
-		return full, nil
-	}
 	hint := fmt.Sprintf("truncated to fit %d tokens; the full output needs about %d: rerun with budget >= %d", limit, fullEst, fullEst)
+	if fullEst <= limit {
+		// Even when no truncation is needed, include the budget with escalate_hint
+		// so clients can detect the ceiling and plan accordingly.
+		finalBudget := &Budget{Limit: limit, Estimated: fullEst, Truncated: false, Dropped: Dropped{}, EscalateHint: hint}
+		out, err := render(finalBudget)
+		return out, err
+	}
 
 	try := func(k int) ([]byte, bool, error) {
 		drop := make(map[string]bool, k)

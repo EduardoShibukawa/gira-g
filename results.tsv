@@ -1,0 +1,21 @@
+commit	metric	status	description
+a389d21	R82.4/P90.3/S100/D100	keep	fix F1-F11 canonical digest+taxonomy, children to active
+c188d2a	docs-only	keep	prior-art autoresearch study note (docs-only, no code)
+3c433dc	R82.4/P90.3/S100/D100	keep	re-verify 01 L1 at a389d21
+a8a5061	R82.4/P90.3/S100/D100	keep	re-verify 02 L2 at a389d21
+6255887	R82.4/P90.3/S100/D100	keep	re-verify 03 L3 at a389d21
+ee031bf	R82.4/P90.3/S100/D100	keep	re-verify 04 tokens at a389d21
+0c5f8b6	R82.4/P90.3/S100/D100	keep	re-verify 05 gate at a389d21
+b5d4735	R82.4/P90.3/S100/D100	keep	parent verify F1-F11 (other worker; decided:fix-all line to be removed)
+3e5f7f4	R82.4/P90.3/S100/D100	keep	fix N1-N4 residuals, 01/03/05 to active
+861c418	R82.4/P90.3/S100/D100	keep	re-verify 01/03/05 at 3e5f7f4
+be772bf	R82.4/P90.3/S100/D100	keep	N5 doc-line, 02 to active
+02bf776	R82.4/P90.3/S100/D100	keep	re-verify 02 at be772bf
+4a17aca	R82.4/P90.3/S100/D100	keep	parent seal at 02bf776 (N1-N5, decided:fix-all removed)
+5d68c03	draft-spec	keep	E2 joins spec v1 draft (no children, approval deferred)
+5d68c03	spike	keep	spike E2 joins mapping (untracked, no code edits)
+5d68c03	flake-free	keep	flake hunt: race count=10 internal (15pkgs) + bench count=3, no flakes
+a30415d	R82.4/P93.3/S100/D100	keep	E2-01 J1 Health denylist + goldens
+18d79b6	R82.4/P100/S100/D100	keep	E2-02 J2 corroboration + goldens/dogfood
+1c64693	stub	keep	E2-03 task record (J3 pending)
+J4-done	SC4	keep	tour fan-out consumers, bench 75 percent
