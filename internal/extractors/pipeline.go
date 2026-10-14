@@ -3,6 +3,7 @@ package extractors
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -89,6 +90,11 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 			return nil, ctx.Err()
 		default:
 		}
+
+		// Logical paths are slash-form on every OS: filepath.WalkDir yields
+		// backslash paths on Windows, which would otherwise leak into node
+		// IDs, locators and golden comparisons. No-op on Linux.
+		file.Path = filepath.ToSlash(file.Path)
 
 		var matched []Extractor
 		for _, ext := range extractors {

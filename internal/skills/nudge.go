@@ -26,7 +26,10 @@ func Nudge(payload io.Reader, out io.Writer, mm *domain.MacroMap, repoRoot strin
 		return nil
 	}
 	p := in.ToolInput.FilePath
-	if filepath.IsAbs(p) && repoRoot != "" {
+	// A slash-rooted path is absolute on every OS; filepath.IsAbs alone does
+	// not report it as such on Windows (no volume), which skipped the
+	// relativization below and silenced the nudge. No-op on Linux.
+	if (filepath.IsAbs(p) || strings.HasPrefix(p, "/")) && repoRoot != "" {
 		if rel, err := filepath.Rel(repoRoot, p); err == nil && !strings.HasPrefix(rel, "..") {
 			p = rel
 		}

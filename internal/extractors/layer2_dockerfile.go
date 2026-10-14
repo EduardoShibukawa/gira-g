@@ -162,7 +162,7 @@ func parseDockerfileInstructions(content []byte) []parsedInstruction {
 // deriveDefaultServiceName determines a default service name from path (e.g. Dockerfile -> "app", frontend/Dockerfile -> "frontend", Dockerfile.dev -> "app-dev").
 func deriveDefaultServiceName(path string) string {
 	normalized := filepath.ToSlash(path)
-	dir := filepath.Dir(normalized)
+	dir := filepath.ToSlash(filepath.Dir(normalized))
 	base := filepath.Base(normalized)
 	baseLower := strings.ToLower(base)
 

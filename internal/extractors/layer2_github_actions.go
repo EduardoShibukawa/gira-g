@@ -37,7 +37,7 @@ func (e *GitHubActionsExtractor) CanExtract(path string) bool {
 		return false
 	}
 
-	dir := filepath.Dir(normalized)
+	dir := filepath.ToSlash(filepath.Dir(normalized))
 	return strings.HasSuffix(dir, ".github/workflows") ||
 		strings.Contains(normalized, "/.github/workflows/") ||
 		strings.HasPrefix(normalized, ".github/workflows/")

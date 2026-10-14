@@ -33,7 +33,7 @@ func (e *MarkdownExtractor) Layer() Layer {
 
 // CanExtract determines whether a file qualifies for structured markdown extraction.
 func (e *MarkdownExtractor) CanExtract(path string) bool {
-	normalized := filepath.Clean(filepath.ToSlash(path))
+	normalized := filepath.ToSlash(filepath.Clean(path))
 	ext := strings.ToLower(filepath.Ext(normalized))
 	if ext != ".md" && ext != ".markdown" {
 		return false
@@ -72,7 +72,7 @@ func (e *MarkdownExtractor) CanExtract(path string) bool {
 
 // extractEffort extracts the effort name from a path containing .scratch/<effort>/...
 func extractEffort(path string) string {
-	normalized := filepath.Clean(filepath.ToSlash(path))
+	normalized := filepath.ToSlash(filepath.Clean(path))
 	parts := strings.Split(normalized, "/")
 	for i, p := range parts {
 		if strings.ToLower(p) == ".scratch" && i+1 < len(parts) {
