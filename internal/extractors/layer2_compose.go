@@ -231,7 +231,7 @@ func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, 
 	for i := 0; i+1 < len(services.Content); i += 2 {
 		name, def := services.Content[i].Value, services.Content[i+1]
 		hints = append(hints, composeEnvHints(file, "service:"+name, mappingValue(def, "environment"))...)
-		hints = append(hints, composeDependsOnHints(file, contentStr, lines, name, mappingValue(def, "depends_on"))...)
+		hints = append(hints, composeDependsOnHints(file, contentStr, lines, name, composeValue(def, "depends_on"))...)
 		build := mappingValue(def, "build")
 		if build == nil {
 			continue
@@ -267,6 +267,7 @@ func composeDependsOnHints(file TargetFile, contentStr string, lines map[string]
 	switch deps.Kind {
 	case yaml.SequenceNode:
 		for _, item := range deps.Content {
+			item = deref(item)
 			names = append(names, item.Value)
 			entryLine[item.Value] = item.Line
 		}
@@ -305,6 +306,51 @@ func mappingValue(m *yaml.Node, key string) *yaml.Node {
 	for i := 0; i+1 < len(m.Content); i += 2 {
 		if m.Content[i].Value == key {
 			return m.Content[i+1]
+		}
+	}
+	return nil
+}
+
+// deref follows YAML aliases (`*x`) to the anchored node.
+func deref(n *yaml.Node) *yaml.Node {
+	for i := 0; n != nil && n.Kind == yaml.AliasNode && i < 32; i++ {
+		n = n.Alias
+	}
+	return n
+}
+
+// composeValue returns the value node of key in a compose mapping the way
+// Compose reads it: aliases are followed, and a key absent from the mapping
+// itself is taken from its merge keys (`<<: *x` or `<<: [*x, *y]`, first
+// source wins). The returned node is dereferenced; nil if absent.
+func composeValue(m *yaml.Node, key string) *yaml.Node {
+	return composeValueDepth(m, key, 0)
+}
+
+func composeValueDepth(m *yaml.Node, key string, depth int) *yaml.Node {
+	m = deref(m)
+	if m == nil || m.Kind != yaml.MappingNode || depth > 16 {
+		return nil
+	}
+	if v := mappingValue(m, key); v != nil {
+		return deref(v)
+	}
+	for i := 0; i+1 < len(m.Content); i += 2 {
+		if m.Content[i].Tag != "!!merge" {
+			continue
+		}
+		src := deref(m.Content[i+1])
+		if src == nil {
+			continue
+		}
+		sources := []*yaml.Node{src}
+		if src.Kind == yaml.SequenceNode {
+			sources = src.Content
+		}
+		for _, s := range sources {
+			if v := composeValueDepth(s, key, depth+1); v != nil {
+				return v
+			}
 		}
 	}
 	return nil
@@ -359,10 +405,11 @@ func composeLines(file TargetFile, root *yaml.Node) map[string]composeServiceLin
 	for i := 0; i+1 < len(services.Content); i += 2 {
 		name, def := services.Content[i].Value, services.Content[i+1]
 		sl := composeServiceLines{deps: map[string]int{}}
-		if deps := mappingValue(def, "depends_on"); deps != nil {
+		if deps := composeValue(def, "depends_on"); deps != nil {
 			switch deps.Kind {
 			case yaml.SequenceNode:
 				for _, item := range deps.Content {
+					item = deref(item)
 					sl.deps[item.Value] = item.Line
 				}
 			case yaml.MappingNode:
