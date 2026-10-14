@@ -16,11 +16,20 @@ case "$phase" in
   build)
     docker build --pull=false -t "$image" "containers/$tool"
     docker image inspect --format '{{.Id}}' "$image" > "out/$arm/image-digest.txt"
+    docker run --rm --entrypoint sh "$(cat "out/$arm/image-digest.txt")" -c 'cat /pip-freeze.txt 2>/dev/null || true' > "out/$arm/resolved-deps.txt"
     ;;
   query)
-    # Query phase: no network, read-only root, no credentials, corpus copy only.
+    # Query phase: run the image by the digest recorded at build time, never by tag;
+    # no network, read-only root, no credentials, and only the mounts phases.json declares.
+    digest_file="out/$arm/image-digest.txt"
+    [ -s "$digest_file" ] || { echo "build arm $arm first: $digest_file is missing" >&2; exit 2; }
+    image_id=$(cat "$digest_file")
+    case "$arm" in
+      C) mounts=(-v "$PWD/out/corpus:/corpus:ro" -v "$PWD/out/C:/out") ;;
+      D) mounts=(-v "$PWD/out/D:/out:ro") ;;
+    esac
     exec docker run --rm -i --network none --read-only --cap-drop ALL --security-opt no-new-privileges \
-      -v "$PWD/out/corpus:/corpus:ro" -v "$PWD/out/$arm:/out" "$image" "${@:3}"
+      "${mounts[@]}" "$image_id" "${@:3}"
     ;;
   *) echo "phase must be build or query" >&2; exit 2 ;;
 esac

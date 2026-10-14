@@ -82,6 +82,14 @@ func TestSC9ArchDiffMatchesPerturbationTable(t *testing.T) {
 	got := map[string]string{}
 	for _, r := range d.Renamed {
 		got[r.From] = r.To
+		if r.Origin != "inferred" || d.Locators[r.From] == "" || d.Locators[r.To] == "" {
+			t.Fatalf("rename %+v must be labelled inferred and cite both nodes", r)
+		}
+	}
+	for _, e := range d.RemovedEdges {
+		if e.Locator == "" || e.Locator == "unknown" {
+			t.Fatalf("removed edge %s has no locator", e)
+		}
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("renames differ from the table\n got %v\nwant %v", got, want)

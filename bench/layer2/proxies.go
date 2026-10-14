@@ -16,6 +16,9 @@ import (
 type Claim struct {
 	Text   string `json:"text"`
 	Anchor string `json:"anchor"`
+	// Locators, when set, are the only ranges the claim may be verified against;
+	// otherwise any locator its step cites counts.
+	Locators []string `json:"locators,omitempty"`
 }
 
 // Step is a normalized tour step.
@@ -92,16 +95,20 @@ func Measure(t Tour, flow []string, read FileReader, pinnedSHA string) Proxies {
 			visited[id] = true
 		}
 		words += len(strings.Fields(s.Title + " " + s.Text))
-		var ranges []string
-		for _, l := range s.Read {
-			if txt, err := cited(read, pinnedSHA, l); err == nil {
-				ranges = append(ranges, strings.ToLower(txt))
-			}
-		}
 		for _, c := range s.Claims {
 			p.Claims++
 			if c.Anchor == "" {
 				continue
+			}
+			locs := c.Locators
+			if len(locs) == 0 {
+				locs = s.Read
+			}
+			var ranges []string
+			for _, l := range locs {
+				if txt, err := cited(read, pinnedSHA, l); err == nil {
+					ranges = append(ranges, strings.ToLower(txt))
+				}
 			}
 			for _, r := range ranges {
 				if strings.Contains(r, strings.ToLower(c.Anchor)) {

@@ -41,7 +41,8 @@ func gitIn(t *testing.T, dir string, args ...string) string {
 	t.Helper()
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t.invalid", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t.invalid", "GIT_CONFIG_GLOBAL=/dev/null")
+	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t.invalid", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t.invalid", "GIT_CONFIG_GLOBAL=/dev/null",
+		"GIT_AUTHOR_DATE=2026-01-02T00:00:00Z", "GIT_COMMITTER_DATE=2026-01-02T00:00:00Z")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Fatalf("git %v: %s", args, out)
@@ -153,5 +154,47 @@ func TestFromDiffReportsUnmatchedPaths(t *testing.T) {
 	}
 	if !strings.Contains(string(out), "Unknown to the index: `UNKNOWN.txt`") {
 		t.Fatalf("unmatched path not reported:\n%s", out)
+	}
+}
+
+// Review F3: a change inside a file the index cites, but outside every cited
+// range, falls back to the Components citing the file; it is never reported as
+// unknown to the index.
+func TestFromDiffFileLevelFallback(t *testing.T) {
+	_, c, err := eval.Hermetic(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, index := hermeticIndex(t)
+	repo := filepath.Join(t.TempDir(), "repo")
+	base, err := corpus.Materialize(context.Background(), c.Dir, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(repo, "src", "checkout", "main.go")
+	data, _ := os.ReadFile(p)
+	lines := strings.Split(string(data), "\n")
+	lines[399] += " // touched"
+	if err := os.WriteFile(p, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	gitIn(t, repo, "commit", "-q", "--no-gpg-sign", "-am", "edit checkout logic")
+	out, err := runCLI(t, "impact", "--from-diff", base+"..HEAD", "--repo", repo, "--index", index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var b slices.ImpactBriefing
+	if err := json.Unmarshal(out, &b); err != nil {
+		t.Fatal(err)
+	}
+	if len(b.Diff.UnmatchedPaths) != 0 || !reflect.DeepEqual(b.Diff.FileLevelPaths, []string{"src/checkout/main.go"}) {
+		t.Fatalf("diff mapping: %+v", b.Diff)
+	}
+	found := false
+	for _, id := range b.Diff.Targets {
+		found = found || id == "service:checkout"
+	}
+	if !found || len(b.UpstreamServices) == 0 {
+		t.Fatalf("file-level fallback must target service:checkout: %+v", b.Diff)
 	}
 }

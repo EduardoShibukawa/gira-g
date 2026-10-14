@@ -16,7 +16,7 @@ Architectural evolution between two indexes.
 
 ## Output contract
 
-`Diff` JSON: `renamed`, `added_nodes`, `removed_nodes`, `added_edges`, `removed_edges` (removed items use the first index's IDs), `changed_contracts`, `newly_unsupported`, `no_longer_unsupported`, `evidence_moved` (informational), `token_renames`. Renames are detected from structure; an ambiguous one is reported as a removal plus additions, never guessed.
+`Diff` JSON: `renamed`, `added_nodes`, `removed_nodes`, `added_edges`, `removed_edges` (removed items use the first index's IDs), `changed_contracts`, `newly_unsupported`, `no_longer_unsupported`, `evidence_moved` (informational), `token_renames`. Renames are detected from structure and carry `origin: inferred`: present them as inferred, never as extracted. An ambiguous rename is reported as a removal plus additions, never guessed. Edges carry `locator`, and `locators` maps every reported node id to its evidence (or `unknown`).
 
 ## Budget
 
@@ -24,5 +24,5 @@ None: the output is proportional to the change.
 
 ## Rules
 
-- In review, flag every `changed_contracts`, `removed_edges` and `newly_unsupported` item; cite the IDs as reported.
+- In review, flag every `changed_contracts`, `removed_edges` and `newly_unsupported` item, with the locator the diff gives for it.
 - Don't present `evidence_moved` as an architectural change.

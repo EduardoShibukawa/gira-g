@@ -439,13 +439,19 @@ func (s Suite) Run(ctx context.Context) (*GateReport, error) {
 	report.Reviewed = s.GroundTruth.Reviewed
 
 	safety, violations := UnsupportedSafety(first.MacroMap, expectedUnsupportedPaths(s.GroundTruth.Tasks))
-	report.AggregateMetrics.UnsupportedSafety = safety
-	report.UnsupportedViolations = violations
-	if !indexDeterministic {
-		report.AggregateMetrics.DeterminismPct = 0
-	}
-	report.decide()
+	report.SetCorpusChecks(safety, violations, indexDeterministic)
 	return &report, nil
+}
+
+// SetCorpusChecks records the corpus-level checks, Unsupported Safety and index
+// determinism, and recomputes the gates.
+func (r *GateReport) SetCorpusChecks(safety float64, violations []string, indexDeterministic bool) {
+	r.AggregateMetrics.UnsupportedSafety = safety
+	r.UnsupportedViolations = violations
+	if !indexDeterministic {
+		r.AggregateMetrics.DeterminismPct = 0
+	}
+	r.decide()
 }
 
 func expectedUnsupportedPaths(tasks []BenchmarkTask) []string {
@@ -497,8 +503,10 @@ func (ev *Evaluator) EvaluateTask(ctx context.Context, task BenchmarkTask) Evalu
 
 	briefing, err := ev.engine.GetImpactBriefing(task.TargetID, task.Depth)
 	if err != nil {
+		// Nothing was emitted, so the task has no token comparison: counting its
+		// baseline against zero harness tokens would inflate the token gate.
 		empty := &slices.ImpactBriefing{TargetID: task.TargetID}
-		metrics, missing, unexpected := CalculateMetrics(empty, task.GroundTruth, ev.ignore, 0, baselineTokens)
+		metrics, missing, unexpected := CalculateMetrics(empty, task.GroundTruth, ev.ignore, 0, 0)
 		return EvaluationResult{
 			TaskID:        task.ID,
 			Scenario:      task.Scenario,

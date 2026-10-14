@@ -30,6 +30,10 @@ type TourStep struct {
 	Why         string   `json:"why"`
 	WhyTemplate string   `json:"why_template"`
 	WhyArgs     []string `json:"why_args"`
+	// WhyLocator cites the evidence of the claim in Why: the edge that reaches the
+	// stop, or the focal node's own evidence. It is empty when the claim has no
+	// locator, and Why then says so (rule I1).
+	WhyLocator string `json:"why_locator,omitempty"`
 }
 
 // Why templates. RenderWhy is the only producer of TourStep.Why.
@@ -42,7 +46,7 @@ const (
 
 var whyTemplates = map[string]string{
 	WhyFocus:   "`%s` is the focus of this tour.",
-	WhyEntry:   "`%s` is an entry point: it declares ingress on %s.",
+	WhyEntry:   "`%s` is an entry point: its extracted metadata declares %s (locator of the ports declaration: unknown).",
 	WhyReached: "`%s` is reached because `%s` %s it.",
 }
 
@@ -133,7 +137,11 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 			return nil, fmt.Errorf("node not found: %s", focus)
 		}
 		level = []string{n.ID}
-		why[n.ID] = TourStep{WhyTemplate: WhyFocus, WhyArgs: []string{n.ID}}
+		w := TourStep{WhyTemplate: WhyFocus, WhyArgs: []string{n.ID}}
+		if len(n.Evidence) > 0 {
+			w.WhyLocator = n.Evidence[0].Locator.String()
+		}
+		why[n.ID] = w
 	} else {
 		for _, n := range e.macroMap.Nodes {
 			if n.Kind == domain.NodeService && tourable(n) && len(ingress(n)) > 0 {
@@ -164,7 +172,7 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 			tour.Steps = append(tour.Steps, step)
 			for _, r := range reached {
 				visited[r.id] = true
-				why[r.id] = TourStep{WhyTemplate: WhyReached, WhyArgs: []string{r.id, id, r.verb}}
+				why[r.id] = TourStep{WhyTemplate: WhyReached, WhyArgs: []string{r.id, id, r.verb}, WhyLocator: r.locator}
 				next = append(next, r.id)
 			}
 		}
@@ -174,7 +182,7 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 	return tour, nil
 }
 
-type reach struct{ id, verb string }
+type reach struct{ id, verb, locator string }
 
 // tourStep builds the stop for id and returns the unvisited stops it reaches,
 // either directly or through a Contract it consumes (Contract → its providers).
@@ -185,6 +193,7 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourS
 		NodeIDs:     []string{id},
 		WhyTemplate: w.WhyTemplate,
 		WhyArgs:     w.WhyArgs,
+		WhyLocator:  w.WhyLocator,
 	}
 	step.Why = RenderWhy(step.WhyTemplate, step.WhyArgs)
 	read := map[string]bool{}
@@ -204,7 +213,11 @@ func (e *Engine) tourStep(id string, w TourStep, visited map[string]bool) (TourS
 		}
 		seen[target] = true
 		addRead(evs)
-		out = append(out, reach{target, verb})
+		loc := ""
+		if len(evs) > 0 {
+			loc = evs[0].Locator.String()
+		}
+		out = append(out, reach{target, verb, loc})
 	}
 	contracts := map[string]bool{}
 	for _, r := range e.edgesByNode[id] {
@@ -268,6 +281,9 @@ func (t *Tour) RenderMarkdown() string {
 	}
 	for _, s := range t.Steps {
 		sb.WriteString(fmt.Sprintf("\n## %d. %s\n%s\n", s.Order, s.Title, s.Why))
+		if s.WhyLocator != "" {
+			sb.WriteString(fmt.Sprintf("- Why, evidence: %s\n", s.WhyLocator))
+		}
 		if len(s.NodeIDs) > 1 {
 			sb.WriteString(fmt.Sprintf("- Contracts: `%s`\n", strings.Join(s.NodeIDs[1:], "`, `")))
 		}

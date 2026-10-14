@@ -127,7 +127,19 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 	if ib.Diff != nil {
 		roots = ib.Diff.Targets
 	}
-	order := dropOrder(nodes, hops(roots, ib.MediationEdges))
+	// The target (and, in diff mode, every diff target) is the focal node: it is
+	// never dropped, even when it also appears in affected_contracts.
+	focal := map[string]bool{}
+	for _, r := range roots {
+		focal[r] = true
+	}
+	kept := nodes[:0]
+	for _, id := range nodes {
+		if !focal[id] {
+			kept = append(kept, id)
+		}
+	}
+	order := dropOrder(kept, hops(roots, ib.MediationEdges))
 	return fit(limit, order, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
 		var d Dropped
 		c := *ib

@@ -19,21 +19,33 @@ import (
 )
 
 // Rename pairs a node of the first index with its counterpart in the second.
+// Origin is always "inferred": a rename is a structural match, not an extracted
+// fact (spec rule I1).
 type Rename struct {
-	From  string          `json:"from"`
-	To    string          `json:"to"`
-	Kind  domain.NodeType `json:"kind"`
-	Score float64         `json:"score"`
+	From   string          `json:"from"`
+	To     string          `json:"to"`
+	Kind   domain.NodeType `json:"kind"`
+	Score  float64         `json:"score"`
+	Origin string          `json:"origin"`
 }
 
 // Edge is a relationship by its endpoints and verb.
+// Locator cites the edge's first evidence in its own index, or is "unknown".
 type Edge struct {
-	Source string              `json:"source"`
-	Verb   domain.RelationVerb `json:"verb"`
-	Target string              `json:"target"`
+	Source  string              `json:"source"`
+	Verb    domain.RelationVerb `json:"verb"`
+	Target  string              `json:"target"`
+	Locator string              `json:"locator,omitempty"`
 }
 
 func (e Edge) String() string { return fmt.Sprintf("%s %s %s", e.Source, e.Verb, e.Target) }
+
+func firstLocator(evs []domain.EvidenceRecord) string {
+	if len(evs) == 0 {
+		return "unknown"
+	}
+	return evs[0].Locator.String()
+}
 
 // Diff is the result of comparing index A (before) with index B (after). Removed
 // items use A's IDs and added items use B's IDs.
@@ -55,6 +67,9 @@ type Diff struct {
 	// TokenRenames are the identifier spellings derived from Renamed, used to map
 	// paths and Contract metadata between the indexes.
 	TokenRenames map[string]string `json:"token_renames,omitempty"`
+	// Locators cites, for every node id the diff reports (renamed, added, removed,
+	// changed), the node's first evidence in its own index, or "unknown".
+	Locators map[string]string `json:"locators"`
 }
 
 // Structural reports whether the diff has any architectural change: renames,
@@ -162,7 +177,7 @@ func Compare(a, b *domain.MacroMap) *Diff {
 	d := &Diff{From: a.TargetSystem, To: b.TargetSystem}
 	d.Renamed = []Rename{}
 	for r, to := range rename {
-		d.Renamed = append(d.Renamed, Rename{From: r, To: to, Kind: an[r].Kind, Score: round(scores[[2]string{r, to}])})
+		d.Renamed = append(d.Renamed, Rename{From: r, To: to, Kind: an[r].Kind, Score: round(scores[[2]string{r, to}]), Origin: "inferred"})
 	}
 	sort.Slice(d.Renamed, func(i, j int) bool { return d.Renamed[i].From < d.Renamed[j].From })
 	d.RemovedNodes = []string{}
@@ -191,22 +206,21 @@ func Compare(a, b *domain.MacroMap) *Diff {
 	// Edges, compared in B's namespace; removed edges are reported with A's IDs.
 	inB := map[Edge]bool{}
 	for _, r := range b.Relationships {
-		inB[Edge{r.SourceID, r.Verb, r.TargetID}] = true
+		inB[Edge{r.SourceID, r.Verb, r.TargetID, ""}] = true
 	}
 	inA := map[Edge]bool{}
 	d.RemovedEdges = []Edge{}
 	for _, r := range a.Relationships {
-		e := Edge{toB(r.SourceID), r.Verb, toB(r.TargetID)}
+		e := Edge{toB(r.SourceID), r.Verb, toB(r.TargetID), ""}
 		inA[e] = true
 		if !inB[e] {
-			d.RemovedEdges = append(d.RemovedEdges, Edge{r.SourceID, r.Verb, r.TargetID})
+			d.RemovedEdges = append(d.RemovedEdges, Edge{r.SourceID, r.Verb, r.TargetID, firstLocator(r.Evidence)})
 		}
 	}
 	d.AddedEdges = []Edge{}
 	for _, r := range b.Relationships {
-		e := Edge{r.SourceID, r.Verb, r.TargetID}
-		if !inA[e] {
-			d.AddedEdges = append(d.AddedEdges, e)
+		if !inA[Edge{r.SourceID, r.Verb, r.TargetID, ""}] {
+			d.AddedEdges = append(d.AddedEdges, Edge{r.SourceID, r.Verb, r.TargetID, firstLocator(r.Evidence)})
 		}
 	}
 	sortEdges(d.RemovedEdges)
@@ -254,6 +268,18 @@ func Compare(a, b *domain.MacroMap) *Diff {
 	sort.Strings(d.NewlyUnsupported)
 	sort.Strings(d.NoLongerUnsupported)
 	d.NoLongerUnsupported = dedup(d.NoLongerUnsupported)
+
+	d.Locators = map[string]string{}
+	for _, r := range d.Renamed {
+		d.Locators[r.From] = firstLocator(an[r.From].Evidence)
+		d.Locators[r.To] = firstLocator(bn[r.To].Evidence)
+	}
+	for _, id := range d.RemovedNodes {
+		d.Locators[id] = firstLocator(an[id].Evidence)
+	}
+	for _, id := range append(append([]string{}, d.AddedNodes...), d.ChangedContracts...) {
+		d.Locators[id] = firstLocator(bn[id].Evidence)
+	}
 	return d
 }
 
@@ -483,21 +509,28 @@ func (d *Diff) RenderMarkdown() string {
 	}
 	var rn []string
 	for _, r := range d.Renamed {
-		rn = append(rn, fmt.Sprintf("`%s` → `%s` (%s)", r.From, r.To, r.Kind))
+		rn = append(rn, fmt.Sprintf("`%s` → `%s` (%s, inferred from structure, score %.2f) [%s → %s]", r.From, r.To, r.Kind, r.Score, d.Locators[r.From], d.Locators[r.To]))
 	}
 	section("Renamed", rn)
-	section("Added nodes", quote(d.AddedNodes))
-	section("Removed nodes", quote(d.RemovedNodes))
+	cite := func(ids []string) []string {
+		out := quote(ids)
+		for i, id := range ids {
+			out[i] += " [" + d.Locators[id] + "]"
+		}
+		return out
+	}
+	section("Added nodes", cite(d.AddedNodes))
+	section("Removed nodes", cite(d.RemovedNodes))
 	edges := func(es []Edge) []string {
 		var out []string
 		for _, e := range es {
-			out = append(out, fmt.Sprintf("`%s` %s `%s`", e.Source, e.Verb, e.Target))
+			out = append(out, fmt.Sprintf("`%s` %s `%s` [%s]", e.Source, e.Verb, e.Target, e.Locator))
 		}
 		return out
 	}
 	section("Added edges", edges(d.AddedEdges))
 	section("Removed edges", edges(d.RemovedEdges))
-	section("Changed contracts", quote(d.ChangedContracts))
+	section("Changed contracts", cite(d.ChangedContracts))
 	section("Newly unsupported", quote(d.NewlyUnsupported))
 	section("No longer unsupported", quote(d.NoLongerUnsupported))
 	if len(d.EvidenceMoved) > 0 {

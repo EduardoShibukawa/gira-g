@@ -104,6 +104,14 @@ func TestSC8ToursAreDeterministicAndVerifiable(t *testing.T) {
 			if s.Why != slices.RenderWhy(s.WhyTemplate, s.WhyArgs) || s.Why == "unknown" {
 				t.Errorf("step %d: why %q is not the template renderer's output", s.Order, s.Why)
 			}
+			// I1: the why claim cites its own locator, or says its locator is unknown.
+			if s.WhyLocator == "" {
+				if !strings.Contains(s.Why, "unknown") {
+					t.Errorf("step %d: why %q has neither a locator nor an unknown marker", s.Order, s.Why)
+				}
+			} else if err := resolveLocator(t, repo, sha, s.WhyLocator); err != nil {
+				t.Errorf("step %d why_locator: %v", s.Order, err)
+			}
 			if len(s.Read) == 0 {
 				t.Errorf("step %d has nothing to read", s.Order)
 			}

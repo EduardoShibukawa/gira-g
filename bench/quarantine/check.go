@@ -21,7 +21,9 @@ import (
 )
 
 // forbidden matches a reference to a benchmark asset or to a benchmarked tool.
-var forbidden = regexp.MustCompile(`(?i)(^|[^a-z0-9_])bench/|gira-bench|graphify|understand[-_ ]?anything|egonex-ai`)
+// "bench" counts as a path word wherever it stands alone ("cd bench", "./bench",
+// "bench/x", "working-directory: bench"), but not inside "benchmark".
+var forbidden = regexp.MustCompile(`(?i)(^|[^a-z0-9_-])\.?/?bench([^a-z0-9_-]|$)|gira-bench|graphify|understand[-_ ]?anything|egonex-ai`)
 
 // Guarded reports whether a repository-relative path is one the benchmark must
 // never be referenced from.
@@ -32,8 +34,9 @@ func Guarded(rel string) bool {
 	}
 	base := filepath.Base(rel)
 	switch {
-	case rel == "go.mod", rel == "go.sum", strings.HasSuffix(rel, ".go"):
-		return true // the Go module
+	case rel == "go.mod", rel == "go.sum", rel == "go.work", rel == "go.work.sum", strings.HasSuffix(rel, ".go"),
+		strings.HasPrefix(rel, "internal/"), strings.HasPrefix(rel, "cmd/"):
+		return true // the Go module, including files it embeds
 	case rel == "mise.toml", rel == ".mise.toml", strings.HasPrefix(rel, ".mise/"):
 		return true
 	case strings.HasPrefix(rel, ".github/workflows/"), rel == ".gitlab-ci.yml":

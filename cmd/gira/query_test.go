@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"os"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/EduardoShibukawa/gira-g/internal/corpus"
+	"github.com/EduardoShibukawa/gira-g/internal/eval"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
 	"github.com/EduardoShibukawa/gira-g/internal/skills"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
@@ -26,6 +29,25 @@ func TestSC11GiraQueryFallbackGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 	server := mcp.NewServer("gira", "test", slices.NewEngine(mm))
+
+	// A deterministic change set for the pr_impact question: the PaymentService
+	// edit of SC7, committed with fixed identity and dates.
+	_, c, err := eval.Hermetic(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	repo := filepath.Join(t.TempDir(), "repo")
+	base, err := corpus.Materialize(context.Background(), c.Dir, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	proto := filepath.Join(repo, "pb", "demo.proto")
+	pdata, _ := os.ReadFile(proto)
+	charge := "    rpc Charge(ChargeRequest) returns (ChargeResponse) {}\n"
+	_ = os.WriteFile(proto, []byte(strings.Replace(string(pdata), charge, charge+"    rpc Refund(ChargeRequest) returns (ChargeResponse) {}\n", 1)), 0o644)
+	gitIn(t, repo, "commit", "-q", "--no-gpg-sign", "-am", "add Refund")
+	rng := base + ".." + gitIn(t, repo, "rev-parse", "HEAD")
+
 	viaMCP := skills.Querier{
 		Index: index,
 		MCP: func(tool string, args map[string]any) (string, bool, error) {
@@ -54,6 +76,7 @@ func TestSC11GiraQueryFallbackGolden(t *testing.T) {
 		"tour-frontend":             {Op: "tour", Focus: "service:frontend", MaxSteps: 5},
 		"diff-published-perturbed":  {Op: "diff", IndexA: index, IndexB: perturbed},
 		"error-node-not-found":      {Op: "impact", TargetID: "service:cart-svc"},
+		"pr-impact-paymentservice":  {Op: "pr_impact", Range: rng, RepoPath: repo, Budget: 1500},
 		"error-budget-exceeded":     {Op: "slice", NodeID: "service:checkout", Tier: "deep", Budget: 5},
 	}
 	for name, q := range questions {

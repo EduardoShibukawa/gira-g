@@ -9,11 +9,13 @@ import (
 func name(id string) string { return id[strings.LastIndex(id, ":")+1:] }
 
 // FromGIRA normalizes a `gira tour` JSON document. Each step makes one claim, the
-// one its why template states, anchored on the identifier the claim is about:
+// one its why template states, checked only against the claim's own locator
+// (why_locator), never against the step's other reading material:
 //
-//	focus:   "<node> is the focus"            anchor: the node's name
-//	entry:   "<node> declares ingress on P"   anchor: the first declared port
-//	reached: "<node> is reached because <from> <verb> it"  anchor: the node's name
+//	focus:   "<node> is the focus"                       anchor: the node's name
+//	entry:   "<node> declares ports P (locator unknown)" no locator: unverifiable
+//	reached: "<node> is reached because <from> <verb> it" anchor: the reached node's
+//	         name, which the cited edge evidence must mention
 func FromGIRA(data []byte) (Tour, error) {
 	var g struct {
 		Steps []struct {
@@ -24,6 +26,7 @@ func FromGIRA(data []byte) (Tour, error) {
 			Why         string   `json:"why"`
 			WhyTemplate string   `json:"why_template"`
 			WhyArgs     []string `json:"why_args"`
+			WhyLocator  string   `json:"why_locator"`
 		} `json:"steps"`
 	}
 	if err := json.Unmarshal(data, &g); err != nil {
@@ -32,11 +35,9 @@ func FromGIRA(data []byte) (Tour, error) {
 	t := Tour{Tool: "gira"}
 	for _, s := range g.Steps {
 		c := Claim{Text: s.Why}
-		if len(s.WhyArgs) > 0 {
+		if len(s.WhyArgs) > 0 && s.WhyLocator != "" {
 			c.Anchor = name(s.WhyArgs[0])
-		}
-		if s.WhyTemplate == "entry" && len(s.WhyArgs) > 1 {
-			c.Anchor = strings.TrimSpace(strings.Split(strings.TrimPrefix(s.WhyArgs[1], "ports "), ",")[0])
+			c.Locators = []string{s.WhyLocator}
 		}
 		t.Steps = append(t.Steps, Step{Order: s.Order, Title: s.Title, Text: s.Why, NodeIDs: s.NodeIDs, Read: s.Read, Claims: []Claim{c}})
 	}

@@ -176,12 +176,42 @@ func TestBaselineIsMeasuredOnCorpus(t *testing.T) {
 		t.Fatalf("baseline did not grow with matching corpus content: %d -> %d", b0, b1)
 	}
 
-	briefingTokens := 321
-	task := gt.Tasks[0].GroundTruth
-	m0, _, _ := eval.CalculateMetrics(&emptyBriefing, task, nil, briefingTokens, b0)
-	m1, _, _ := eval.CalculateMetrics(&emptyBriefing, task, nil, briefingTokens, b1)
-	if m0.HarnessTokens != m1.HarnessTokens || m1.TokenReductionPct <= m0.TokenReductionPct {
-		t.Fatalf("harness tokens must be unchanged and reduction must grow: %+v vs %+v", m0, m1)
+	// The harness side is measured, not declared: evaluate the same task on the same
+	// index with each baseline and compare the emitted-bytes token counts.
+	idx, err := publishedCorpus(gt).Index(context.Background(), t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var task eval.BenchmarkTask
+	for _, tk := range gt.Tasks {
+		if tk.TargetID == "service:checkout" {
+			task = tk
+		}
+	}
+	r0 := eval.NewEvaluator(idx.MacroMap, gt.Ignore, before, eval.DefaultThresholds()).EvaluateTask(context.Background(), task)
+	r1 := eval.NewEvaluator(idx.MacroMap, gt.Ignore, after, eval.DefaultThresholds()).EvaluateTask(context.Background(), task)
+	if r0.Metrics.HarnessTokens == 0 || r0.Metrics.HarnessTokens != r1.Metrics.HarnessTokens {
+		t.Fatalf("harness tokens must be measured and unchanged: %d vs %d", r0.Metrics.HarnessTokens, r1.Metrics.HarnessTokens)
+	}
+	if r1.Metrics.BaselineTokens != b1 || r1.Metrics.TokenReductionPct <= r0.Metrics.TokenReductionPct {
+		t.Fatalf("baseline must grow and reduction with it: %+v vs %+v", r0.Metrics, r1.Metrics)
+	}
+}
+
+// Review F9: a task whose target is not in the index contributes no tokens.
+func TestFailedTaskDoesNotInflateTokenReduction(t *testing.T) {
+	gt := loadPublished(t)
+	idx, err := publishedCorpus(gt).Index(context.Background(), t.TempDir(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	base, err := eval.NewGrepBaseline(publishedCorpus(gt).Dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := eval.NewEvaluator(idx.MacroMap, gt.Ignore, base, eval.DefaultThresholds()).EvaluateTask(context.Background(), eval.BenchmarkTask{ID: "x", TargetID: "service:does-not-exist"})
+	if res.Metrics.BaselineTokens != 0 || res.Metrics.HarnessTokens != 0 {
+		t.Fatalf("failed task must contribute no tokens: %+v", res.Metrics)
 	}
 }
 
@@ -211,14 +241,16 @@ func TestUnsupportedSafetyDetectsHallucination(t *testing.T) {
 		t.Fatalf("injected hallucination not detected: score %.1f, violations %v", dirty, violations)
 	}
 
-	report := eval.GateReport{
-		Variant:          "published",
-		Thresholds:       eval.DefaultThresholds(),
-		AggregateMetrics: eval.ScoringMetrics{UnsupportedSafety: dirty, DeterminismPct: 100},
-		GateBreakdowns:   map[string]bool{"determinism_stability_100": true, "unsupported_safety_100": dirty >= 100},
+	// The real gate path: a suite report on the clean index, then the corpus checks
+	// with the dirty score, exactly as Suite.Run applies them.
+	report := eval.NewEvaluator(idx.MacroMap, gt.Ignore, nil, eval.DefaultThresholds()).EvaluateSuite(context.Background(), "published", gt.Tasks)
+	report.SetCorpusChecks(clean, nil, true)
+	if !report.GateBreakdowns["unsupported_safety_100"] {
+		t.Fatal("clean index must pass the safety gate")
 	}
-	if err := report.Enforce(); err == nil {
-		t.Fatalf("gate must fail on a hallucinated extraction")
+	report.SetCorpusChecks(dirty, violations, true)
+	if report.GateBreakdowns["unsupported_safety_100"] || report.Enforce() == nil {
+		t.Fatalf("gate must fail on a hallucinated extraction: %v", report.GateBreakdowns)
 	}
 }
 

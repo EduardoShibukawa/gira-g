@@ -23,7 +23,7 @@ Pre-coding context: the blast radius of a change, from the evidence-backed Macro
 
 ## Output contract
 
-An `ImpactBriefing` JSON object: `target_id`, `upstream_services`, `downstream_services`, `affected_contracts`, `mediation_edges`, `unsupported_boundaries`, and when budgeted a `budget` object `{limit, estimated, truncated, dropped, escalate_hint}`. Diff mode adds `diff {range, changed_paths, targets, unmatched_paths}`.
+An `ImpactBriefing` JSON object: `target_id`, `upstream_services`, `downstream_services`, `affected_contracts`, `mediation_edges`, `unsupported_boundaries`, and when budgeted a `budget` object `{limit, estimated, truncated, dropped, escalate_hint}`. Diff mode adds `diff {range, changed_paths, targets, unmatched_paths, file_level_paths}`. A path in `file_level_paths` was matched to the Components that cite the file, because no cited line range changed; say the match is file-level.
 
 ## Budget
 

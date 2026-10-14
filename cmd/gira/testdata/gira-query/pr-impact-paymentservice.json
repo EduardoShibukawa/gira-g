@@ -1,0 +1,173 @@
+{
+  "target_id": "diff:a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf..08d367fbcc0598b8784c2178fd9c959164ba92ab",
+  "target_kind": "",
+  "depth": 1,
+  "upstream_services": [],
+  "downstream_services": [
+    {
+      "id": "service:checkout",
+      "kind": "Service",
+      "name": "checkout",
+      "metadata": {
+        "base_image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+        "entrypoint": "[ \"./checkout\" ]",
+        "image": "",
+        "package": "kafka",
+        "ports": [
+          "${CHECKOUT_PORT}"
+        ]
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "compose.full.yaml",
+            "start_line": 130,
+            "end_line": 130
+          },
+          "origin": "extracted",
+          "deployment_profile": "compose:compose.full.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "affected_contracts": [
+    {
+      "id": "contract:PaymentService",
+      "kind": "Contract",
+      "name": "PaymentService",
+      "metadata": {
+        "full_name": "oteldemo.PaymentService",
+        "messages": [
+          "CartItem",
+          "AddItemRequest",
+          "EmptyCartRequest",
+          "GetCartRequest",
+          "Cart",
+          "Empty",
+          "ListRecommendationsRequest",
+          "ListRecommendationsResponse",
+          "Product",
+          "ListProductsResponse",
+          "GetProductRequest",
+          "SearchProductsRequest",
+          "SearchProductsResponse",
+          "GetQuoteRequest",
+          "GetQuoteResponse",
+          "ShipOrderRequest",
+          "ShipOrderResponse",
+          "Address",
+          "Money",
+          "GetSupportedCurrenciesResponse",
+          "CurrencyConversionRequest",
+          "CreditCardInfo",
+          "ChargeRequest",
+          "ChargeResponse",
+          "OrderItem",
+          "OrderResult",
+          "SendOrderConfirmationRequest",
+          "PlaceOrderRequest",
+          "PlaceOrderResponse",
+          "AdRequest",
+          "AdResponse",
+          "Ad",
+          "Flag",
+          "GetFlagRequest",
+          "GetFlagResponse",
+          "CreateFlagRequest",
+          "CreateFlagResponse",
+          "UpdateFlagRequest",
+          "UpdateFlagResponse",
+          "ListFlagsRequest",
+          "ListFlagsResponse",
+          "DeleteFlagRequest",
+          "DeleteFlagResponse"
+        ],
+        "methods": [
+          "Charge"
+        ],
+        "package": "oteldemo",
+        "rpc_definitions": [
+          {
+            "name": "Charge",
+            "request": "ChargeRequest",
+            "response": "ChargeResponse"
+          }
+        ],
+        "syntax": "proto3"
+      },
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "pb/demo.proto",
+            "start_line": 177,
+            "end_line": 179
+          },
+          "origin": "declared",
+          "deployment_profile": "protobuf",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "mediation_edges": [
+    {
+      "id": "rel:checkout-consumes-paymentservice",
+      "source_id": "service:checkout",
+      "target_id": "contract:PaymentService",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "path": "src/checkout/main.go",
+            "start_line": 159,
+            "end_line": 159
+          },
+          "origin": "extracted",
+          "deployment_profile": "grpc",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ],
+  "unsupported_boundaries": [
+    {
+      "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
+      }
+    }
+  ],
+  "diff": {
+    "range": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf..08d367fbcc0598b8784c2178fd9c959164ba92ab",
+    "changed_paths": [
+      "pb/demo.proto"
+    ],
+    "targets": [
+      "contract:PaymentService"
+    ]
+  },
+  "budget": {
+    "limit": 1500,
+    "estimated": 1213,
+    "truncated": true,
+    "dropped": {
+      "nodes": 0,
+      "relationships": 0,
+      "evidence": 9
+    },
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2147: rerun with budget >= 2147"
+  }
+}

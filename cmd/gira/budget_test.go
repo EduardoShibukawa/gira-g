@@ -214,3 +214,39 @@ func TestNoBudgetKeepsOutputUnchanged(t *testing.T) {
 		t.Fatal("unbudgeted output changed")
 	}
 }
+
+// Review F1: under a tight budget the focal Contract node stays in
+// affected_contracts (or the call fails with budget_exceeded); it is never dropped.
+func TestBudgetNeverDropsFocalContract(t *testing.T) {
+	_, index := hermeticIndex(t)
+	for _, limit := range []int{250, 300, 400, 600} {
+		out, err := runCLI(t, "impact", "contract:PaymentService", "--index", index, "--budget", fmt.Sprint(limit))
+		if err != nil {
+			if !strings.Contains(err.Error(), "budget_exceeded") {
+				t.Fatalf("budget %d: %v", limit, err)
+			}
+			continue
+		}
+		var b slices.ImpactBriefing
+		if err := json.Unmarshal(out, &b); err != nil {
+			t.Fatal(err)
+		}
+		found := false
+		for _, n := range b.AffectedContracts {
+			found = found || n.ID == "contract:PaymentService"
+		}
+		if !found {
+			t.Fatalf("budget %d dropped the focal contract: %+v", limit, b.Budget)
+		}
+	}
+}
+
+// Review F7: tasks whose target the extractors never emit produce no output at
+// all (node not found), so there is nothing a budget could let through.
+func TestBudgetOnMissingTargetEmitsNothing(t *testing.T) {
+	_, index := hermeticIndex(t)
+	out, err := runCLI(t, "impact", "contract:kafka:orders", "--index", index, "--budget", "1500")
+	if err == nil || len(out) != 0 || !strings.Contains(err.Error(), "not found") {
+		t.Fatalf("missing target must fail with no output: %v %q", err, out)
+	}
+}

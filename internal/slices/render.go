@@ -253,6 +253,9 @@ func (ib *ImpactBriefing) RenderMarkdown() string {
 		for _, id := range ib.Diff.Targets {
 			sb.WriteString(fmt.Sprintf("- Target: `%s`\n", id))
 		}
+		for _, p := range ib.Diff.FileLevelPaths {
+			sb.WriteString(fmt.Sprintf("- Matched at file level (no cited range changed): `%s`\n", p))
+		}
 		for _, p := range ib.Diff.UnmatchedPaths {
 			sb.WriteString(fmt.Sprintf("- Unknown to the index: `%s`\n", p))
 		}

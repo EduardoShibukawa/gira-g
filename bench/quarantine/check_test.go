@@ -58,8 +58,10 @@ func TestQueryPhasesDisableNetworking(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(script), "docker run --rm -i --network none") {
-		t.Fatal("container.sh query does not run with --network none")
+	for _, want := range []string{"docker run --rm -i --network none", `"$image_id"`, `D) mounts=(-v "$PWD/out/D:/out:ro")`} {
+		if !strings.Contains(string(script), want) {
+			t.Fatalf("container.sh query phase does not match phases.json: missing %s", want)
+		}
 	}
 }
 
@@ -86,13 +88,17 @@ func TestRecipesArePinned(t *testing.T) {
 func TestCheckCatchesViolations(t *testing.T) {
 	root := t.TempDir()
 	files := map[string]string{
-		"mise.toml":                "[tasks.bench]\nrun = \"cd bench/ && go test\"\n",
-		".github/workflows/ci.yml": "steps:\n  - run: pip install graphify\n",
-		".claude/settings.json":    "{\"mcpServers\": {\"ua\": {\"command\": \"understand-anything\"}}}\n",
-		"internal/x/x.go":          "package x // see gira-bench\n",
-		"docs/notes.md":            "graphify is discussed here, which is fine\n",
-		"bench/phases.json":        "{}",
-		"lefthook.yml":             "pre-commit:\n  commands: {}\n",
+		"mise.toml":                          "[tasks.check]\nrun = \"cd bench && go test\"\n",
+		".github/workflows/ci.yml":           "steps:\n  - run: pip install graphify\n",
+		".claude/settings.json":              "{\"mcpServers\": {\"ua\": {\"command\": \"understand-anything\"}}}\n",
+		"internal/x/x.go":                    "package x // see gira-bench\n",
+		"docs/notes.md":                      "graphify is discussed here, which is fine\n",
+		"bench/phases.json":                  "{}",
+		"lefthook.yml":                       "pre-commit:\n  commands: {}\n",
+		"go.work":                            "go 1.24.0\nuse ./bench\n",
+		".github/workflows/b.yml":            "jobs:\n  x:\n    defaults:\n      run:\n        working-directory: bench\n",
+		"internal/skills/catalog/x/SKILL.md": "run bench/layer1 first\n",
+		"internal/eval/doc.go":               "package eval // the 12-task benchmark suite is fine\n",
 	}
 	for p, c := range files {
 		full := filepath.Join(root, p)
@@ -107,7 +113,7 @@ func TestCheckCatchesViolations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{".claude/settings.json:1", ".github/workflows/ci.yml:2", "internal/x/x.go:1", "mise.toml:2"}
+	want := []string{".claude/settings.json:1", ".github/workflows/b.yml:5", ".github/workflows/ci.yml:2", "go.work:2", "internal/skills/catalog/x/SKILL.md:1", "internal/x/x.go:1", "mise.toml:2"}
 	if len(v) != len(want) {
 		t.Fatalf("got %v, want %v", v, want)
 	}

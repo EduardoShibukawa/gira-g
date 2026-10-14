@@ -17,7 +17,8 @@
       "why_template": "focus",
       "why_args": [
         "service:frontend"
-      ]
+      ],
+      "why_locator": "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
     },
     {
       "order": 2,
@@ -34,7 +35,8 @@
         "service:otel-collector",
         "service:frontend",
         "accesses"
-      ]
+      ],
+      "why_locator": "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
     },
     {
       "order": 3,
@@ -51,7 +53,8 @@
         "service:flagd",
         "service:frontend",
         "accesses"
-      ]
+      ],
+      "why_locator": "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
     },
     {
       "order": 4,
@@ -72,7 +75,8 @@
         "service:product-catalog",
         "service:frontend",
         "consumes"
-      ]
+      ],
+      "why_locator": "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
     },
     {
       "order": 5,
@@ -89,7 +93,8 @@
         "service:cart",
         "service:frontend",
         "consumes"
-      ]
+      ],
+      "why_locator": "opentelemetry-demo@a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf:compose.yaml#L253-L253"
     }
   ],
   "truncated": true
