@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "08665a9"
 spec: gira-agent-skills-and-eval@1
 ---
@@ -27,6 +27,7 @@ spec: gira-agent-skills-and-eval@1
 - approved: exception SC6 — measured on the tasks whose target exists in the index; tasks 05/06 (`contract:kafka:orders`, never extracted) are covered automatically once the extractors emit the topic, and `TestBudgetOnMissingTargetEmitsNothing` pins that a missing target emits nothing. Resolves the SC6 divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
 - approved: exception Interfaces/SC4 — `evidence[].discovered_at` is the commit time of the cited repository, documented on the field in `internal/domain/models.go`. Resolves the `discovered_at` divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
 - decided: ground-truth corrections after a blind re-derivation by three subagents (6/12 tasks matched exactly) → task-02 adds service:agent downstream; task-07 drops service:agent downstream and adds service:opamp-server upstream; task-11 replaces service:product-catalog with service:frontend upstream; task-05/06 add the broker service:kafka upstream; task-01 keeps the topic consumers downstream; task-11 keeps env-gated service:mcp; `reviewed` stays false (owner's call) by owner (2026-10-13, "sim")
+- accepted: by owner (2026-10-13, "aceito o accepted")
 
 ## Objective
 
@@ -118,7 +119,8 @@ Review focus: (a) the reviewer found no circular path; (b) budgets: F1 was the o
 - as of: 2026-10-13, branch main, head 8db9304 plus this record, worktree clean after commit
 - done: children 01–11 verified; review findings fixed; SC1–SC16, R1 and V1 pass at 8db9304
 - done also: SC1–SC16, R1 and V1 rerun at 08665a9 (corrected ground truth); parent verified there
-- next: the owner decides `reviewed: true` (it turns the No-Go into a failing build) and records `accepted:`
+- done also: accepted by owner
+- next: extractor improvements in a new task (prompt handed to the owner); `reviewed: true` stays the owner's call
 - done also: both divergences resolved by owner exceptions; parent verified at 8db9304
 - open: no push, no release; paid runs (Layer 1 frontier, UA indexing) not performed
 
