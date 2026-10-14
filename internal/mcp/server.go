@@ -17,6 +17,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
+	"github.com/EduardoShibukawa/gira-g/internal/tokens"
 )
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request or notification.
@@ -499,6 +500,23 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 			},
 		},
+		{
+			Name:        "get_token_accounting",
+			Description: "F4: returns honest token accounting {gross,expansions,net,measured_bool} (measurement only).",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"text": {
+						Type:        "string",
+						Description: "Text to measure (lifted before measuring).",
+					},
+					"expansions": {
+						Type:        "integer",
+						Description: "Expansion debit.",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -582,6 +600,26 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}
 		}
 		out, _ := json.Marshal(reg.Findings)
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F4: get_token_accounting is measurement only (no engine).
+	if params.Name == "get_token_accounting" {
+		var args struct {
+			Text       string `json:"text"`
+			Expansions int    `json:"expansions"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_token_accounting: %v", err)},
+				},
+			}
+		}
+		m := tokens.Measure([]byte(args.Text))
+		rep := tokens.NewReport(m.Gross, args.Expansions, true)
+		out, _ := json.Marshal(rep)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 
