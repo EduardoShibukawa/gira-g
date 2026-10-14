@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
+	"github.com/EduardoShibukawa/gira-g/internal/eval"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
@@ -431,6 +432,35 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				Required: []string{"query"},
 			},
 		},
+		{
+			Name:        "verify_artifact",
+			Description: "F1: recomputes the L1 artifact digest for CHECK/EXPECT/CWD+exit+fingerprint and returns {digest, closing_line}.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"check": {
+						Type:        "string",
+						Description: "CHECK: command label recorded in the digest.",
+					},
+					"expect": {
+						Type:        "string",
+						Description: "EXPECT: success marker recorded in the digest.",
+					},
+					"cwd": {
+						Type:        "string",
+						Description: "CWD recorded in the digest.",
+					},
+					"exit_code": {
+						Type:        "integer",
+						Description: "Exit code recorded in the digest.",
+					},
+					"fingerprint": {
+						Type:        "string",
+						Description: "Frozen input fingerprint hex.",
+					},
+				},
+			},
+		},
 	}
 }
 
@@ -440,21 +470,43 @@ type toolCallParams struct {
 }
 
 func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
-	if s.Engine == nil {
-		return CallToolResult{
-			IsError: true,
-			Content: []ToolContent{
-				{Type: "text", Text: "Engine not initialized"},
-			},
-		}
-	}
-
 	var params toolCallParams
 	if err := json.Unmarshal(paramsRaw, &params); err != nil {
 		return CallToolResult{
 			IsError: true,
 			Content: []ToolContent{
 				{Type: "text", Text: fmt.Sprintf("Invalid params: %v", err)},
+			},
+		}
+	}
+
+	// F1: verify_artifact needs no engine (pure digest recomputation).
+	if params.Name == "verify_artifact" {
+		var args struct {
+			Check       string `json:"check"`
+			Expect      string `json:"expect"`
+			CWD         string `json:"cwd"`
+			ExitCode    int    `json:"exit_code"`
+			Fingerprint string `json:"fingerprint"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for verify_artifact: %v", err)},
+				},
+			}
+		}
+		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint)
+		out, _ := json.Marshal(map[string]string{"digest": digest, "closing_line": eval.FormatClosingLine(digest)})
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	if s.Engine == nil {
+		return CallToolResult{
+			IsError: true,
+			Content: []ToolContent{
+				{Type: "text", Text: "Engine not initialized"},
 			},
 		}
 	}

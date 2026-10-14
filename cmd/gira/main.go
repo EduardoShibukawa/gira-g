@@ -92,6 +92,12 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "view":
 		return runView(rest, stdout, stderr)
 
+	case "eval":
+		return runEval(rest, stdout, stderr)
+
+	case "verify":
+		return runVerify(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -117,6 +123,8 @@ Commands:
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
+  eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)
+  verify --check <c> --expect <e> [--cwd <d>]               Print ARTIFACT-VERIFIED closing line for inputs (F1)
   version                                                   Show harness version
 
 Global Flags:
