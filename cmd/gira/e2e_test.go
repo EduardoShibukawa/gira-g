@@ -246,10 +246,11 @@ func TestE2E_DogfoodFullLifecycleOffline(t *testing.T) {
 		relMap[r.ID] = r
 	}
 
-	// Frontend consumes order
-	relFrontendOrder := relMap["rel:frontend-consumes-order"]
-	if relFrontendOrder.Verb != domain.VerbConsumes {
-		t.Errorf("expected rel:frontend-consumes-order to have verb consumes, got %q", relFrontendOrder.Verb)
+	// Frontend consumes order: depends_on-only in the dogfood compose file
+	// (no frontend call-site or env wiring), so J2 prunes it as start
+	// ordering. The absence itself is the assertion.
+	if relFrontendOrder, ok := relMap["rel:frontend-consumes-order"]; ok {
+		t.Errorf("ordering-only rel:frontend-consumes-order must be pruned (J2), got %+v", relFrontendOrder)
 	}
 
 	// Frontend accesses redis

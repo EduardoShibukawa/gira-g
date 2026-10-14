@@ -139,7 +139,7 @@
       "from": "service:frontend",
       "to": "service:storefront",
       "kind": "Service",
-      "score": 0.929,
+      "score": 0.833,
       "origin": "inferred"
     },
     {
@@ -160,7 +160,7 @@
       "from": "service:product-catalog",
       "to": "service:inventory",
       "kind": "Service",
-      "score": 1.237,
+      "score": 1.23,
       "origin": "inferred"
     },
     {
