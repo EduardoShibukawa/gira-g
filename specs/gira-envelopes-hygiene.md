@@ -1,12 +1,14 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:b17cb4e0ff02bcc9c635d984821434261d1491eede58ff806350fb9572a6cd51
 ---
 
 # GIRA envelopes and hygiene (E3)
 
-> DRAFT v1, unapproved. Scope inferred from commitments other specs hand to E3
+> Approved v1. Scope inferred from commitments other specs hand to E3
 > (`specs/gira-evidence-gate.md:76`, `specs/gira-recall-joins.md:143`).
 
 ## Problem
@@ -139,4 +141,4 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 
 ## Revisions
 
-- v1 (2026-10-14): draft v1 with owner decisions Q1–Q7.
+- v1 (2026-10-14): approved v1 with owner decisions Q1–Q7.
