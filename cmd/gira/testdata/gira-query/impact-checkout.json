@@ -8,15 +8,6 @@
   "mediation_edges": [],
   "unsupported_boundaries": [
     {
-      "path": "src/accounting/Consumer.cs",
-      "reason": "no extractor registered for file extension",
-      "locator": {
-        "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
-        "path": "src/accounting/Consumer.cs"
-      }
-    },
-    {
       "path": "src/cart/src/Program.cs",
       "reason": "no extractor registered for file extension",
       "locator": {
@@ -109,13 +100,13 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 970,
+    "estimated": 897,
     "truncated": true,
     "dropped": {
-      "nodes": 57,
-      "relationships": 58,
+      "nodes": 54,
+      "relationships": 55,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 33436: rerun with budget >= 33436"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32293: rerun with budget >= 32293"
   }
 }

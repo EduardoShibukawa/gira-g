@@ -96,3 +96,49 @@ func TestDropOrderFarthestThenHighestID(t *testing.T) {
 		t.Fatalf("got %v want %v", got, want)
 	}
 }
+
+// Spec gira-impact-precision SC1: Libraries reached through imports are listed in
+// upstream_libraries, never in upstream_services, and a budget drops every one of
+// them before any Service.
+func TestImpactListsLibrariesSeparatelyAndDropsThemFirst(t *testing.T) {
+	mm := budgetMap()
+	for _, id := range []string{"library:x", "library:y"} {
+		_ = mm.AddNode(domain.Node{ID: id, Kind: domain.NodeLibrary, Name: id, Evidence: ev(1)})
+		_ = mm.AddRelationship(domain.Relationship{ID: "rel:a-" + id, SourceID: "service:a", TargetID: id, Verb: domain.VerbImports, Evidence: ev(1)})
+	}
+	ib, err := NewEngine(mm).GetImpactBriefing("service:a", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fmt.Sprint(ids(ib.UpstreamLibraries)) != "[library:x library:y]" {
+		t.Fatalf("upstream_libraries = %v", ids(ib.UpstreamLibraries))
+	}
+	for _, n := range ib.UpstreamServices {
+		if n.Kind == domain.NodeLibrary {
+			t.Fatalf("library %s listed in upstream_services", n.ID)
+		}
+	}
+	full, _ := ib.CanonicalJSON()
+	var got ImpactBriefing
+	for limit := tokens.Estimate(full) - 1; limit > 0; limit -= 20 {
+		out, err := ib.Emit(FormatJSON, limit)
+		if err != nil {
+			break
+		}
+		got = ImpactBriefing{}
+		if err := json.Unmarshal(out, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Budget.Dropped.Nodes > 0 && len(got.UpstreamServices) < len(ib.UpstreamServices) && len(got.UpstreamLibraries) > 0 {
+			t.Fatalf("limit %d dropped a Service while libraries %v remain", limit, ids(got.UpstreamLibraries))
+		}
+	}
+}
+
+func ids(ns []domain.Node) []string {
+	out := []string{}
+	for _, n := range ns {
+		out = append(out, n.ID)
+	}
+	return out
+}

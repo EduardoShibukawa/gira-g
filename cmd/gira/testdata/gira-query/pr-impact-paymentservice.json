@@ -10,11 +10,39 @@
       "name": "checkout",
       "metadata": {
         "base_image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+        "base_images": [
+          {
+            "image": "docker.io/library/golang:1.27.1-bookworm@sha256:648f440f42a0958804efb24df176f806f9d353b41f1c0627f666428e40310f6b",
+            "locator": "src/checkout/Dockerfile#L5"
+          },
+          {
+            "image": "ghcr.io/grpc-ecosystem/grpc-health-probe:v0.4.57@sha256:f77f1257805ecb57f1f0c36c5825d3c2e47aa81cce87128675e768463ed6487a",
+            "locator": "src/checkout/Dockerfile#L22"
+          },
+          {
+            "image": "gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab",
+            "locator": "src/checkout/Dockerfile#L24"
+          }
+        ],
         "entrypoint": "[ \"./checkout\" ]",
         "image": "",
         "package": "kafka",
         "ports": [
           "${CHECKOUT_PORT}"
+        ],
+        "stages": [
+          {
+            "locator": "src/checkout/Dockerfile#L5",
+            "name": "builder"
+          },
+          {
+            "locator": "src/checkout/Dockerfile#L22",
+            "name": "grpc-health-probe"
+          },
+          {
+            "locator": "src/checkout/Dockerfile#L24",
+            "name": "stage-2"
+          }
         ]
       },
       "evidence": [
@@ -161,13 +189,13 @@
   },
   "budget": {
     "limit": 1500,
-    "estimated": 1213,
+    "estimated": 1477,
     "truncated": true,
     "dropped": {
       "nodes": 0,
       "relationships": 0,
       "evidence": 9
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2147: rerun with budget >= 2147"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2410: rerun with budget >= 2410"
   }
 }

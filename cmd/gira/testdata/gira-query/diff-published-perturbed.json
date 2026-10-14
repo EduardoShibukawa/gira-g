@@ -111,28 +111,28 @@
       "from": "service:checkout",
       "to": "service:ordering",
       "kind": "Service",
-      "score": 3.034,
+      "score": 3.014,
       "origin": "inferred"
     },
     {
       "from": "service:currency",
       "to": "service:exchange",
       "kind": "Service",
-      "score": 0.667,
+      "score": 0.75,
       "origin": "inferred"
     },
     {
       "from": "service:email",
       "to": "service:notify",
       "kind": "Service",
-      "score": 1.1,
+      "score": 0.833,
       "origin": "inferred"
     },
     {
       "from": "service:frontend",
       "to": "service:storefront",
       "kind": "Service",
-      "score": 0.978,
+      "score": 0.9,
       "origin": "inferred"
     },
     {
@@ -146,21 +146,21 @@
       "from": "service:payment",
       "to": "service:billing",
       "kind": "Service",
-      "score": 1.214,
+      "score": 1,
       "origin": "inferred"
     },
     {
       "from": "service:product-catalog",
       "to": "service:inventory",
       "kind": "Service",
-      "score": 1.262,
+      "score": 1.244,
       "origin": "inferred"
     },
     {
       "from": "service:shipping",
       "to": "service:dispatch",
       "kind": "Service",
-      "score": 1,
+      "score": 0.833,
       "origin": "inferred"
     },
     {
