@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:33477d5bb09f26a400e3c86b16a1a6c077a4eeb6480af04e4df289c59f0a16e6
 ---
 
 # GIRA human-facing surface (E4)

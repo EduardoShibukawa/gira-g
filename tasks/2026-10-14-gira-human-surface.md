@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: todo
+status: active
 spec: gira-human-surface@1
 verified_at: ""
 ---
@@ -13,6 +13,7 @@ verified_at: ""
 - tier: heavy (H1: product/preference calls on styling, source excerpts, staleness semantics; H3: spans cmd/gira, internal/slices, internal/domain, go.mod; H5: children, multi-session)
 - confirmed: heavy by owner (2026-10-14, "Sim, heavy (Recommended)")
 - decided: Q1 add charmbracelet/lipgloss (ADR 0008) with strict NO_COLOR/non-TTY plain fallback; Q2 explain source excerpt on demand, capped ±40, --no-source; Q3 staleness vs indexing commit first, HEAD when resolvable; Q4 view --no-open + CI guard; Q5 golden the plain path byte-for-byte; Q6 network available, go get allowed; Q7 prose minimal, docs site is E6
+- approved: spec v1 by owner (2026-10-14, "Aprovar v1 (Recommended)")
 
 ## Objective
 
