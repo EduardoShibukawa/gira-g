@@ -249,7 +249,7 @@ func renameNode(r *resolution, from, to string) {
 		if moved.TargetID == from {
 			moved.TargetID = to
 		}
-		moved.ID = strings.ReplaceAll(rel.ID, from, to)
+		moved.ID = relID(moved.SourceID, moved.Verb, moved.TargetID)
 		delete(r.rels, id)
 		if existing, dup := r.rels[moved.ID]; dup {
 			existing.Evidence = append(existing.Evidence, moved.Evidence...)
