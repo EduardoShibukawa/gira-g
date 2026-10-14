@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
 parent: 2026-10-14-gira-evidence-gate
 spec: gira-evidence-gate@1
-verified_at: "a389d21"
+verified_at: "3e5f7f4"
 ---
 
 # L1 artifact-verified closing line (F1)
@@ -30,10 +30,10 @@ Out of scope: the other children's features; ground-truth changes.
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pass | 0a35b64 | root ok (15 pkgs), bench ok (layer0/1/2/quarantine), validator pass |
-| AC1 | `go test ./internal/eval -run SCL1ArtifactVerified -v` | pass | a389d21 | re-verified after F1/F2/F9 fix batch: canonical 6-field preimage (taxonomy in digest), fingerprint printed, --artifact-verified flag, stdout re-derives |
-| AC2 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pass | a389d21 | root 16 pkgs ok, bench ok, validator pass; R82.4/P90.3/S100/D100 unchanged, no extractor change |
-| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | a389d21 | all touched pkgs pass; `gira eval` emits fingerprint + closing line as final line |
-| V1 | diff read against AC1–AC2 + spec F1 | pass | a389d21 | canonical preimage shared eval/verify/verify_artifact; taxonomy wires CLI/MCP additive; no existing meaning change |
+| AC1 | `go test ./internal/eval -run SCL1ArtifactVerified -v` | pass | 3e5f7f4 | re-verified after N3 residual: verify-default shares eval frozen-input rule; canonical preimage, fingerprint, --artifact-verified hold |
+| AC2 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pass | 3e5f7f4 | root 16 pkgs ok, bench ok, validator pass; R82.4/P90.3/S100/D100 unchanged |
+| R1 | `go test ./internal/eval ./internal/mcp ./cmd/gira -count=1` | pass | 3e5f7f4 | all touched pkgs pass; verify-default re-derives eval closing line |
+| V1 | diff read against AC1–AC2 + spec F1 | pass | 3e5f7f4 | N3 one-spot fix (gira.yaml in verify-default); no other meaning change |
 
 ## Constraints and budget
 
@@ -50,4 +50,4 @@ Out of scope: the other children's features; ground-truth changes.
 
 ## Outcome
 
-F1 delivered + F1/F2/F9 sealed: `internal/eval/artifact.go` (canonical 6-field digest with taxonomy, fingerprint 1 MiB cap, closing line, write-scope fail-closed, 5-point self-check), `gira eval/verify` additive CLI (`--artifact-verified`, `--taxonomy`, fingerprint line), `verify_artifact` MCP tool (taxonomy param). Re-verified at a389d21; 02 unblocked.
+F1 delivered + F1/F2/F9 sealed + N3 residual: `internal/eval/artifact.go` (canonical 6-field digest with taxonomy, fingerprint 1 MiB cap, closing line, write-scope fail-closed, 5-point self-check), `gira eval/verify` additive CLI (`--artifact-verified`, `--taxonomy`, fingerprint line; verify-default shares eval frozen-input rule), `verify_artifact` MCP tool (taxonomy param). Re-verified at 3e5f7f4; 02 unblocked.
