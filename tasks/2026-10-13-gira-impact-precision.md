@@ -14,6 +14,8 @@ spec: gira-impact-precision@1
 - decided: do Library nodes stay in the Impact Set → new additive field `upstream_libraries`; Dockerfile stages and base images become Service metadata by owner (2026-10-13, "New additive field (Recommended)")
 - decided: how HTTP calls are modelled → service-to-service consumes edge with the route in metadata, no `contract:http:*` by owner (2026-10-13, "Service edge + route (Recommended)")
 - decided: where the topic value and APPLICATION_ENDPOINT come from → vendor the upstream `.env` byte-identical, resolve as declared by owner (2026-10-13, "Vendor upstream .env (Recommended)")
+- approved: spec v1 by owner (2026-10-13, "Approve both (Recommended)")
+- approved: ADR 0013 by owner (2026-10-13, "Approve both (Recommended)")
 
 ## Objective
 

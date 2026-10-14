@@ -1,6 +1,6 @@
 # Cross-file resolution and declared environment wiring
 
-**Status:** proposed (2026-10-13). This ADR amends [ADR 0005](0005-first-wave-extractors-and-unsupported-boundaries.md): extractors stay per-file, and one deterministic resolution step is added after them. Specified in `specs/gira-impact-precision.md`.
+**Status:** accepted (2026-10-13, by owner). This ADR amends [ADR 0005](0005-first-wave-extractors-and-unsupported-boundaries.md): extractors stay per-file, and one deterministic resolution step is added after them. Specified in `specs/gira-impact-precision.md`.
 
 ADR 0005 puts every Extractor behind one contract, `Extract(file) -> facts`. Some architectural facts can't be read from one file:
 

@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:59aff522efa827b65d6bfb3a98f9b06667278ac51776ff4ce41d2b9fe9c15010
 ---
 
 # Impact Set precision and recall from the Wave 1 extractors
