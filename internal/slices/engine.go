@@ -128,6 +128,8 @@ func (br *BoundaryResult) Emit(format Format, limit int) ([]byte, error) {
 			r.Matches = append(r.Matches, m)
 		}
 		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
 			r.Budget = b
 			return render(&r)
 		}, d
@@ -777,6 +779,8 @@ func (er *EvidenceReport) Emit(format Format, limit int) ([]byte, error) {
 			r.Evidence = append(r.Evidence, ev)
 		}
 		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
 			r.Budget = b
 			return render(&r)
 		}, d

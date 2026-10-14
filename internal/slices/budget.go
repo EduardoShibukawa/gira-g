@@ -42,6 +42,8 @@ type Budget struct {
 	Truncated    bool    `json:"truncated"`
 	Dropped      Dropped `json:"dropped"`
 	EscalateHint string  `json:"escalate_hint,omitempty"`
+	Estimator    string  `json:"estimator,omitempty"`
+	Measured     bool    `json:"measured"`
 }
 
 // Dropped counts what truncation removed.
@@ -98,6 +100,8 @@ func (cs *ContextSlice) Emit(format Format, limit int) ([]byte, error) {
 		}
 		c.Relationships = keptRels(cs.Relationships, trimEvidence, drop, &d)
 		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
 			c.Budget = b
 			return render(&c)
 		}, d
@@ -166,6 +170,8 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 		c.AffectedContracts = keep(ib.AffectedContracts)
 		c.MediationEdges = keptRels(ib.MediationEdges, trimEvidence, drop, &d)
 		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
 			c.Budget = b
 			return render(&c)
 		}, d
@@ -217,7 +223,7 @@ func fit(limit int, order []string, build candidate) ([]byte, error) {
 	if _, ok, err = try(len(order)); err != nil {
 		return nil, err
 	} else if !ok {
-		return nil, fmt.Errorf("%w: the parts that are never dropped need more than %d tokens", ErrBudgetExceeded, limit)
+		return nil, fmt.Errorf("%w: the parts that are never dropped need more than %d tokens; rerun with budget >= %d", ErrBudgetExceeded, limit, limit)
 	}
 	lo, hi := 1, len(order)
 	for lo < hi {

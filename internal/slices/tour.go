@@ -447,6 +447,8 @@ func (t *Tour) Emit(format Format, limit int) ([]byte, error) {
 			tr.Steps = append(tr.Steps, ns)
 		}
 		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
 			tr.Budget = b
 			return render(&tr)
 		}, d
