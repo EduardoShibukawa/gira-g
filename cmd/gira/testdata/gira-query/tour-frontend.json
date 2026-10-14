@@ -17,11 +17,9 @@
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L300-L300",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L302-L302",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L304-L304",
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L306-L306",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L308-L308",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L310-L310",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L312-L312",
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L314-L314",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L316-L316"
       ],
       "why": "`service:frontend` is the focus of this tour.",
@@ -41,6 +39,7 @@
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.full.yaml#L139-L139",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.full.yaml#L150-L150",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L866-L866",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L868-L868",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L873-L873"
       ],
       "why": "`service:otel-collector` is reached because `service:frontend` accesses it.",
@@ -75,12 +74,10 @@
       "title": "product-catalog (Service)",
       "node_ids": [
         "service:product-catalog",
-        "contract:Health",
         "contract:ProductCatalogService"
       ],
       "read": [
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L518-L518",
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/product-catalog/main.go#L208-L208",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/product-catalog/main.go#L54-L54"
       ],
       "why": "`service:product-catalog` is reached because `service:frontend` consumes it.",
@@ -94,21 +91,22 @@
     },
     {
       "order": 5,
-      "title": "image-provider (Service)",
+      "title": "cart (Service)",
       "node_ids": [
-        "service:image-provider"
+        "service:cart"
       ],
       "read": [
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L387-L387"
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L107-L107",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L80-L80"
       ],
-      "why": "`service:image-provider` is reached because `service:frontend` consumes it.",
+      "why": "`service:cart` is reached because `service:frontend` consumes it.",
       "why_template": "reached",
       "why_args": [
-        "service:image-provider",
+        "service:cart",
         "service:frontend",
         "consumes"
       ],
-      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L314-L314"
+      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L298-L298"
     }
   ],
   "truncated": true

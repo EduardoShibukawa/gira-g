@@ -215,8 +215,8 @@ func TestKafkaTopicFromComposeWiring(t *testing.T) {
 		TargetFile{Repo: "r", Path: ".env", Content: []byte("KAFKA_HOST=kafka\nKAFKA_ADDR=${KAFKA_HOST}:9092\nKAFKA_TOPIC=orders\n")},
 	)
 	want := map[string]string{
-		"service:checkout provides contract:kafka:orders":  "extracted@src/checkout/main.go#L16 declared@compose.yaml#L5",
-		"service:kafka provides contract:kafka:orders":     "declared@compose.yaml#L4",
+		"service:checkout provides contract:kafka:orders":   "extracted@src/checkout/main.go#L16 declared@compose.yaml#L5",
+		"service:kafka provides contract:kafka:orders":      "declared@compose.yaml#L4",
 		"service:accounting consumes contract:kafka:orders": "inferred@compose.yaml#L10",
 	}
 	if len(rels) != len(want) {
@@ -309,5 +309,107 @@ func (s *svc) run() {
 	}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("got\n%v\nwant\n%v\n(NOT_WIRED_ADDR has no value; OTEL_SERVICE_NAME is not an address; SELF_ADDR is the service itself)", got, want)
+	}
+}
+
+// SC2 (J2): a depends_on-only edge is start ordering, not consumption: it
+// must never reach the Macro Map. A corroborated edge (env wiring here)
+// must survive with both lines cited. Test-first: fails while every
+// depends_on becomes consumes.
+func TestDependsOnNeedsCorroboration(t *testing.T) {
+	compose := `services:
+  frontend:
+    image: demo/frontend:1.0
+    depends_on:
+      - quote
+  quote:
+    image: demo/quote:1.0
+  backend:
+    image: demo/backend:1.0
+    depends_on:
+      - db-api
+    environment:
+      - API_URL=http://db-api:8000
+  db-api:
+    image: demo/db-api:1.0
+  app:
+    image: demo/app:1.0
+    depends_on:
+      - cache
+  cache:
+    image: redis:7
+`
+	files := []TargetFile{
+		{Repo: "r", CommitSHA: "c", Path: "compose.yaml", Content: []byte(compose)},
+	}
+	mm, err := NewPipeline(NewComposeExtractor()).ProcessFiles(context.Background(), "t", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rels := map[string]domain.Relationship{}
+	for _, rel := range mm.Relationships {
+		rels[rel.SourceID+"\x00"+rel.TargetID] = rel
+	}
+	if _, ok := rels["service:frontend\x00service:quote"]; ok {
+		t.Fatalf("ordering-only frontend->quote must not reach the map")
+	}
+	corroborated, ok := rels["service:backend\x00service:db-api"]
+	if !ok {
+		t.Fatalf("corroborated backend->db-api must survive")
+	}
+	if len(corroborated.Evidence) < 2 {
+		t.Fatalf("corroborated edge must cite both lines, got %d evidence records", len(corroborated.Evidence))
+	}
+	infra, ok := rels["service:app\x00service:cache"]
+	if !ok || infra.Verb != domain.VerbAccesses {
+		t.Fatalf("infrastructure wiring must stay accesses")
+	}
+}
+
+// SC3 (J3): unsupported code that names a Contract is an explicit unknown
+// join (boundary row at the first mention), never an edge; a Go OpAMP client
+// is an unknown row at its call-site; a business-irrelevant file stays a
+// plain boundary.
+func TestUnsupportedPostureIsUnknownNotJoined(t *testing.T) {
+	proto := "syntax = \"proto3\";\npackage demo;\nservice PaymentService {\n  rpc Charge(Req) returns (Res) {}\n}\nmessage Req {}\nmessage Res {}\n"
+	js := "const x = 1;\nserver.addService(pkg.PaymentService.service, {});\n"
+	ts := "import { PaymentServiceClient } from './demo';\n"
+	other := "console.log('PaymentServiceX');\n"
+	goSrc := "package main\n\nfunc main() {\n\tstartOpAMPClient()\n}\n"
+	files := []TargetFile{
+		{Repo: "r", CommitSHA: "c", Path: "pb/demo.proto", Content: []byte(proto)},
+		{Repo: "r", CommitSHA: "c", Path: "src/payment/index.js", Content: []byte(js)},
+		{Repo: "r", CommitSHA: "c", Path: "src/web/pay.ts", Content: []byte(ts)},
+		{Repo: "r", CommitSHA: "c", Path: "src/other/x.js", Content: []byte(other)},
+		{Repo: "r", CommitSHA: "c", Path: "src/catalog/main.go", Content: []byte(goSrc)},
+	}
+	mm, err := DefaultPipeline().ProcessFiles(context.Background(), "t", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, ub := range mm.Unsupported {
+		got[ub.Path] = fmt.Sprintf("L%d %v", ub.Locator.StartLine, ub.UnknownJoins)
+	}
+	want := map[string]string{
+		"src/payment/index.js": "L2 [contract:PaymentService]",
+		"src/web/pay.ts":       "L1 [contract:PaymentService]",
+		"src/other/x.js":       "L0 []",
+		"src/catalog/main.go":  "L4 []",
+	}
+	for p, w := range want {
+		if got[p] != w {
+			t.Errorf("%s: got %q, want %q", p, got[p], w)
+		}
+	}
+	for _, r := range mm.Relationships {
+		for _, ev := range r.Evidence {
+			if !strings.HasSuffix(ev.Locator.Path, ".proto") && !strings.HasSuffix(ev.Locator.Path, ".go") {
+				t.Errorf("edge %s cites unsupported %s", r.ID, ev.Locator.Path)
+			}
+		}
+		if r.TargetID == "contract:PaymentService" && r.Verb != domain.VerbProvides {
+			t.Errorf("unknown join became an edge: %s", r.ID)
+		}
 	}
 }

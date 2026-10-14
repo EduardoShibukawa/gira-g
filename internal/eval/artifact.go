@@ -1,9 +1,11 @@
 // L1 artifact-verified closing line (spec gira-evidence-gate F1, SC1).
 //
 // COPY = idea only, reimplemented in Go: the contract (success-only marker +
-// digest of CHECK/EXPECT/CWD + exit + frozen fingerprint, 1 MiB cap,
-// out-of-scope writes fail closed, 5-point dispatcher self-check) follows the
-// unlazy gate and Gallon L1 methodology. No JS is pasted.
+// canonical digest of CHECK/EXPECT/CWD + exit + frozen fingerprint + L3
+// taxonomy, 1 MiB cap, out-of-scope writes fail closed, 5-point dispatcher
+// self-check) follows the unlazy gate and Gallon L1 methodology, with the
+// autoresearch rule that one canonical evaluation preimage serves every entry
+// point so any digest re-derives from the run output alone. No JS is pasted.
 package eval
 
 import (
@@ -24,12 +26,13 @@ const ArtifactClosingPrefix = "ARTIFACT-VERIFIED sha256:"
 const ArtifactFrozenCap = 1 << 20
 
 // ArtifactRun is one eval/verify dispatch: what ran, on what frozen inputs,
-// and the closing line it emitted.
+// under which claim taxonomy, and the closing line it emitted.
 type ArtifactRun struct {
 	Check        string
 	Expect       string
 	CWD          string
 	ExitCode     int
+	Taxonomy     string
 	Inputs       map[string][]byte
 	ClosingLine  string
 	AllowedScope []string
@@ -62,12 +65,15 @@ func FingerprintInputs(inputs map[string][]byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// ArtifactDigest covers command, success marker, working directory, exit code
-// and the frozen input fingerprint. Any field flip changes the digest.
-func ArtifactDigest(check, expect, cwd string, exit int, fingerprintHex string) string {
+// ArtifactDigest covers command, success marker, working directory, exit
+// code, the frozen input fingerprint and the L3 claim taxonomy (I2). It is
+// the single canonical constructor: every entry point (CLI eval/verify, MCP
+// verify_artifact) shares it, so one digest re-derives from the run output
+// alone. Any field flip changes the digest.
+func ArtifactDigest(check, expect, cwd string, exit int, fingerprintHex, taxonomy string) string {
 	h := sha256.New()
-	fmt.Fprintf(h, "CHECK:%s\nEXPECT:%s\nCWD:%s\nEXIT:%d\nFROZEN:%s\n",
-		check, expect, cwd, exit, fingerprintHex)
+	fmt.Fprintf(h, "CHECK:%s\nEXPECT:%s\nCWD:%s\nEXIT:%d\nFROZEN:%s\nTAXONOMY:%s\n",
+		check, expect, cwd, exit, fingerprintHex, taxonomy)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
@@ -97,13 +103,13 @@ func ParseClosingLine(line string) (string, bool) {
 }
 
 // VerifyClosingLine recomputes the expected digest and compares it with the
-// closing line. A tampered digest never verifies.
-func VerifyClosingLine(line, check, expect, cwd string, exit int, fingerprintHex string) bool {
+// closing line. A tampered digest, or the wrong taxonomy, never verifies.
+func VerifyClosingLine(line, check, expect, cwd string, exit int, fingerprintHex, taxonomy string) bool {
 	digest, ok := ParseClosingLine(line)
 	if !ok {
 		return false
 	}
-	return digest == ArtifactDigest(check, expect, cwd, exit, fingerprintHex)
+	return digest == ArtifactDigest(check, expect, cwd, exit, fingerprintHex, taxonomy)
 }
 
 // EnforceWriteScope fails closed when any attempted write falls outside the
@@ -170,7 +176,7 @@ func DispatcherSelfCheck(run ArtifactRun, readBack map[string][]byte) []string {
 		return failures
 	}
 	wantFP := FingerprintInputs(run.Inputs)
-	wantDigest := ArtifactDigest(run.Check, run.Expect, run.CWD, run.ExitCode, wantFP)
+	wantDigest := ArtifactDigest(run.Check, run.Expect, run.CWD, run.ExitCode, wantFP, run.Taxonomy)
 	if digest != wantDigest {
 		failures = append(failures, "own-run")
 	}

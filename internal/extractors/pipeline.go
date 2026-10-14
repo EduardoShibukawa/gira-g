@@ -82,6 +82,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	nodeMap := make(map[string]*domain.Node)
 	relMap := make(map[string]*domain.Relationship)
 	unsupportedMap := make(map[string]domain.UnsupportedBoundary)
+	unsupportedContent := make(map[string][]byte)
 	var hints []Hint
 
 	for _, file := range files {
@@ -115,6 +116,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 				},
 			}
 			unsupportedMap[file.Path] = ub
+			unsupportedContent[file.Path] = file.Content
 			continue
 		}
 
@@ -178,6 +180,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 
 	// Cross-file resolution step (ADR 0013).
 	resolve(&resolution{nodes: nodeMap, rels: relMap, hints: hints})
+	annotateUnknownJoins(unsupportedMap, unsupportedContent, nodeMap)
 
 	// Transfer nodes to MacroMap
 	for _, n := range nodeMap {

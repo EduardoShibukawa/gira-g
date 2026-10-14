@@ -111,6 +111,9 @@ type UnsupportedBoundary struct {
 	Path    string  `json:"path"`
 	Reason  string  `json:"reason"`
 	Locator Locator `json:"locator"`
+	// UnknownJoins lists the Contracts the unsupported code names. Whether it
+	// provides or consumes them is unknown: no edge is ever drawn from it.
+	UnknownJoins []string `json:"unknown_joins,omitempty"`
 }
 
 // MacroMap represents the complete architectural graph for a Target System.

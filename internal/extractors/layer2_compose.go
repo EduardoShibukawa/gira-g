@@ -88,10 +88,10 @@ func (e *ComposeExtractor) Extract(ctx context.Context, file TargetFile) ([]doma
 
 	var rawData struct {
 		Services map[string]struct {
-			Image       string   `yaml:"image"`
-			DependsOn   any      `yaml:"depends_on"`
-			Ports       []any    `yaml:"ports"`
-			Environment any      `yaml:"environment"`
+			Image       string `yaml:"image"`
+			DependsOn   any    `yaml:"depends_on"`
+			Ports       []any  `yaml:"ports"`
+			Environment any    `yaml:"environment"`
 		} `yaml:"services"`
 	}
 
@@ -213,7 +213,9 @@ func (e *ComposeExtractor) Extract(ctx context.Context, file TargetFile) ([]doma
 
 // Hints returns, for every compose service with a build section, its
 // build.dockerfile and build.context before interpolation, located at the
-// dockerfile line (or the build line when only a context is given).
+// dockerfile line (or the build line when only a context is given). It also
+// returns one depends_on hint per dependency, at exactly the line the edge
+// evidence cites (J2).
 func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, error) {
 	var root yaml.Node
 	if err := yaml.Unmarshal(file.Content, &root); err != nil || len(root.Content) == 0 {
@@ -223,10 +225,13 @@ func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, 
 	if services == nil || services.Kind != yaml.MappingNode {
 		return nil, nil
 	}
+	contentStr := string(file.Content)
+	lines := composeLines(file, &root)
 	var hints []Hint
 	for i := 0; i+1 < len(services.Content); i += 2 {
 		name, def := services.Content[i].Value, services.Content[i+1]
 		hints = append(hints, composeEnvHints(file, "service:"+name, mappingValue(def, "environment"))...)
+		hints = append(hints, composeDependsOnHints(file, contentStr, lines, name, mappingValue(def, "depends_on"))...)
 		build := mappingValue(def, "build")
 		if build == nil {
 			continue
@@ -248,6 +253,48 @@ func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, 
 		hints = append(hints, h)
 	}
 	return hints, nil
+}
+
+// composeDependsOnHints returns one depends_on hint per dependency, at the
+// entry's line (or the service header fallback), mirroring Extract's edge
+// evidence lines exactly.
+func composeDependsOnHints(file TargetFile, contentStr string, lines map[string]composeServiceLines, service string, deps *yaml.Node) []Hint {
+	if deps == nil {
+		return nil
+	}
+	var names []string
+	var entryLine = map[string]int{}
+	switch deps.Kind {
+	case yaml.SequenceNode:
+		for _, item := range deps.Content {
+			names = append(names, item.Value)
+			entryLine[item.Value] = item.Line
+		}
+	case yaml.MappingNode:
+		for j := 0; j+1 < len(deps.Content); j += 2 {
+			names = append(names, deps.Content[j].Value)
+			entryLine[deps.Content[j].Value] = deps.Content[j].Line
+		}
+	default:
+		return nil
+	}
+	var hints []Hint
+	for _, dep := range names {
+		line, ok := lines[service].deps[dep]
+		if !ok {
+			line = entryLine[dep]
+		}
+		if line == 0 {
+			line = findServiceLine(contentStr, service)
+		}
+		hints = append(hints, Hint{
+			Kind:    HintDependsOn,
+			Service: "service:" + service,
+			Value:   dep,
+			Locator: domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path, StartLine: line, EndLine: line},
+		})
+	}
+	return hints
 }
 
 // mappingValue returns the value node of key in a YAML mapping, or nil.

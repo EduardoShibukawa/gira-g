@@ -14,9 +14,11 @@ import (
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/eval"
+	gatepkg "github.com/EduardoShibukawa/gira-g/internal/gate"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
+	"github.com/EduardoShibukawa/gira-g/internal/tokens"
 )
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request or notification.
@@ -458,6 +460,78 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Frozen input fingerprint hex.",
 					},
+					"taxonomy": {
+						Type:        "string",
+						Description: "L3 claim taxonomy recorded in the digest (measured|checked|inferred|assumed, default inferred).",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_control_total",
+			Description: "F2: validates control:{total,matched,mismatched,sampled_n,seed} against the seeded max(20,5%) rule. Format validation only: it rejects inconsistent lines but does not derive a measurement (derivation lives in gira eval --control-total).",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"total": {
+						Type:        "integer",
+						Description: "Control denominator (task count).",
+					},
+					"matched": {
+						Type:        "integer",
+						Description: "Blind re-derivation matches on the sample.",
+					},
+					"mismatched": {
+						Type:        "integer",
+						Description: "Blind re-derivation mismatches on the sample.",
+					},
+					"seed": {
+						Type:        "integer",
+						Description: "Sampler seed.",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_findings_register",
+			Description: "F3: returns the L3 findings register entries (pointer only, outside slices).",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"register": {
+						Type:        "string",
+						Description: "Path to the findings register file.",
+					},
+				},
+			},
+		},
+		{
+			Name:        "get_token_accounting",
+			Description: "F4: returns honest token accounting {gross,expansions,net,measured_bool} (measurement only).",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"text": {
+						Type:        "string",
+						Description: "Text to measure (lifted before measuring).",
+					},
+					"expansions": {
+						Type:        "integer",
+						Description: "Expansion debit.",
+					},
+				},
+			},
+		},
+		{
+			Name:        "gate_status",
+			Description: "F5: non-executing gate status read for a ledger file.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"state": {
+						Type:        "string",
+						Description: "Gate ledger file path.",
+					},
 				},
 			},
 		},
@@ -488,6 +562,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			CWD         string `json:"cwd"`
 			ExitCode    int    `json:"exit_code"`
 			Fingerprint string `json:"fingerprint"`
+			Taxonomy    string `json:"taxonomy"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -497,8 +572,111 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 				},
 			}
 		}
-		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint)
+		if args.Taxonomy == "" {
+			args.Taxonomy = "inferred"
+		}
+		if !eval.ValidTaxonomy(args.Taxonomy) {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: fmt.Sprintf("unknown taxonomy %q", args.Taxonomy)}}}
+		}
+		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint, args.Taxonomy)
 		out, _ := json.Marshal(map[string]string{"digest": digest, "closing_line": eval.FormatClosingLine(digest)})
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F2: get_control_total needs no engine (pure control math).
+	if params.Name == "get_control_total" {
+		var args struct {
+			Total      int    `json:"total"`
+			Matched    int    `json:"matched"`
+			Mismatched int    `json:"mismatched"`
+			Seed       uint64 `json:"seed"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_control_total: %v", err)},
+				},
+			}
+		}
+		rep := eval.ControlReport(args.Total, args.Matched, args.Mismatched, args.Seed)
+		if err := rep.Validate(); err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: fmt.Sprintf("inconsistent control line: %v", err)}}}
+		}
+		out, _ := json.Marshal(rep)
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F3: get_findings_register reads the register file (no engine).
+	if params.Name == "get_findings_register" {
+		var args struct {
+			Register string `json:"register"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_findings_register: %v", err)},
+				},
+			}
+		}
+		path := args.Register
+		if path == "" {
+			path = "reviews/findings.md"
+		}
+		reg, err := eval.LoadRegister(path)
+		if err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}
+		}
+		out, _ := json.Marshal(reg.Findings)
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F4: get_token_accounting is measurement only (no engine).
+	if params.Name == "get_token_accounting" {
+		var args struct {
+			Text       string `json:"text"`
+			Expansions int    `json:"expansions"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_token_accounting: %v", err)},
+				},
+			}
+		}
+		m := tokens.Measure([]byte(args.Text))
+		// Caller-supplied expansions are unmeasured input: a mixed report
+		// must not be labeled measured (quarantine). Pure measurements stay
+		// measured.
+		rep := tokens.NewReport(m.Gross, args.Expansions, args.Expansions == 0)
+		out, _ := json.Marshal(rep)
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+	}
+
+	// F5: gate_status is a non-executing read (no engine).
+	if params.Name == "gate_status" {
+		var args struct {
+			State string `json:"state"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return CallToolResult{
+				IsError: true,
+				Content: []ToolContent{
+					{Type: "text", Text: fmt.Sprintf("Invalid arguments for gate_status: %v", err)},
+				},
+			}
+		}
+		path := args.State
+		if path == "" {
+			path = ".gira/gate.json"
+		}
+		s, err := gatepkg.Status(path)
+		if err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: err.Error()}}}
+		}
+		out, _ := json.Marshal(s)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 

@@ -156,10 +156,15 @@ dependencies:
 	}
 
 	// Verify relationships:
-	// frontend -> cartservice (1)
-	// opentelemetry-demo -> kafka (1)
-	if len(mm.Relationships) != 2 {
-		t.Fatalf("expected 2 relationships, got %d", len(mm.Relationships))
+	// frontend -> cartservice is depends_on-only (start ordering, J2) and
+	// must not reach the map; opentelemetry-demo -> kafka (1) remains.
+	if len(mm.Relationships) != 1 {
+		t.Fatalf("expected 1 relationship, got %d", len(mm.Relationships))
+	}
+	for _, rel := range mm.Relationships {
+		if rel.SourceID == "service:frontend" && rel.TargetID == "service:cartservice" {
+			t.Fatalf("ordering-only frontend->cartservice must be pruned (J2)")
+		}
 	}
 
 	// Verify UnsupportedBoundaries

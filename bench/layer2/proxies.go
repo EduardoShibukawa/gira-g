@@ -82,9 +82,13 @@ func cited(read FileReader, pinned, loc string) (string, error) {
 	return strings.Join(lines[start-1:end], "\n"), nil
 }
 
+// normAnchor folds case and treats '-' and '_' alike, so a Component named
+// `image-provider` matches its env wiring `IMAGE_PROVIDER_HOST`.
+func normAnchor(s string) string { return strings.ReplaceAll(strings.ToLower(s), "_", "-") }
+
 // Measure computes the proxies of a tour against one ground-truth flow. A claim is
 // verified when some locator the step cites resolves at the pinned SHA and its
-// range contains the claim's anchor (case-insensitive). A claim with no anchor or
+// range contains the claim's anchor (case-insensitive, '-' and '_' alike). A claim with no anchor or
 // a step with no locator cannot be verified.
 func Measure(t Tour, flow []string, read FileReader, pinnedSHA string) Proxies {
 	p := Proxies{Steps: len(t.Steps), Missed: []string{}}
@@ -107,11 +111,11 @@ func Measure(t Tour, flow []string, read FileReader, pinnedSHA string) Proxies {
 			var ranges []string
 			for _, l := range locs {
 				if txt, err := cited(read, pinnedSHA, l); err == nil {
-					ranges = append(ranges, strings.ToLower(txt))
+					ranges = append(ranges, normAnchor(txt))
 				}
 			}
 			for _, r := range ranges {
-				if strings.Contains(r, strings.ToLower(c.Anchor)) {
+				if strings.Contains(r, normAnchor(c.Anchor)) {
 					p.Verified++
 					break
 				}

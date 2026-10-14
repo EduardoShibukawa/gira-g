@@ -118,7 +118,7 @@
       "from": "service:checkout",
       "to": "service:ordering",
       "kind": "Service",
-      "score": 3.029,
+      "score": 3.022,
       "origin": "inferred"
     },
     {
@@ -139,7 +139,7 @@
       "from": "service:frontend",
       "to": "service:storefront",
       "kind": "Service",
-      "score": 0.929,
+      "score": 0.833,
       "origin": "inferred"
     },
     {
@@ -160,7 +160,7 @@
       "from": "service:product-catalog",
       "to": "service:inventory",
       "kind": "Service",
-      "score": 1.244,
+      "score": 1.23,
       "origin": "inferred"
     },
     {
@@ -203,7 +203,6 @@
     "contract:BillingService",
     "contract:DispatchService",
     "contract:ExchangeService",
-    "contract:Health",
     "contract:InventoryService",
     "contract:NotifyService",
     "contract:OrderingService",

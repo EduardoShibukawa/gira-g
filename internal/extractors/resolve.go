@@ -50,6 +50,11 @@ const (
 	HintGoAlias HintKind = "go_alias"
 	// HintGoMethodCall is a call of exported method Value on field or variable Key.
 	HintGoMethodCall HintKind = "go_method_call"
+	// HintDependsOn is one compose depends_on entry: Service consumes Value.
+	// The Locator is the entry's line (or the service header when the entry
+	// line is missing), exactly the line the edge evidence cites, so the
+	// resolution step can tell ordering-only lines from corroboration.
+	HintDependsOn HintKind = "depends_on"
 	// HintHTTPCall is a net/http request whose URL is field or variable Key plus
 	// the literal route Value ("" when the URL is the address alone).
 	HintHTTPCall HintKind = "http_call"
@@ -114,6 +119,52 @@ func resolve(r *resolution) {
 	resolveGRPCCalls(r, w)
 	resolveHTTPCalls(r, w)
 	resolveEnvWiring(r, w)
+	pruneOrderingOnlyEdges(r)
+}
+
+// pruneOrderingOnlyEdges drops service-consumes-service edges whose evidence
+// is all compose depends_on lines (J2, SC2): start ordering is not
+// consumption. Any other evidence — a call-site line, an env-wiring entry,
+// a contract reference — corroborates the edge, which then cites both lines
+// via its merged evidence. Infrastructure accesses edges are untouched.
+func pruneOrderingOnlyEdges(r *resolution) {
+	type lineKey struct {
+		repo, path string
+		line       int
+	}
+	ordering := map[string]map[lineKey]bool{} // "source\x00target" → depends_on lines
+	for _, h := range r.hints {
+		if h.Kind != HintDependsOn {
+			continue
+		}
+		k := h.Service + "\x00service:" + h.Value
+		if ordering[k] == nil {
+			ordering[k] = map[lineKey]bool{}
+		}
+		ordering[k][lineKey{h.Locator.Repo, h.Locator.Path, h.Locator.StartLine}] = true
+	}
+	for id, rel := range r.rels {
+		if rel.Verb != domain.VerbConsumes {
+			continue
+		}
+		if !strings.HasPrefix(rel.SourceID, "service:") || !strings.HasPrefix(rel.TargetID, "service:") {
+			continue
+		}
+		lines, ok := ordering[rel.SourceID+"\x00"+rel.TargetID]
+		if !ok || len(rel.Evidence) == 0 {
+			continue
+		}
+		onlyOrdering := true
+		for _, ev := range rel.Evidence {
+			if !lines[lineKey{ev.Locator.Repo, ev.Locator.Path, ev.Locator.StartLine}] {
+				onlyOrdering = false
+				break
+			}
+		}
+		if onlyOrdering {
+			delete(r.rels, id)
+		}
+	}
 }
 
 // envScopes holds each compose project's .env, keyed by repo and directory.

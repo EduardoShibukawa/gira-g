@@ -22,8 +22,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/cart/src/Program.cs"
-      }
+        "path": "src/cart/src/Program.cs",
+        "start_line": 60,
+        "end_line": 60
+      },
+      "unknown_joins": [
+        "contract:CartService"
+      ]
     },
     {
       "path": "src/currency/src/server.cpp",
@@ -31,8 +36,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/currency/src/server.cpp"
-      }
+        "path": "src/currency/src/server.cpp",
+        "start_line": 141,
+        "end_line": 141
+      },
+      "unknown_joins": [
+        "contract:CurrencyService"
+      ]
     },
     {
       "path": "src/email/email_server.rb",
@@ -58,8 +68,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Cart.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Cart.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CartService"
+      ]
     },
     {
       "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
@@ -67,8 +82,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Checkout.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CheckoutService"
+      ]
     },
     {
       "path": "src/frontend/gateways/rpc/Currency.gateway.ts",
@@ -76,8 +96,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/Currency.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/Currency.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:CurrencyService"
+      ]
     },
     {
       "path": "src/frontend/gateways/rpc/ProductCatalog.gateway.ts",
@@ -85,8 +110,13 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/frontend/gateways/rpc/ProductCatalog.gateway.ts"
-      }
+        "path": "src/frontend/gateways/rpc/ProductCatalog.gateway.ts",
+        "start_line": 5,
+        "end_line": 5
+      },
+      "unknown_joins": [
+        "contract:ProductCatalogService"
+      ]
     },
     {
       "path": "src/payment/charge.js",
@@ -103,7 +133,23 @@
       "locator": {
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-        "path": "src/payment/index.js"
+        "path": "src/payment/index.js",
+        "start_line": 46,
+        "end_line": 46
+      },
+      "unknown_joins": [
+        "contract:PaymentService"
+      ]
+    },
+    {
+      "path": "src/product-catalog/main.go",
+      "reason": "OpAMP client: no extractor resolves its server endpoint (opamp-go); upstream unknown",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+        "path": "src/product-catalog/main.go",
+        "start_line": 171,
+        "end_line": 171
       }
     },
     {
@@ -118,13 +164,13 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 1060,
+    "estimated": 1364,
     "truncated": true,
     "dropped": {
-      "nodes": 55,
-      "relationships": 56,
+      "nodes": 54,
+      "relationships": 55,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 31918: rerun with budget >= 31918"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 31823: rerun with budget >= 31823"
   }
 }

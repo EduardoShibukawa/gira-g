@@ -39,14 +39,16 @@ func TestSCL1ArtifactVerified(t *testing.T) {
 		t.Fatalf("bytes beyond the 1 MiB frozen cap must not affect the fingerprint")
 	}
 
-	// Digest covers every field: flipping any one flips the digest.
-	base := eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1)
+	// Digest covers every field, taxonomy included (I2): flipping any one
+	// flips the digest.
+	base := eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "measured")
 	for name, mutate := range map[string]func() string{
-		"check":       func() string { return eval.ArtifactDigest("CHECK: other", "EXPECT: ok", "/repo", 0, fp1) },
-		"expect":      func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: fail", "/repo", 0, fp1) },
-		"cwd":         func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/other", 0, fp1) },
-		"exit":        func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 1, fp1) },
-		"fingerprint": func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, eval.FingerprintInputs(tampered)) },
+		"check":       func() string { return eval.ArtifactDigest("CHECK: other", "EXPECT: ok", "/repo", 0, fp1, "measured") },
+		"expect":      func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: fail", "/repo", 0, fp1, "measured") },
+		"cwd":         func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/other", 0, fp1, "measured") },
+		"exit":        func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 1, fp1, "measured") },
+		"fingerprint": func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, eval.FingerprintInputs(tampered), "measured") },
+		"taxonomy":    func() string { return eval.ArtifactDigest("CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "inferred") },
 	} {
 		if mutate() == base {
 			t.Fatalf("digest must cover %s", name)
@@ -62,11 +64,15 @@ func TestSCL1ArtifactVerified(t *testing.T) {
 	if !ok || digest != base {
 		t.Fatalf("ParseClosingLine must round-trip, got %q,%t", digest, ok)
 	}
-	if eval.VerifyClosingLine("ARTIFACT-VERIFIED sha256:deadbeef", "CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1) {
+	if eval.VerifyClosingLine("ARTIFACT-VERIFIED sha256:deadbeef", "CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "measured") {
 		t.Fatalf("tampered digest must fail verification")
 	}
-	if !eval.VerifyClosingLine(line, "CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1) {
+	if !eval.VerifyClosingLine(line, "CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "measured") {
 		t.Fatalf("valid closing line must verify")
+	}
+	// A line verified under the wrong taxonomy must fail.
+	if eval.VerifyClosingLine(line, "CHECK: go test ./...", "EXPECT: ok", "/repo", 0, fp1, "inferred") {
+		t.Fatalf("closing line verified under the wrong taxonomy must fail")
 	}
 
 	// Writes outside the frozen scope fail closed.
@@ -84,6 +90,7 @@ func TestSCL1ArtifactVerified(t *testing.T) {
 		Expect:       "EXPECT: ok",
 		CWD:          "/repo",
 		ExitCode:     0,
+		Taxonomy:     "measured",
 		Inputs:       inputs,
 		ClosingLine:  line,
 		AllowedScope: allowed,
