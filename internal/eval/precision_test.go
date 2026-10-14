@@ -118,3 +118,65 @@ func TestSC2DockerfilesTakeTheirComposeName(t *testing.T) {
 		}
 	}
 }
+
+// edgeTo returns the relationship source -verb-> target and whether it exists.
+func edgeTo(mm *domain.MacroMap, source string, verb domain.RelationVerb, target string) (domain.Relationship, bool) {
+	for _, r := range mm.Relationships {
+		if r.SourceID == source && r.Verb == verb && r.TargetID == target {
+			return r, true
+		}
+	}
+	return domain.Relationship{}, false
+}
+
+// hasEvidence reports whether some record has origin and a path with suffix.
+func hasEvidence(evs []domain.EvidenceRecord, origin domain.DerivationOrigin, suffix string) bool {
+	for _, ev := range evs {
+		if ev.Origin == origin && strings.HasSuffix(ev.Locator.Path, suffix) && ev.Locator.StartLine > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// SC3: the Kafka topic is a Contract, provided by the Go producer (extracted, at a
+// Go line) and by the broker (declared), consumed by the env-wired services
+// (inferred, at their KAFKA_TOPIC line), and tasks 05/06 get a briefing.
+func TestSC3KafkaTopicContracts(t *testing.T) {
+	for _, v := range hermeticVariants(t) {
+		topic, producer, consumers := "contract:kafka:orders", "service:checkout", []string{"service:accounting", "service:fraud-detection"}
+		if v.name == "perturbed" {
+			topic, producer, consumers = "contract:kafka:order-events", "service:ordering", []string{"service:ledger", "service:fraud-detection"}
+		}
+		found := false
+		for _, n := range v.mm.Nodes {
+			if n.ID == topic {
+				found = n.Kind == domain.NodeContract
+			}
+		}
+		if !found {
+			t.Errorf("%s: no Contract %s", v.name, topic)
+			continue
+		}
+		if r, ok := edgeTo(v.mm, producer, domain.VerbProvides, topic); !ok || !hasEvidence(r.Evidence, domain.OriginExtracted, ".go") {
+			t.Errorf("%s: %s must provide %s with extracted Go evidence: %+v", v.name, producer, topic, r)
+		}
+		if r, ok := edgeTo(v.mm, "service:kafka", domain.VerbProvides, topic); !ok || !hasEvidence(r.Evidence, domain.OriginDeclared, ".yaml") {
+			t.Errorf("%s: the broker must provide %s with declared evidence: %+v", v.name, topic, r)
+		}
+		for _, c := range consumers {
+			r, ok := edgeTo(v.mm, c, domain.VerbConsumes, topic)
+			if !ok || !hasEvidence(r.Evidence, domain.OriginInferred, "compose.full.yaml") {
+				t.Errorf("%s: %s must consume %s, inferred, at its KAFKA_TOPIC line: %+v", v.name, c, topic, r)
+			}
+		}
+		engine := slices.NewEngine(v.mm)
+		for _, task := range v.gt.Tasks {
+			if task.TargetID == topic {
+				if _, err := engine.GetImpactBriefing(task.TargetID, task.Depth); err != nil {
+					t.Errorf("%s %s: %v", v.name, task.ID, err)
+				}
+			}
+		}
+	}
+}

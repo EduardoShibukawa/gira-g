@@ -21,6 +21,28 @@ const (
 	HintComposeBuild HintKind = "compose_build"
 	// HintDockerfileService is the Service node (Service) a Dockerfile produced.
 	HintDockerfileService HintKind = "dockerfile_service"
+	// HintComposeEnv is one compose environment entry of Service: Key, and Value
+	// when Inline (KEY=VALUE); a bare KEY takes its value from the project .env.
+	HintComposeEnv HintKind = "compose_env"
+	// HintGoEnvBinding binds a Go field or variable named Key to environment
+	// variable Value, through os.Getenv("Value") or f(&Key, "Value").
+	HintGoEnvBinding HintKind = "go_env_binding"
+	// HintGoEnvVar is a package-level Go variable Key in package directory
+	// Context whose value is environment variable Value (may be empty) with the
+	// literal fallback Default.
+	HintGoEnvVar HintKind = "go_env_var"
+	// HintKafkaTopic is the Topic of a Kafka producer message built by Service.
+	// Mode says how the topic expression reads: "literal" (Value), "env"
+	// (Value), "var" (package variable Key of import path Value, "" for the same
+	// package) or "field" (field or variable Key, see HintGoEnvBinding).
+	HintKafkaTopic HintKind = "kafka_topic"
+	// HintKafkaBroker is the broker list a Kafka producer of Service is built
+	// with. Mode "env" (Value), "field" (Key) or "param" (parameter Index of the
+	// enclosing function Key, in package directory Context).
+	HintKafkaBroker HintKind = "kafka_broker"
+	// HintGoCallArg is argument Index of a call to function Key of import path
+	// Value, when the argument reads field or variable Ref.
+	HintGoCallArg HintKind = "go_call_arg"
 )
 
 // Hint is an internal resolution record an Extractor emits next to its facts.
@@ -34,6 +56,12 @@ type Hint struct {
 	Key     string
 	Value   string
 	Context string
+	// Default, Mode, Index, Ref and Inline qualify some kinds; see each kind.
+	Default string
+	Mode    string
+	Index   int
+	Ref     string
+	Inline  bool
 }
 
 // HintEmitter is implemented by Extractors that also emit resolution hints.
@@ -71,6 +99,7 @@ func resolve(r *resolution) {
 	})
 	env := newEnvScopes(r.hints)
 	attributeDockerfiles(r, env)
+	resolveKafkaTopics(r, newWiring(r.hints, env))
 }
 
 // envScopes holds each compose project's .env, keyed by repo and directory.

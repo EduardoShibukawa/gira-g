@@ -8,6 +8,15 @@
   "mediation_edges": [],
   "unsupported_boundaries": [
     {
+      "path": "src/accounting/Consumer.cs",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+        "path": "src/accounting/Consumer.cs"
+      }
+    },
+    {
       "path": "src/cart/src/Program.cs",
       "reason": "no extractor registered for file extension",
       "locator": {
@@ -32,6 +41,15 @@
         "repo": "opentelemetry-demo",
         "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/email/email_server.rb"
+      }
+    },
+    {
+      "path": "src/fraud-detection/src/main/kotlin/frauddetection/main.kt",
+      "reason": "no extractor registered for file extension",
+      "locator": {
+        "repo": "opentelemetry-demo",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+        "path": "src/fraud-detection/src/main/kotlin/frauddetection/main.kt"
       }
     },
     {
@@ -100,13 +118,13 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 897,
+    "estimated": 1060,
     "truncated": true,
     "dropped": {
-      "nodes": 54,
-      "relationships": 55,
+      "nodes": 57,
+      "relationships": 58,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32784: rerun with budget >= 32784"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 34748: rerun with budget >= 34748"
   }
 }

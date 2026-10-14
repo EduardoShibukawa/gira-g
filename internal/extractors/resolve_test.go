@@ -2,6 +2,8 @@ package extractors
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
@@ -135,5 +137,117 @@ func TestUnresolvedDockerfileVariableIsNotGuessed(t *testing.T) {
 	}
 	if !ids["service:src"] || !ids["service:cart"] {
 		t.Fatalf("without .env nothing is attributed: %v", ids)
+	}
+}
+
+const producerGo = `package kafka
+
+import (
+	"os"
+
+	"github.com/IBM/sarama"
+)
+
+var Topic = getTopic()
+
+func getTopic() string {
+	if t := os.Getenv("KAFKA_TOPIC"); t != "" {
+		return t
+	}
+	return "orders"
+}
+
+func Create(brokers []string) (sarama.AsyncProducer, error) {
+	return sarama.NewAsyncProducer(brokers, nil)
+}
+`
+
+const mainGo = `package main
+
+import (
+	"os"
+
+	"github.com/IBM/sarama"
+	"example.com/shop/src/checkout/kafka"
+)
+
+type svc struct{ broker string }
+
+func main() {
+	s := &svc{}
+	s.broker = os.Getenv("KAFKA_ADDR")
+	p, _ := kafka.Create([]string{s.broker})
+	p.Input() <- &sarama.ProducerMessage{Topic: kafka.Topic}
+}
+`
+
+func kafkaIndex(t *testing.T, files ...TargetFile) map[string]domain.Relationship {
+	t.Helper()
+	all := append([]TargetFile{
+		{Repo: "r", Path: "src/checkout/kafka/producer.go", Content: []byte(producerGo)},
+		{Repo: "r", Path: "src/checkout/main.go", Content: []byte(mainGo)},
+	}, files...)
+	mm, err := NewPipeline(NewComposeExtractor(), NewEnvFileExtractor(), NewGoASTExtractor()).ProcessFiles(context.Background(), "t", all)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rels := map[string]domain.Relationship{}
+	for _, r := range mm.Relationships {
+		if strings.HasPrefix(r.TargetID, "contract:kafka:") {
+			rels[r.SourceID+" "+string(r.Verb)+" "+r.TargetID] = r
+		}
+	}
+	return rels
+}
+
+func origins(r domain.Relationship) string {
+	var out []string
+	for _, ev := range r.Evidence {
+		out = append(out, fmt.Sprintf("%s@%s#L%d", ev.Origin, ev.Locator.Path, ev.Locator.StartLine))
+	}
+	return strings.Join(out, " ")
+}
+
+func TestKafkaTopicFromComposeWiring(t *testing.T) {
+	compose := "services:\n  checkout:\n    environment:\n      - KAFKA_ADDR\n      - KAFKA_TOPIC\n  kafka:\n    image: kafka\n  accounting:\n    environment:\n      - KAFKA_TOPIC\n  audit:\n    environment:\n      KAFKA_TOPIC: payments\n"
+	rels := kafkaIndex(t,
+		TargetFile{Repo: "r", Path: "compose.yaml", Content: []byte(compose)},
+		TargetFile{Repo: "r", Path: ".env", Content: []byte("KAFKA_HOST=kafka\nKAFKA_ADDR=${KAFKA_HOST}:9092\nKAFKA_TOPIC=orders\n")},
+	)
+	want := map[string]string{
+		"service:checkout provides contract:kafka:orders":  "extracted@src/checkout/main.go#L16 declared@compose.yaml#L5",
+		"service:kafka provides contract:kafka:orders":     "declared@compose.yaml#L4",
+		"service:accounting consumes contract:kafka:orders": "inferred@compose.yaml#L10",
+	}
+	if len(rels) != len(want) {
+		t.Fatalf("got %v", rels)
+	}
+	for k, o := range want {
+		if got := origins(rels[k]); got != o {
+			t.Errorf("%s: evidence %q, want %q", k, got, o)
+		}
+	}
+}
+
+func TestKafkaTopicFallsBackToTheCodeDefault(t *testing.T) {
+	rels := kafkaIndex(t)
+	if got := origins(rels["service:checkout provides contract:kafka:orders"]); got != "extracted@src/checkout/main.go#L16 extracted@src/checkout/kafka/producer.go#L15" {
+		t.Fatalf("without compose the code default names the topic: %v", rels)
+	}
+	if len(rels) != 1 {
+		t.Errorf("no wiring, so no broker and no consumers: %v", rels)
+	}
+}
+
+func TestKafkaTopicThatDoesNotResolveEmitsNothing(t *testing.T) {
+	src := strings.Replace(mainGo, "Topic: kafka.Topic", "Topic: pick()", 1)
+	mm, err := NewPipeline(NewGoASTExtractor()).ProcessFiles(context.Background(), "t", []TargetFile{{Repo: "r", Path: "src/checkout/main.go", Content: []byte(src)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, n := range mm.Nodes {
+		if strings.HasPrefix(n.ID, "contract:kafka:") {
+			t.Fatalf("an unresolved topic must not be named: %s", n.ID)
+		}
 	}
 }

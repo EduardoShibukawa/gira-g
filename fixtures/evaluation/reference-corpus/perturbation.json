@@ -35,7 +35,8 @@
     {"path": "src/checkout/main.go", "find": "\tsvc.currencySvcClient = pb.NewCurrencyServiceClient(c)\n", "replace": "\t_ = c\n"},
     {"path": "compose.yaml", "find": "      - CART_ADDR\n      - CURRENCY_ADDR\n      - EMAIL_ADDR\n", "replace": "      - CART_ADDR\n      - EMAIL_ADDR\n"},
     {"path": "compose.yaml", "find": "      currency:\n        condition: service_healthy\n      email:\n", "replace": "      email:\n"},
-    {"path": "src/checkout/kafka/producer.go", "find": "return \"orders\"", "replace": "return \"order-events\""}
+    {"path": "src/checkout/kafka/producer.go", "find": "return \"orders\"", "replace": "return \"order-events\""},
+    {"path": ".env", "find": "KAFKA_TOPIC=orders\n", "replace": "KAFKA_TOPIC=order-events\n"}
   ],
   "index_changes": {
     "note": "Architectural changes the edits above declare, in published ids. Every other difference between the two indexes must be a rename (SC9).",

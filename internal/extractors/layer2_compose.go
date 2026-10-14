@@ -218,6 +218,7 @@ func (e *ComposeExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, 
 	var hints []Hint
 	for i := 0; i+1 < len(services.Content); i += 2 {
 		name, def := services.Content[i].Value, services.Content[i+1]
+		hints = append(hints, composeEnvHints(file, "service:"+name, mappingValue(def, "environment"))...)
 		build := mappingValue(def, "build")
 		if build == nil {
 			continue
@@ -252,4 +253,32 @@ func mappingValue(m *yaml.Node, key string) *yaml.Node {
 		}
 	}
 	return nil
+}
+
+// composeEnvHints returns one compose_env hint per environment entry, list form
+// (`- KEY` or `- KEY=VALUE`) or map form (`KEY: VALUE`), at the entry's line.
+func composeEnvHints(file TargetFile, service string, env *yaml.Node) []Hint {
+	if env == nil {
+		return nil
+	}
+	at := func(line int) domain.Locator {
+		return domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path, StartLine: line, EndLine: line}
+	}
+	var hints []Hint
+	switch env.Kind {
+	case yaml.SequenceNode:
+		for _, item := range env.Content {
+			key, value, inline := strings.Cut(item.Value, "=")
+			if key = strings.TrimSpace(key); key != "" {
+				hints = append(hints, Hint{Kind: HintComposeEnv, Service: service, Key: key, Value: value, Inline: inline, Locator: at(item.Line)})
+			}
+		}
+	case yaml.MappingNode:
+		for i := 0; i+1 < len(env.Content); i += 2 {
+			k, v := env.Content[i], env.Content[i+1]
+			inline := v.Tag != "!!null"
+			hints = append(hints, Hint{Kind: HintComposeEnv, Service: service, Key: k.Value, Value: v.Value, Inline: inline, Locator: at(k.Line)})
+		}
+	}
+	return hints
 }
