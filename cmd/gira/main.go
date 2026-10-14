@@ -16,6 +16,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
+	"github.com/EduardoShibukawa/gira-g/internal/human"
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
@@ -23,6 +24,25 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
+
+// emitHuman writes a rendered human document. Markdown is styled only on a
+// terminal with NO_COLOR unset; JSON and the plain path stay byte-identical
+// (ADR 0008 §1).
+func emitHuman(stdout io.Writer, data []byte, format slices.Format) error {
+	text := string(data)
+	if format == slices.FormatMarkdown {
+		text = human.Decorate(text, human.Styled(stdout))
+	}
+	_, err := io.WriteString(stdout, text)
+	return err
+}
+
+// emitMarkdownLine writes text plus a trailing newline, decorating only when
+// stdout is a styled terminal.
+func emitMarkdownLine(stdout io.Writer, text string) error {
+	_, err := io.WriteString(stdout, human.Decorate(text, human.Styled(stdout))+"\n")
+	return err
+}
 
 var (
 	version = "0.1.0-dev"
@@ -369,12 +389,12 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		}
 	}
 
-	data, err := briefing.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	data, err := briefing.Emit(emitFormat, budget)
 	if err != nil {
 		return err
 	}
-	_, err = stdout.Write(data)
-	return err
+	return emitHuman(stdout, data, emitFormat)
 }
 
 func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -417,12 +437,12 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	data, err := slice.Emit(slices.ParseFormat(strings.ToLower(format)), budget)
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	data, err := slice.Emit(emitFormat, budget)
 	if err != nil {
 		return err
 	}
-	_, err = stdout.Write(data)
-	return err
+	return emitHuman(stdout, data, emitFormat)
 }
 
 func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -467,7 +487,9 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
-		fmt.Fprintln(stdout, report.RenderMarkdown())
+		if err := emitMarkdownLine(stdout, report.RenderMarkdown()); err != nil {
+			return err
+		}
 	default:
 		data, err := report.CanonicalJSON()
 		if err != nil {
@@ -514,7 +536,9 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
-		fmt.Fprintln(stdout, slices.RenderBoundaryMatches(matches))
+		if err := emitMarkdownLine(stdout, slices.RenderBoundaryMatches(matches)); err != nil {
+			return err
+		}
 	default:
 		data, err := json.MarshalIndent(matches, "", "  ")
 		if err != nil {
@@ -675,8 +699,7 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, tour.RenderMarkdown())
-		return err
+		return emitMarkdownLine(stdout, tour.RenderMarkdown())
 	}
 	data, err := tour.CanonicalJSON()
 	if err != nil {
@@ -709,8 +732,7 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, flows.RenderMarkdown())
-		return err
+		return emitMarkdownLine(stdout, flows.RenderMarkdown())
 	}
 	data, err := flows.CanonicalJSON()
 	if err != nil {
@@ -744,8 +766,7 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	d := archdiff.Compare(a, b)
 	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
-		_, err = fmt.Fprintln(stdout, d.RenderMarkdown())
-		return err
+		return emitMarkdownLine(stdout, d.RenderMarkdown())
 	}
 	data, err := d.CanonicalJSON()
 	if err != nil {
