@@ -78,7 +78,11 @@ type EvidenceRecord struct {
 	Origin            DerivationOrigin `json:"origin"`
 	DeploymentProfile string           `json:"deployment_profile,omitempty"`
 	Status            FreshnessStatus  `json:"status"`
-	DiscoveredAt      time.Time        `json:"discovered_at"`
+	// DiscoveredAt is the commit time of the repository the locator cites (or the
+	// latest commit time of the Target System for declarative overrides), not the
+	// wall-clock time of indexing, so the same commits always index to the same
+	// bytes (spec gira-agent-skills-and-eval SC4; owner exception, 2026-10-13).
+	DiscoveredAt time.Time `json:"discovered_at"`
 }
 
 // Node represents an architectural entity in the Macro Map.

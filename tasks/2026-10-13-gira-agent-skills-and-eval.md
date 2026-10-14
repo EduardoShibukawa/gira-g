@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: completed
+status: verified
+verified_at: "8db9304"
 spec: gira-agent-skills-and-eval@1
 ---
 
@@ -23,6 +24,8 @@ spec: gira-agent-skills-and-eval@1
 - approved: run children 02–11 via /g-inga:drive, standard tier each, no paid LLM calls, quarantine per ADR 0012, no push or release, by owner (2026-10-13, "/g-inga:drive --limit 11 --tag gira-agent-skills-and-eval@1")
 - divergence: spec SC6: "every task in the 12-task suite". Tasks 05 and 06 target `contract:kafka:orders`, which the extractors never emit (Kafka topic Contracts are an extractor follow-up from child 01, outside this spec). No output exists to budget; the CLI fails with node-not-found and emits nothing (`TestBudgetOnMissingTargetEmitsNothing`). SC6 holds on the other 10 tasks. Options: approve an exception (SC6 measured on tasks whose target exists), or reopen as spec v2 adding Kafka topic extraction.
 - divergence: spec Interfaces "no existing flag, field or tool changes meaning" vs SC4. Child 01 made `evidence[].discovered_at` the repository commit time instead of the wall-clock discovery time, because SC4 needs byte-identical cold indexes. Options: approve an exception and document the field's new meaning, or spec v2 adding a separate field.
+- approved: exception SC6 — measured on the tasks whose target exists in the index; tasks 05/06 (`contract:kafka:orders`, never extracted) are covered automatically once the extractors emit the topic, and `TestBudgetOnMissingTargetEmitsNothing` pins that a missing target emits nothing. Resolves the SC6 divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
+- approved: exception Interfaces/SC4 — `evidence[].discovered_at` is the commit time of the cited repository, documented on the field in `internal/domain/models.go`. Resolves the `discovered_at` divergence above. By owner (2026-10-13, "ok", answering "aprovo (a) nas duas" as recommended)
 
 ## Objective
 
@@ -113,7 +116,8 @@ Review focus: (a) the reviewer found no circular path; (b) budgets: F1 was the o
 
 - as of: 2026-10-13, branch main, head 8db9304 plus this record, worktree clean after commit
 - done: children 01–11 verified; review findings fixed; SC1–SC16, R1 and V1 pass at 8db9304
-- next: owner decides the two open `divergence:` entries (SC6 tasks 05/06; `discovered_at`) and reviews the ground truth (child 02 Outcome lists the items). After those approvals the parent can move to `verified`, then `accepted`.
+- next: owner reviews the ground truth (child 02 Outcome lists the items) and records `accepted:`
+- done also: both divergences resolved by owner exceptions; parent verified at 8db9304
 - open: no push, no release; paid runs (Layer 1 frontier, UA indexing) not performed
 
 ## Outcome
