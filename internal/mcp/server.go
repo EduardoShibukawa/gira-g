@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -77,8 +78,32 @@ type CallToolResult struct {
 }
 
 type ToolContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type string                 `json:"type"`
+	Text string                 `json:"text"`
+	Data map[string]any         `json:"data,omitempty"`
+}
+
+// StructuredError represents a structured error response for MCP tools.
+type StructuredError struct {
+	Code        string   `json:"code"`
+	Message     string   `json:"message"`
+	Retryable   bool     `json:"retryable"`
+	Suggestions []string `json:"suggestions,omitempty"`
+}
+
+func newStructuredError(code, message string, retryable bool, suggestions ...string) CallToolResult {
+	err := StructuredError{
+		Code:        code,
+		Message:     message,
+		Retryable:   retryable,
+		Suggestions: suggestions,
+	}
+	data, _ := json.Marshal(err)
+	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: string(data)}}}
+}
+
+func errorResult(msg string) CallToolResult {
+	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: msg}}}
 }
 
 // Server handles MCP protocol communication over stdio or arbitrary streams.
@@ -813,6 +838,9 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		}
 		out, err := tour.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
+			}
 			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
@@ -1002,15 +1030,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		}
 
 	default:
-		return CallToolResult{
-			IsError: true,
-			Content: []ToolContent{
-				{Type: "text", Text: fmt.Sprintf("Unknown tool: %s", params.Name)},
-			},
-		}
+		return newStructuredError("tool_not_found", fmt.Sprintf("Unknown tool: %s", params.Name), false, "Check available tools with tools/list")
 	}
 }
 
-func errorResult(msg string) CallToolResult {
-	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: msg}}}
-}
