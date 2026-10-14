@@ -94,32 +94,41 @@ type LintResult struct {
 }
 
 // LintFile lints one ledger file against the expected digest.
-// Local strict mode fails closed; CI strict mode warns (owner decision).
+// --strict fails closed on any deviation locally and warns in CI (owner
+// decision: warn-only in CI until E3). Without --strict, deviations warn and
+// pass: the lint reports, it does not gate. A missing ledger follows the
+// same rule: it is a deviation like any other.
 func LintFile(path, expectedDigest string, opts LintOptions) LintResult {
-	s, err := Status(path)
-	if err != nil {
-		return LintResult{Error: err.Error()}
+	warn := func(status, msg string) LintResult {
+		return LintResult{Pass: true, Status: status, Warnings: []string{msg}}
 	}
 	fail := func(msg string) LintResult {
 		if opts.CI {
-			return LintResult{Pass: true, Status: s.Status, Warnings: []string{msg}}
+			return warn("", msg)
 		}
 		return LintResult{Error: msg}
 	}
+	soft := func(status, msg string) LintResult {
+		if opts.Strict {
+			return fail(msg)
+		}
+		return warn(status, msg)
+	}
+	s, err := Status(path)
+	if err != nil {
+		return soft("", fmt.Sprintf("gate ledger unreadable: %v", err))
+	}
 	if s.Marker != MarkerSuccess {
-		return fail(fmt.Sprintf("success-only marker missing (got %q)", s.Marker))
+		return soft(s.Status, fmt.Sprintf("success-only marker missing (got %q)", s.Marker))
 	}
 	if s.Digest != expectedDigest {
-		return fail(fmt.Sprintf("stale digest: have %q, want %q", s.Digest, expectedDigest))
+		return soft(s.Status, fmt.Sprintf("stale digest: have %q, want %q", s.Digest, expectedDigest))
 	}
 	if s.Status == StatusAbandon {
 		return LintResult{Pass: true, Status: StatusAbandon, Warnings: []string{"qualified handoff ABANDON: " + s.Reason}}
 	}
 	if s.Status != StatusAllMet {
-		return fail(fmt.Sprintf("unknown status %q", s.Status))
-	}
-	if !opts.Strict {
-		return LintResult{Pass: true, Status: s.Status}
+		return soft(s.Status, fmt.Sprintf("unknown status %q", s.Status))
 	}
 	return LintResult{Pass: true, Status: StatusAllMet}
 }

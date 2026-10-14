@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: verified
+status: active
 parent: 2026-10-14-gira-evidence-gate
 spec: gira-evidence-gate@1
 verified_at: "559f408"

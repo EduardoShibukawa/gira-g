@@ -460,6 +460,10 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Frozen input fingerprint hex.",
 					},
+					"taxonomy": {
+						Type:        "string",
+						Description: "L3 claim taxonomy recorded in the digest (measured|checked|inferred|assumed, default inferred).",
+					},
 				},
 			},
 		},
@@ -558,6 +562,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			CWD         string `json:"cwd"`
 			ExitCode    int    `json:"exit_code"`
 			Fingerprint string `json:"fingerprint"`
+			Taxonomy    string `json:"taxonomy"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -567,7 +572,13 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 				},
 			}
 		}
-		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint)
+		if args.Taxonomy == "" {
+			args.Taxonomy = "inferred"
+		}
+		if !eval.ValidTaxonomy(args.Taxonomy) {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: fmt.Sprintf("unknown taxonomy %q", args.Taxonomy)}}}
+		}
+		digest := eval.ArtifactDigest(args.Check, args.Expect, args.CWD, args.ExitCode, args.Fingerprint, args.Taxonomy)
 		out, _ := json.Marshal(map[string]string{"digest": digest, "closing_line": eval.FormatClosingLine(digest)})
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
@@ -588,7 +599,11 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 				},
 			}
 		}
-		out, _ := json.Marshal(eval.ControlReport(args.Total, args.Matched, args.Mismatched, args.Seed))
+		rep := eval.ControlReport(args.Total, args.Matched, args.Mismatched, args.Seed)
+		if err := rep.Validate(); err != nil {
+			return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: fmt.Sprintf("inconsistent control line: %v", err)}}}
+		}
+		out, _ := json.Marshal(rep)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}
 
@@ -632,7 +647,10 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 		m := tokens.Measure([]byte(args.Text))
-		rep := tokens.NewReport(m.Gross, args.Expansions, true)
+		// Caller-supplied expansions are unmeasured input: a mixed report
+		// must not be labeled measured (quarantine). Pure measurements stay
+		// measured.
+		rep := tokens.NewReport(m.Gross, args.Expansions, args.Expansions == 0)
 		out, _ := json.Marshal(rep)
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 	}

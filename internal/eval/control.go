@@ -68,6 +68,23 @@ func ControlReport(total, matched, mismatched int, seed uint64) ControlTotal {
 	}
 }
 
+// Validate rejects internally inconsistent control lines: a bare assertion
+// must never pass as a blind round (autoresearch: the metric comes from the
+// run, never from a claim). A finished round over the full sample reports
+// matched+mismatched == sampled_n with sampled_n following the rule.
+func (c ControlTotal) Validate() error {
+	if c.Total < 0 || c.Matched < 0 || c.Mismatched < 0 || c.SampledN < 0 {
+		return fmt.Errorf("control line must not carry negative counts: %+v", c)
+	}
+	if c.SampledN != SampleSize(c.Total) {
+		return fmt.Errorf("sampled_n must follow max(20,5%%) for total %d, got %d", c.Total, c.SampledN)
+	}
+	if c.Matched+c.Mismatched != c.SampledN {
+		return fmt.Errorf("matched+mismatched must equal sampled_n %d, got %d+%d", c.SampledN, c.Matched, c.Mismatched)
+	}
+	return nil
+}
+
 // CompareFrozenDigests enforces frozen A/B comparison before reconciliation:
 // differing input digests fail closed instead of comparing values.
 func CompareFrozenDigests(a, b string) error {
@@ -92,15 +109,21 @@ func BlindReDerive(sample []int, first, second map[int]string, frozenA, frozenB 
 	if err := CompareFrozenDigests(frozenA, frozenB); err != nil {
 		return BlindResult{}, err
 	}
-	for k := range second {
-		found := false
+	inSample := func(k int) bool {
 		for _, s := range sample {
 			if s == k {
-				found = true
-				break
+				return true
 			}
 		}
-		if !found {
+		return false
+	}
+	for k := range first {
+		if !inSample(k) {
+			return BlindResult{}, fmt.Errorf("plug rejected: key %d outside the seeded sample", k)
+		}
+	}
+	for k := range second {
+		if !inSample(k) {
 			return BlindResult{}, fmt.Errorf("plug rejected: key %d outside the seeded sample", k)
 		}
 	}

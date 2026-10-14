@@ -26,7 +26,8 @@ const (
 	TaxonomyAssumed  Taxonomy = "assumed"
 )
 
-// GiraTier maps each Gallon label to its Gira derivation tier.
+// GiraTier maps each Gallon label to its Gira derivation tier. Unknown
+// labels stay silent ("unknown", I1), never named.
 func (t Taxonomy) GiraTier() string {
 	switch t {
 	case TaxonomyMeasured:
@@ -36,7 +37,17 @@ func (t Taxonomy) GiraTier() string {
 	case TaxonomyInferred, TaxonomyAssumed:
 		return "inferred"
 	default:
-		return ""
+		return "unknown"
+	}
+}
+
+// ValidTaxonomy reports whether s is a Gallon S1 verbatim label.
+func ValidTaxonomy(s string) bool {
+	switch Taxonomy(s) {
+	case TaxonomyMeasured, TaxonomyChecked, TaxonomyInferred, TaxonomyAssumed:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -53,7 +64,9 @@ type Finding struct {
 }
 
 // Validate enforces: taxonomy present and known, both severities present,
-// summary present, and measured/checked require a real-path repro.
+// summary present, and measured/checked require a real-path repro that
+// exists on disk. A claim on a missing path is code-reading: inferred at
+// most (autoresearch: the result must come from the run, not the claim).
 func (f Finding) Validate() error {
 	switch f.Taxonomy {
 	case TaxonomyMeasured, TaxonomyChecked, TaxonomyInferred, TaxonomyAssumed:
@@ -66,9 +79,13 @@ func (f Finding) Validate() error {
 	if strings.TrimSpace(f.Summary) == "" {
 		return fmt.Errorf("finding %q: summary required", f.ID)
 	}
-	if strings.TrimSpace(f.ReproPath) == "" {
-		if f.Taxonomy == TaxonomyMeasured || f.Taxonomy == TaxonomyChecked {
+	if f.Taxonomy == TaxonomyMeasured || f.Taxonomy == TaxonomyChecked {
+		p := strings.TrimSpace(f.ReproPath)
+		if p == "" {
 			return fmt.Errorf("finding %q: %s without a real-path repro is inferred at most", f.ID, f.Taxonomy)
+		}
+		if fi, err := os.Stat(p); err != nil || fi.IsDir() {
+			return fmt.Errorf("finding %q: %s repro path %q is not a readable file (inferred at most)", f.ID, f.Taxonomy, f.ReproPath)
 		}
 	}
 	return nil
@@ -88,6 +105,7 @@ func (r Register) Save(path string) error {
 	b.WriteString("| ID | taxonomy | coordinator | reviewer | status | repro | summary |\n")
 	b.WriteString("|---|---|---|---|---|---|---|\n")
 	esc := func(s string) string {
+		s = strings.ReplaceAll(s, "\\", "\\\\")
 		s = strings.ReplaceAll(s, "|", "\\|")
 		s = strings.ReplaceAll(s, "\n", " ")
 		return s
@@ -108,7 +126,35 @@ func (r Register) Save(path string) error {
 	return os.WriteFile(path, []byte(b.String()), 0o644)
 }
 
-// LoadRegister reads a register written by Save.
+// splitRow splits a register row on unescaped | and unescapes \| and \\.
+func splitRow(line string) []string {
+	var cells []string
+	var cur strings.Builder
+	escaped := false
+	for _, r := range line {
+		switch {
+		case escaped:
+			cur.WriteRune(r)
+			escaped = false
+		case r == '\\':
+			escaped = true
+		case r == '|':
+			cells = append(cells, cur.String())
+			cur.Reset()
+		default:
+			cur.WriteRune(r)
+		}
+	}
+	cells = append(cells, cur.String())
+	if escaped {
+		cells[len(cells)-1] += "\\"
+	}
+	return cells
+}
+
+// LoadRegister reads a register written by Save and validates every row:
+// unknown taxonomies, missing severities and dangling repro claims fail
+// closed instead of loading silently.
 func LoadRegister(path string) (Register, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -120,7 +166,7 @@ func LoadRegister(path string) (Register, error) {
 		if !strings.HasPrefix(line, "|") || strings.Contains(line, "---") || strings.Contains(line, "ID |") {
 			continue
 		}
-		parts := strings.Split(line, "|")
+		parts := splitRow(line)
 		// leading + trailing empty cells
 		if len(parts) < 9 {
 			continue
@@ -128,11 +174,15 @@ func LoadRegister(path string) (Register, error) {
 		for i := range parts {
 			parts[i] = strings.TrimSpace(parts[i])
 		}
-		out.Findings = append(out.Findings, Finding{
+		f := Finding{
 			ID: parts[1], Taxonomy: Taxonomy(parts[2]),
 			SeverityCoordinator: parts[3], SeverityReviewer: parts[4],
 			Status: parts[5], ReproPath: parts[6], Summary: parts[7],
-		})
+		}
+		if err := f.Validate(); err != nil {
+			return Register{}, fmt.Errorf("loading register %s: %w", path, err)
+		}
+		out.Findings = append(out.Findings, f)
 	}
 	return out, nil
 }
