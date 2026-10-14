@@ -21,6 +21,12 @@ Studied, never depended on. Decided in [How to reuse Graphify and Understand Any
 
 What we diverge on: no LLM-emitted edges without evidence; no fixed per-type weights; IDs must survive renames; no unverified LLM summaries in the Macro Map.
 
+## How we use it: USE / COPY / NORTH STAR
+
+- **USE:** nothing directly (edgeless output; only `imports` is deterministic). Possible future optional adapter for `summary`/`tags`/`layers`/`tour` as unverified annotations only.
+- **COPY:** fingerprints + SKIP/PARTIAL/ARCH/FULL; symbol-loss gate (never publish a smaller map without proof); fresh/dirty/stale + behind/ahead/diverged staleness; committed map + read-only viewer; tour as ID list; tolerant ingestion (aliases, per-item drop); nearest-manifest resolution (covering workspaces + tsconfig references).
+- **NORTH STAR:** deterministic first, LLM second with structural signals; prose pipelines and LLM-authored scripts don't reproduce — ship the scripts.
+
 ## Study 1 — 2026-10-09 (plugin 2.9.7, ffa2f0a)
 
 Originally on the throwaway branch `research/understand-anything` (commit 831bb6d).
