@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,7 +52,14 @@ type dockerfileCopy struct {
 	endLine   int
 }
 
+type dockerfilePort struct {
+	port      string
+	startLine int
+	endLine   int
+}
+
 type dockerfileStage struct {
+	exposed       []dockerfilePort
 	baseImage     string
 	stageName     string
 	fromStartLine int
@@ -290,6 +298,9 @@ func (e *DockerfileExtractor) Extract(ctx context.Context, file TargetFile) ([]d
 			if currentStage != nil {
 				ports := strings.Fields(inst.args)
 				currentStage.ports = append(currentStage.ports, ports...)
+				for _, p := range ports {
+					currentStage.exposed = append(currentStage.exposed, dockerfilePort{port: p, startLine: inst.startLine, endLine: inst.endLine})
+				}
 			}
 
 		case "CMD":
@@ -320,283 +331,103 @@ func (e *DockerfileExtractor) Extract(ctx context.Context, file TargetFile) ([]d
 		return nil, nil, nil, nil
 	}
 
-	var nodes []domain.Node
-	var relationships []domain.Relationship
-	nodeMap := make(map[string]int)
-	relMap := make(map[string]int)
-
-	addNode := func(n domain.Node) {
-		if idx, ok := nodeMap[n.ID]; ok {
-			nodes[idx].Evidence = append(nodes[idx].Evidence, n.Evidence...)
-			if nodes[idx].Metadata == nil && len(n.Metadata) > 0 {
-				nodes[idx].Metadata = make(map[string]any)
-			}
-			for k, v := range n.Metadata {
-				if _, has := nodes[idx].Metadata[k]; !has {
-					nodes[idx].Metadata[k] = v
-				}
-			}
-		} else {
-			nodes = append(nodes, n)
-			nodeMap[n.ID] = len(nodes) - 1
+	// One Dockerfile builds one Service. Build stages and base images are how it is
+	// built, not Components: they are recorded as metadata on the Service, each
+	// entry with the locator of the line it was read from.
+	// Entries cite path#Lstart[-Lend]: the repo and commit are the Service's own
+	// Dockerfile evidence, so repeating them only spends the token budget.
+	locate := func(start, end int) string {
+		if end > start {
+			return fmt.Sprintf("%s#L%d-L%d", file.Path, start, end)
 		}
+		return fmt.Sprintf("%s#L%d", file.Path, start)
 	}
-
-	addRel := func(r domain.Relationship) {
-		if idx, ok := relMap[r.ID]; ok {
-			relationships[idx].Evidence = append(relationships[idx].Evidence, r.Evidence...)
-		} else {
-			relationships = append(relationships, r)
-			relMap[r.ID] = len(relationships) - 1
+	stageNames := make(map[string]bool)
+	var stageMeta, baseImages []map[string]any
+	seenImage := make(map[string]bool)
+	addImage := func(img string, start, end int) {
+		if img == "" || stageNames[img] || seenImage[img] {
+			return
 		}
+		seenImage[img] = true
+		baseImages = append(baseImages, map[string]any{"image": img, "locator": locate(start, end)})
 	}
-
-	// Map of stage names defined so far: stageName -> nodeID
-	definedStages := make(map[string]string)
-
-	numStages := len(stages)
-
 	for i, st := range stages {
-		isFinalStage := (i == numStages-1)
-
-		var nodeID string
-		var nodeKind domain.NodeType
-		var nodeName string
-
-		if isFinalStage {
-			nodeKind = domain.NodeService
-			if st.stageName != "" && numStages > 1 {
-				// Final stage has an explicit AS name
-				nodeName = st.stageName
-				nodeID = fmt.Sprintf("service:%s", st.stageName)
-			} else {
-				nodeName = defaultSvcName
-				nodeID = fmt.Sprintf("service:%s", defaultSvcName)
-			}
-		} else {
-			// Intermediate stage
-			if st.stageName != "" {
-				nodeName = st.stageName
-				nodeID = fmt.Sprintf("service:stage:%s", st.stageName)
-			} else {
-				nodeName = fmt.Sprintf("stage-%d", i)
-				nodeID = fmt.Sprintf("service:stage:stage-%d", i)
-			}
-			nodeKind = domain.NodeService
+		img := cleanImageName(st.baseImage)
+		name := st.stageName
+		if name == "" {
+			name = fmt.Sprintf("stage-%d", i)
 		}
-
-		if st.stageName != "" {
-			definedStages[st.stageName] = nodeID
+		if len(stages) > 1 {
+			stageMeta = append(stageMeta, map[string]any{"name": name, "locator": locate(st.fromStartLine, st.fromEndLine)})
 		}
-		// Also register index as stage reference
-		definedStages[fmt.Sprintf("%d", i)] = nodeID
-
-		metadata := make(map[string]any)
-		if st.baseImage != "" {
-			metadata["base_image"] = st.baseImage
-		}
-		if len(st.ports) > 0 {
-			metadata["ports"] = st.ports
-		}
-		if st.entrypoint != "" {
-			metadata["entrypoint"] = st.entrypoint
-		}
-		if st.cmd != "" {
-			metadata["cmd"] = st.cmd
-		}
-		if st.stageName != "" {
-			metadata["stage"] = st.stageName
-		}
-
-		stageNode := domain.Node{
-			ID:       nodeID,
-			Kind:     nodeKind,
-			Name:     nodeName,
-			Metadata: metadata,
-			Evidence: []domain.EvidenceRecord{
-				{
-					Locator: domain.Locator{
-						Repo:      file.Repo,
-						CommitSHA: file.CommitSHA,
-						Path:      file.Path,
-						StartLine: st.fromStartLine,
-						EndLine:   st.fromEndLine,
-					},
-					Origin:            domain.OriginExtracted,
-					DeploymentProfile: deploymentProfile,
-					Status:            domain.StatusCurrent,
-					DiscoveredAt:      discoveredAt,
-				},
-			},
-		}
-		addNode(stageNode)
-
-		// Base image dependency / relation
-		if st.baseImage != "" {
-			cleanImg := cleanImageName(st.baseImage)
-			priorStageNodeID, isPriorStage := definedStages[cleanImg]
-
-			if isPriorStage {
-				// FROM references a previous stage
-				rel := domain.Relationship{
-					ID:       fmt.Sprintf("rel:%s-%s-%s", nodeID, string(domain.VerbConsumes), priorStageNodeID),
-					SourceID: nodeID,
-					TargetID: priorStageNodeID,
-					Verb:     domain.VerbConsumes,
-					Evidence: []domain.EvidenceRecord{
-						{
-							Locator: domain.Locator{
-								Repo:      file.Repo,
-								CommitSHA: file.CommitSHA,
-								Path:      file.Path,
-								StartLine: st.fromStartLine,
-								EndLine:   st.fromEndLine,
-							},
-							Origin:            domain.OriginExtracted,
-							DeploymentProfile: deploymentProfile,
-							Status:            domain.StatusCurrent,
-							DiscoveredAt:      discoveredAt,
-						},
-					},
-				}
-				addRel(rel)
-			} else {
-				// External base image (Library or Infrastructure)
-				var baseNodeID string
-				var baseKind domain.NodeType
-
-				if isDockerfileInfraImage(cleanImg) {
-					baseNodeID = fmt.Sprintf("infra:image:%s", cleanImg)
-					baseKind = domain.NodeInfrastructure
-				} else {
-					baseNodeID = fmt.Sprintf("library:%s", cleanImg)
-					baseKind = domain.NodeLibrary
-				}
-
-				baseNode := domain.Node{
-					ID:   baseNodeID,
-					Kind: baseKind,
-					Name: cleanImg,
-					Evidence: []domain.EvidenceRecord{
-						{
-							Locator: domain.Locator{
-								Repo:      file.Repo,
-								CommitSHA: file.CommitSHA,
-								Path:      file.Path,
-								StartLine: st.fromStartLine,
-								EndLine:   st.fromEndLine,
-							},
-							Origin:            domain.OriginExtracted,
-							DeploymentProfile: deploymentProfile,
-							Status:            domain.StatusCurrent,
-							DiscoveredAt:      discoveredAt,
-						},
-					},
-				}
-				addNode(baseNode)
-
-				rel := domain.Relationship{
-					ID:       fmt.Sprintf("rel:%s-%s-%s", nodeID, string(domain.VerbConsumes), baseNodeID),
-					SourceID: nodeID,
-					TargetID: baseNodeID,
-					Verb:     domain.VerbConsumes,
-					Evidence: []domain.EvidenceRecord{
-						{
-							Locator: domain.Locator{
-								Repo:      file.Repo,
-								CommitSHA: file.CommitSHA,
-								Path:      file.Path,
-								StartLine: st.fromStartLine,
-								EndLine:   st.fromEndLine,
-							},
-							Origin:            domain.OriginExtracted,
-							DeploymentProfile: deploymentProfile,
-							Status:            domain.StatusCurrent,
-							DiscoveredAt:      discoveredAt,
-						},
-					},
-				}
-				addRel(rel)
+		addImage(img, st.fromStartLine, st.fromEndLine)
+		for _, c := range st.copiedFrom {
+			if _, numeric := strconv.Atoi(c.target); numeric != nil {
+				addImage(c.target, c.startLine, c.endLine)
 			}
 		}
-
-		// Process COPY --from=...
-		for _, copyItem := range st.copiedFrom {
-			targetID, ok := definedStages[copyItem.target]
-			if !ok {
-				// Could be an external image in COPY --from=image:tag
-				if isDockerfileInfraImage(copyItem.target) {
-					targetID = fmt.Sprintf("infra:image:%s", copyItem.target)
-					addNode(domain.Node{
-						ID:   targetID,
-						Kind: domain.NodeInfrastructure,
-						Name: copyItem.target,
-						Evidence: []domain.EvidenceRecord{
-							{
-								Locator: domain.Locator{
-									Repo:      file.Repo,
-									CommitSHA: file.CommitSHA,
-									Path:      file.Path,
-									StartLine: copyItem.startLine,
-									EndLine:   copyItem.endLine,
-								},
-								Origin:            domain.OriginExtracted,
-								DeploymentProfile: deploymentProfile,
-								Status:            domain.StatusCurrent,
-								DiscoveredAt:      discoveredAt,
-							},
-						},
-					})
-				} else {
-					targetID = fmt.Sprintf("library:%s", copyItem.target)
-					addNode(domain.Node{
-						ID:   targetID,
-						Kind: domain.NodeLibrary,
-						Name: copyItem.target,
-						Evidence: []domain.EvidenceRecord{
-							{
-								Locator: domain.Locator{
-									Repo:      file.Repo,
-									CommitSHA: file.CommitSHA,
-									Path:      file.Path,
-									StartLine: copyItem.startLine,
-									EndLine:   copyItem.endLine,
-								},
-								Origin:            domain.OriginExtracted,
-								DeploymentProfile: deploymentProfile,
-								Status:            domain.StatusCurrent,
-								DiscoveredAt:      discoveredAt,
-							},
-						},
-					})
-				}
-			}
-
-			rel := domain.Relationship{
-				ID:       fmt.Sprintf("rel:%s-%s-%s", nodeID, string(domain.VerbConsumes), targetID),
-				SourceID: nodeID,
-				TargetID: targetID,
-				Verb:     domain.VerbConsumes,
-				Evidence: []domain.EvidenceRecord{
-					{
-						Locator: domain.Locator{
-							Repo:      file.Repo,
-							CommitSHA: file.CommitSHA,
-							Path:      file.Path,
-							StartLine: copyItem.startLine,
-							EndLine:   copyItem.endLine,
-						},
-						Origin:            domain.OriginExtracted,
-						DeploymentProfile: deploymentProfile,
-						Status:            domain.StatusCurrent,
-						DiscoveredAt:      discoveredAt,
-					},
-				},
-			}
-			addRel(rel)
-		}
+		stageNames[st.stageName] = st.stageName != ""
+		stageNames[fmt.Sprintf("%d", i)] = true
 	}
 
-	return nodes, relationships, nil, nil
+	final := stages[len(stages)-1]
+	metadata := make(map[string]any)
+	if final.baseImage != "" {
+		metadata["base_image"] = final.baseImage
+	}
+	if len(baseImages) > 0 {
+		metadata["base_images"] = baseImages
+	}
+	if len(stageMeta) > 0 {
+		metadata["stages"] = stageMeta
+	}
+	if len(final.ports) > 0 {
+		metadata["ports"] = final.ports
+		var exposed []map[string]any
+		for _, p := range final.exposed {
+			exposed = append(exposed, map[string]any{"port": p.port, "locator": locate(p.startLine, p.endLine)})
+		}
+		metadata["exposed_ports"] = exposed
+	}
+	if final.entrypoint != "" {
+		metadata["entrypoint"] = final.entrypoint
+	}
+	if final.cmd != "" {
+		metadata["cmd"] = final.cmd
+	}
+
+	nodes := []domain.Node{{
+		ID:       fmt.Sprintf("service:%s", defaultSvcName),
+		Kind:     domain.NodeService,
+		Name:     defaultSvcName,
+		Metadata: metadata,
+		Evidence: []domain.EvidenceRecord{{
+			Locator: domain.Locator{
+				Repo:      file.Repo,
+				CommitSHA: file.CommitSHA,
+				Path:      file.Path,
+				StartLine: final.fromStartLine,
+				EndLine:   final.fromEndLine,
+			},
+			Origin:            domain.OriginExtracted,
+			DeploymentProfile: deploymentProfile,
+			Status:            domain.StatusCurrent,
+			DiscoveredAt:      discoveredAt,
+		}},
+	}}
+	return nodes, nil, nil, nil
 }
 
+// Hints reports which Service node the Dockerfile produced, so the resolution
+// step can rename it to the compose service that builds this file (ADR 0013).
+func (e *DockerfileExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, error) {
+	if len(parseDockerfileInstructions(file.Content)) == 0 {
+		return nil, nil
+	}
+	return []Hint{{
+		Kind:    HintDockerfileService,
+		Locator: domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path},
+		Service: "service:" + deriveDefaultServiceName(file.Path),
+	}}, nil
+}

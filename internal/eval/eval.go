@@ -150,6 +150,14 @@ type Recipe struct {
 	} `json:"ground_truth"`
 }
 
+// Apply maps a published string to the Perturbed Variant: the ground truth's
+// declared id renames (such as a topic Contract whose name an edit changes) and
+// then the rename table.
+func (r *Recipe) Apply(s string) string {
+	ids := corpus.Perturbation{Renames: r.GroundTruth.IDRenames}
+	return r.Perturbation.Apply(ids.Apply(s))
+}
+
 // LoadRecipe reads a perturbation recipe.
 func LoadRecipe(path string) (*Recipe, error) {
 	data, err := os.ReadFile(path)
@@ -201,8 +209,7 @@ func (gt *GroundTruth) Perturbed(r *Recipe) (*GroundTruth, error) {
 		}
 	}
 
-	ids := corpus.Perturbation{Renames: r.GroundTruth.IDRenames}
-	rename := func(s string) string { return r.Apply(ids.Apply(s)) }
+	rename := r.Apply
 	renameAll := func(xs []string) {
 		for i := range xs {
 			xs[i] = rename(xs[i])

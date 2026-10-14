@@ -78,7 +78,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "pb/demo.proto",
             "start_line": 140,
             "end_line": 143
@@ -91,7 +91,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "src/checkout/main.go",
             "start_line": 157,
             "end_line": 157
@@ -104,7 +104,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "src/checkout/main.go",
             "start_line": 235,
             "end_line": 235
@@ -127,19 +127,69 @@
       "kind": "Service",
       "name": "currency",
       "metadata": {
-        "image": "${IMAGE_NAME}:${DEMO_VERSION}-currency"
+        "base_image": "base",
+        "base_images": [
+          {
+            "image": "docker.io/library/alpine:3.24.1@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b",
+            "locator": "src/currency/Dockerfile#L17"
+          }
+        ],
+        "entrypoint": "[\"sh\", \"-c\", \"exec /usr/local/bin/currency \\\"${CURRENCY_PORT}\\\"\"]",
+        "exposed_ports": [
+          {
+            "locator": "src/currency/Dockerfile#L58",
+            "port": "${CURRENCY_PORT}"
+          }
+        ],
+        "image": "${IMAGE_NAME}:${DEMO_VERSION}-currency",
+        "ports": [
+          "${CURRENCY_PORT}"
+        ],
+        "published_ports": [
+          {
+            "locator": "compose.yaml#L194",
+            "port": "${CURRENCY_PORT}"
+          }
+        ],
+        "stages": [
+          {
+            "locator": "src/currency/Dockerfile#L17",
+            "name": "base"
+          },
+          {
+            "locator": "src/currency/Dockerfile#L22",
+            "name": "builder"
+          },
+          {
+            "locator": "src/currency/Dockerfile#L53",
+            "name": "release"
+          }
+        ]
       },
       "evidence": [
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "compose.yaml",
             "start_line": 178,
             "end_line": 178
           },
           "origin": "extracted",
           "deployment_profile": "compose:compose.yaml",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        },
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
+            "path": "src/currency/Dockerfile",
+            "start_line": 53,
+            "end_line": 53
+          },
+          "origin": "extracted",
+          "deployment_profile": "dockerfile",
           "status": "current",
           "discovered_at": "2026-01-01T00:00:00Z"
         }
@@ -157,7 +207,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/currency/src/server.cpp"
       }
     }
@@ -173,7 +223,7 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/Currency.gateway.ts"
       }
     }

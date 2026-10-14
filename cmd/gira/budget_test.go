@@ -115,7 +115,8 @@ func TestSC6HardBudgetsAcrossSuite(t *testing.T) {
 
 	for _, task := range gt.Tasks {
 		if _, err := slices.NewEngine(mm).GetImpactBriefing(task.TargetID, task.Depth); err != nil {
-			t.Logf("%s: target %s not in the hermetic index, skipped (%v)", task.ID, task.TargetID, err)
+			// Spec gira-impact-precision SC3: every task's target is now extracted.
+			t.Errorf("%s: target %s not in the hermetic index (%v)", task.ID, task.TargetID, err)
 			continue
 		}
 		limit := slices.BudgetBriefing
@@ -241,11 +242,13 @@ func TestBudgetNeverDropsFocalContract(t *testing.T) {
 	}
 }
 
-// Review F7: tasks whose target the extractors never emit produce no output at
-// all (node not found), so there is nothing a budget could let through.
+// Review F7: a target the extractors never emit produces no output at all (node
+// not found), so there is nothing a budget could let through. The topic used to
+// be contract:kafka:orders, which the extractors now emit (spec
+// gira-impact-precision SC3), so the test names a topic that does not exist.
 func TestBudgetOnMissingTargetEmitsNothing(t *testing.T) {
 	_, index := hermeticIndex(t)
-	out, err := runCLI(t, "impact", "contract:kafka:orders", "--index", index, "--budget", "1500")
+	out, err := runCLI(t, "impact", "contract:kafka:no-such-topic", "--index", index, "--budget", "1500")
 	if err == nil || len(out) != 0 || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing target must fail with no output: %v %q", err, out)
 	}

@@ -1,0 +1,5 @@
+# Enforce LF line endings on checkout for all text files.
+# Windows checkouts otherwise convert to CRLF, which breaks byte-sensitive
+# tests: embedded SKILL.md frontmatter parsing, fixture commit-SHA pinning
+# (dogfood e2e), and byte-identical vendored files such as the upstream .env.
+* text=auto eol=lf

@@ -420,7 +420,7 @@ services:
 		"  name: index-test-system",
 		"repositories:",
 		"  - id: repo-main",
-		`    url: "` + repoDir + `"`,
+		`    url: "` + filepath.ToSlash(repoDir) + `"`,
 		`    sha: "` + sha + `"`,
 		"    path_scope: .",
 		"overrides:",

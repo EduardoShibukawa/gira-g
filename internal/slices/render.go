@@ -49,6 +49,13 @@ func (ib *ImpactBriefing) CanonicalJSON() ([]byte, error) {
 	copy(sortedUpstream, ib.UpstreamServices)
 	sort.Slice(sortedUpstream, func(i, j int) bool { return sortedUpstream[i].ID < sortedUpstream[j].ID })
 
+	var sortedLibraries []domain.Node
+	if len(ib.UpstreamLibraries) > 0 {
+		sortedLibraries = make([]domain.Node, len(ib.UpstreamLibraries))
+		copy(sortedLibraries, ib.UpstreamLibraries)
+		sort.Slice(sortedLibraries, func(i, j int) bool { return sortedLibraries[i].ID < sortedLibraries[j].ID })
+	}
+
 	sortedDownstream := make([]domain.Node, len(ib.DownstreamServices))
 	copy(sortedDownstream, ib.DownstreamServices)
 	sort.Slice(sortedDownstream, func(i, j int) bool { return sortedDownstream[i].ID < sortedDownstream[j].ID })
@@ -70,6 +77,7 @@ func (ib *ImpactBriefing) CanonicalJSON() ([]byte, error) {
 		TargetKind:            ib.TargetKind,
 		Depth:                 ib.Depth,
 		UpstreamServices:      sortedUpstream,
+		UpstreamLibraries:     sortedLibraries,
 		DownstreamServices:    sortedDownstream,
 		AffectedContracts:     sortedContracts,
 		MediationEdges:        sortedMediation,
@@ -272,6 +280,14 @@ func (ib *ImpactBriefing) RenderMarkdown() string {
 			if hasStaleEvidence(svc.Evidence) {
 				sb.WriteString(fmt.Sprintf("  > ⚠️ NOTICE: Stale evidence for `%s`\n", svc.ID))
 			}
+		}
+	}
+
+	// Upstream Libraries (only when the target imports any)
+	if len(ib.UpstreamLibraries) > 0 {
+		sb.WriteString(fmt.Sprintf("\n## Upstream Libraries (%d)\n", len(ib.UpstreamLibraries)))
+		for _, lib := range ib.UpstreamLibraries {
+			sb.WriteString(fmt.Sprintf("- `%s`%s\n", lib.ID, primaryLocatorCitation(lib.Evidence)))
 		}
 	}
 

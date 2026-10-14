@@ -1,5 +1,5 @@
 {
-  "target_id": "diff:a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf..08d367fbcc0598b8784c2178fd9c959164ba92ab",
+  "target_id": "diff:f86810059635dbfec0daadab1123f47f8e08ae7c..e9a65898e789ccd63917f1a215126a4d00ce756d",
   "target_kind": "",
   "depth": 1,
   "upstream_services": [],
@@ -21,7 +21,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "compose.full.yaml",
             "start_line": 130,
             "end_line": 130
@@ -103,7 +103,7 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "pb/demo.proto",
             "start_line": 177,
             "end_line": 179
@@ -126,10 +126,10 @@
         {
           "locator": {
             "repo": "opentelemetry-demo",
-            "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "src/checkout/main.go",
-            "start_line": 159,
-            "end_line": 159
+            "start_line": 581,
+            "end_line": 584
           },
           "origin": "extracted",
           "deployment_profile": "grpc",
@@ -145,13 +145,13 @@
       "reason": "no extractor registered for file extension",
       "locator": {
         "repo": "opentelemetry-demo",
-        "commit_sha": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf",
+        "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
         "path": "src/frontend/gateways/rpc/Checkout.gateway.ts"
       }
     }
   ],
   "diff": {
-    "range": "a8fc8c11b06aa5ba02dd0db2feabb4388f7357cf..08d367fbcc0598b8784c2178fd9c959164ba92ab",
+    "range": "f86810059635dbfec0daadab1123f47f8e08ae7c..e9a65898e789ccd63917f1a215126a4d00ce756d",
     "changed_paths": [
       "pb/demo.proto"
     ],
@@ -166,8 +166,8 @@
     "dropped": {
       "nodes": 0,
       "relationships": 0,
-      "evidence": 9
+      "evidence": 7
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2147: rerun with budget >= 2147"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 1934: rerun with budget >= 1934"
   }
 }

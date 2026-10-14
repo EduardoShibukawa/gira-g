@@ -30,10 +30,13 @@ const (
 // ImpactBriefing documents affected services, contracts, and mediation edges
 // when an architectural change occurs at a given service or contract.
 type ImpactBriefing struct {
-	TargetID              string                       `json:"target_id"`
-	TargetKind            domain.NodeType              `json:"target_kind"`
-	Depth                 int                          `json:"depth"`
-	UpstreamServices      []domain.Node                `json:"upstream_services"`
+	TargetID         string          `json:"target_id"`
+	TargetKind       domain.NodeType `json:"target_kind"`
+	Depth            int             `json:"depth"`
+	UpstreamServices []domain.Node   `json:"upstream_services"`
+	// UpstreamLibraries are the Library Components the target imports. They are
+	// kept out of upstream_services, which lists only Services and Infrastructure.
+	UpstreamLibraries     []domain.Node                `json:"upstream_libraries,omitempty"`
 	DownstreamServices    []domain.Node                `json:"downstream_services"`
 	AffectedContracts     []domain.Node                `json:"affected_contracts"`
 	MediationEdges        []domain.Relationship        `json:"mediation_edges"`
@@ -392,14 +395,20 @@ func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing,
 	}
 
 	upstreamList := make([]domain.Node, 0, len(upstreamServicesMap))
+	var librariesList []domain.Node
 	for _, n := range upstreamServicesMap {
-		upstreamList = append(upstreamList, cloneNode(n))
+		if n.Kind == domain.NodeLibrary {
+			librariesList = append(librariesList, cloneNode(n))
+			continue
+		}
+		upstreamList = append(upstreamList, briefingNode(n))
 	}
 	sort.Slice(upstreamList, func(i, j int) bool { return upstreamList[i].ID < upstreamList[j].ID })
+	sort.Slice(librariesList, func(i, j int) bool { return librariesList[i].ID < librariesList[j].ID })
 
 	downstreamList := make([]domain.Node, 0, len(downstreamServicesMap))
 	for _, n := range downstreamServicesMap {
-		downstreamList = append(downstreamList, cloneNode(n))
+		downstreamList = append(downstreamList, briefingNode(n))
 	}
 	sort.Slice(downstreamList, func(i, j int) bool { return downstreamList[i].ID < downstreamList[j].ID })
 
@@ -418,6 +427,7 @@ func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing,
 	// Correlate relevant unsupported boundaries
 	componentNodes := append([]domain.Node{targetNode}, upstreamList...)
 	componentNodes = append(componentNodes, downstreamList...)
+	componentNodes = append(componentNodes, librariesList...)
 	componentNodes = append(componentNodes, contractsList...)
 
 	unsupportedMatches := make([]domain.UnsupportedBoundary, 0)
@@ -440,6 +450,7 @@ func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing,
 		TargetKind:            targetNode.Kind,
 		Depth:                 depth,
 		UpstreamServices:      upstreamList,
+		UpstreamLibraries:     librariesList,
 		DownstreamServices:    downstreamList,
 		AffectedContracts:     contractsList,
 		MediationEdges:        edgesList,
@@ -512,17 +523,13 @@ func (e *Engine) GetContextSliceWithView(nodeID string, tier SliceTier, view Gra
 	switch tier {
 	case TierSummary:
 		// Strip contract method/message details, omit full evidence lists
-		if focalCopy.Kind == domain.NodeContract {
-			focalCopy.Metadata = stripContractDetails(focalCopy.Metadata)
-		}
+		focalCopy.Metadata = stripSummaryDetails(focalCopy.Kind, focalCopy.Metadata)
 		if len(focalCopy.Evidence) > 1 {
 			focalCopy.Evidence = focalCopy.Evidence[:1]
 		}
 
 		for i := range neighbors {
-			if neighbors[i].Kind == domain.NodeContract {
-				neighbors[i].Metadata = stripContractDetails(neighbors[i].Metadata)
-			}
+			neighbors[i].Metadata = stripSummaryDetails(neighbors[i].Kind, neighbors[i].Metadata)
 			if len(neighbors[i].Evidence) > 1 {
 				neighbors[i].Evidence = neighbors[i].Evidence[:1]
 			}
@@ -838,11 +845,59 @@ func cloneNode(n domain.Node) domain.Node {
 
 func cloneRel(r domain.Relationship) domain.Relationship {
 	c := r
+	if r.Metadata != nil {
+		c.Metadata = make(map[string]any, len(r.Metadata))
+		for k, v := range r.Metadata {
+			c.Metadata[k] = v
+		}
+	}
 	if r.Evidence != nil {
 		c.Evidence = make([]domain.EvidenceRecord, len(r.Evidence))
 		copy(c.Evidence, r.Evidence)
 	}
 	return c
+}
+
+// briefingDetails are the Service metadata an Impact Briefing leaves to slices,
+// explain and tours: how the Service is built and where each port is declared.
+var briefingDetails = []string{"stages", "base_images", "exposed_ports", "published_ports"}
+
+// briefingNode is a Service as an Impact Briefing lists it: without the build
+// and port-declaration details, which would crowd affected Services out of a
+// budget.
+func briefingNode(n domain.Node) domain.Node {
+	c := cloneNode(n)
+	if c.Kind == domain.NodeService {
+		c.Metadata = stripKeys(c.Metadata, briefingDetails...)
+	}
+	return c
+}
+
+// stripSummaryDetails drops what the summary tier leaves to deeper tiers: a
+// Contract's method and message definitions, and how a Service is built (its
+// Dockerfile stages and base images).
+func stripSummaryDetails(kind domain.NodeType, meta map[string]any) map[string]any {
+	switch kind {
+	case domain.NodeContract:
+		return stripContractDetails(meta)
+	case domain.NodeService:
+		return stripKeys(meta, briefingDetails...)
+	}
+	return meta
+}
+
+func stripKeys(meta map[string]any, keys ...string) map[string]any {
+	if meta == nil {
+		return nil
+	}
+	clean := make(map[string]any, len(meta))
+	for k, v := range meta {
+		clean[k] = v
+	}
+	for _, k := range keys {
+		delete(clean, k)
+	}
+	return clean
 }
 
 func stripContractDetails(meta map[string]any) map[string]any {

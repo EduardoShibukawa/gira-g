@@ -117,7 +117,10 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 	if limit <= 0 {
 		return render(ib)
 	}
-	var nodes []string
+	var nodes, libraries []string
+	for _, n := range ib.UpstreamLibraries {
+		libraries = append(libraries, n.ID)
+	}
 	for _, group := range [][]domain.Node{ib.UpstreamServices, ib.DownstreamServices, ib.AffectedContracts} {
 		for _, n := range group {
 			nodes = append(nodes, n.ID)
@@ -139,7 +142,8 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 			kept = append(kept, id)
 		}
 	}
-	order := dropOrder(kept, hops(roots, ib.MediationEdges))
+	// Libraries go first, before any Service or Contract.
+	order := append(dropOrder(libraries, nil), dropOrder(kept, hops(roots, ib.MediationEdges))...)
 	return fit(limit, order, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
 		var d Dropped
 		c := *ib
@@ -155,6 +159,9 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 			return out
 		}
 		c.UpstreamServices = keep(ib.UpstreamServices)
+		if len(ib.UpstreamLibraries) > 0 {
+			c.UpstreamLibraries = keep(ib.UpstreamLibraries)
+		}
 		c.DownstreamServices = keep(ib.DownstreamServices)
 		c.AffectedContracts = keep(ib.AffectedContracts)
 		c.MediationEdges = keptRels(ib.MediationEdges, trimEvidence, drop, &d)

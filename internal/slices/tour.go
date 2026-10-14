@@ -38,16 +38,19 @@ type TourStep struct {
 
 // Why templates. RenderWhy is the only producer of TourStep.Why.
 const (
-	WhyFocus    = "focus"
-	WhyEntry    = "entry"
-	WhyReached  = "reached"
-	whyUnknownT = "unknown"
+	WhyFocus = "focus"
+	WhyEntry = "entry"
+	// WhyEntryDeclared is an entry point whose ports declaration has a locator.
+	WhyEntryDeclared = "entry_declared"
+	WhyReached       = "reached"
+	whyUnknownT      = "unknown"
 )
 
 var whyTemplates = map[string]string{
-	WhyFocus:   "`%s` is the focus of this tour.",
-	WhyEntry:   "`%s` is an entry point: its extracted metadata declares %s (locator of the ports declaration: unknown).",
-	WhyReached: "`%s` is reached because `%s` %s it.",
+	WhyFocus:         "`%s` is the focus of this tour.",
+	WhyEntry:         "`%s` is an entry point: its extracted metadata declares %s (locator of the ports declaration: unknown).",
+	WhyEntryDeclared: "`%s` is an entry point: it declares %s at the cited locator.",
+	WhyReached:       "`%s` is reached because `%s` %s it.",
 }
 
 // RenderWhy renders a why template. Unknown templates render a marker, never text.
@@ -95,6 +98,41 @@ func ingress(n domain.Node) []string {
 		out = append(out, v...)
 	}
 	return out
+}
+
+// portsLocator cites where n declares its ports: the first Dockerfile EXPOSE
+// entry, else the first compose ports entry, completed with the repo and commit
+// of n's evidence for that file. It is "" when no declaration has a locator.
+func portsLocator(n domain.Node) string {
+	for _, key := range []string{"exposed_ports", "published_ports"} {
+		var loc string
+		switch entries := n.Metadata[key].(type) {
+		case []map[string]any: // as extracted
+			if len(entries) > 0 {
+				loc, _ = entries[0]["locator"].(string)
+			}
+		case []any: // as read back from macro-map.json
+			if len(entries) > 0 {
+				if e, ok := entries[0].(map[string]any); ok {
+					loc, _ = e["locator"].(string)
+				}
+			}
+		}
+		p, lines, ok := strings.Cut(loc, "#L")
+		if !ok {
+			continue
+		}
+		var start, end int
+		if _, err := fmt.Sscanf(lines, "%d-L%d", &start, &end); err != nil {
+			end = start
+		}
+		for _, ev := range n.Evidence {
+			if ev.Locator.Path == p {
+				return domain.Locator{Repo: ev.Locator.Repo, CommitSHA: ev.Locator.CommitSHA, Path: p, StartLine: start, EndLine: end}.String()
+			}
+		}
+	}
+	return ""
 }
 
 // walkVerbs are followed outward from a stop: what it consumes, provides and
@@ -146,7 +184,11 @@ func (e *Engine) GetTour(focus string, maxSteps int) (*Tour, error) {
 		for _, n := range e.macroMap.Nodes {
 			if n.Kind == domain.NodeService && tourable(n) && len(ingress(n)) > 0 {
 				level = append(level, n.ID)
-				why[n.ID] = TourStep{WhyTemplate: WhyEntry, WhyArgs: []string{n.ID, "ports " + strings.Join(ingress(n), ", ")}}
+				w := TourStep{WhyTemplate: WhyEntry, WhyArgs: []string{n.ID, "ports " + strings.Join(ingress(n), ", ")}}
+				if loc := portsLocator(n); loc != "" {
+					w.WhyTemplate, w.WhyLocator = WhyEntryDeclared, loc
+				}
+				why[n.ID] = w
 			}
 		}
 		rank(level)

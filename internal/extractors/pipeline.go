@@ -34,6 +34,7 @@ func DefaultPipeline() *Pipeline {
 		NewDataFormatExtractor(),
 		NewDockerfileExtractor(),
 		NewComposeExtractor(),
+		NewEnvFileExtractor(),
 		NewHelmExtractor(),
 		NewGoModExtractor(),
 		NewGitHubActionsExtractor(),
@@ -80,6 +81,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	nodeMap := make(map[string]*domain.Node)
 	relMap := make(map[string]*domain.Relationship)
 	unsupportedMap := make(map[string]domain.UnsupportedBoundary)
+	var hints []Hint
 
 	for _, file := range files {
 		select {
@@ -157,8 +159,19 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 			for _, u := range unsupporteds {
 				unsupportedMap[u.Path] = u
 			}
+
+			if he, ok := ext.(HintEmitter); ok {
+				hs, err := he.Hints(ctx, file)
+				if err != nil {
+					return nil, fmt.Errorf("extractor %s failed on hints for %s: %w", ext.Name(), file.Path, err)
+				}
+				hints = append(hints, hs...)
+			}
 		}
 	}
+
+	// Cross-file resolution step (ADR 0013).
+	resolve(&resolution{nodes: nodeMap, rels: relMap, hints: hints})
 
 	// Transfer nodes to MacroMap
 	for _, n := range nodeMap {

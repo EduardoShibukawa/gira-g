@@ -131,6 +131,7 @@ func (e *Engine) GetPRImpact(revRange, repoID string, changes []gitdiff.FileChan
 	}
 
 	up, down, contracts := map[string]domain.Node{}, map[string]domain.Node{}, map[string]domain.Node{}
+	libs := map[string]domain.Node{}
 	edges := map[string]domain.Relationship{}
 	ubs := map[string]domain.UnsupportedBoundary{}
 	for _, id := range ids {
@@ -140,6 +141,9 @@ func (e *Engine) GetPRImpact(revRange, repoID string, changes []gitdiff.FileChan
 		}
 		for _, n := range b.UpstreamServices {
 			up[n.ID] = n
+		}
+		for _, n := range b.UpstreamLibraries {
+			libs[n.ID] = n
 		}
 		for _, n := range b.DownstreamServices {
 			down[n.ID] = n
@@ -155,6 +159,9 @@ func (e *Engine) GetPRImpact(revRange, repoID string, changes []gitdiff.FileChan
 		}
 	}
 	merged.UpstreamServices = sortedNodes(up)
+	if len(libs) > 0 {
+		merged.UpstreamLibraries = sortedNodes(libs)
+	}
 	merged.DownstreamServices = sortedNodes(down)
 	merged.AffectedContracts = sortedNodes(contracts)
 	for _, r := range edges {

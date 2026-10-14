@@ -46,9 +46,37 @@ func TestDockerfileExtractor_CanExtract(t *testing.T) {
 	}
 }
 
-func TestDockerfileExtractor_Simple(t *testing.T) {
-	ext := NewDockerfileExtractor()
+// extractOne runs the Dockerfile extractor and requires exactly one Service node
+// and no relationships: stages and base images are metadata (spec
+// gira-impact-precision, cause 1).
+func extractOne(t *testing.T, path, content string) domain.Node {
+	t.Helper()
+	nodes, rels, unsupporteds, err := NewDockerfileExtractor().Extract(context.Background(), TargetFile{Repo: "test-repo", CommitSHA: "sha123", Path: path, Content: []byte(content)})
+	if err != nil {
+		t.Fatalf("Extract failed: %v", err)
+	}
+	if len(unsupporteds) != 0 || len(rels) != 0 || len(nodes) != 1 {
+		t.Fatalf("want one Service node and nothing else, got nodes %+v rels %+v unsupported %+v", nodes, rels, unsupporteds)
+	}
+	if nodes[0].Kind != domain.NodeService {
+		t.Fatalf("want a Service, got %v", nodes[0].Kind)
+	}
+	return nodes[0]
+}
 
+// entries returns name→locator for a metadata list ("base_images" by image,
+// "stages" by name).
+func entries(t *testing.T, n domain.Node, key, field string) map[string]string {
+	t.Helper()
+	out := map[string]string{}
+	list, _ := n.Metadata[key].([]map[string]any)
+	for _, e := range list {
+		out[e[field].(string)] = e["locator"].(string)
+	}
+	return out
+}
+
+func TestDockerfileExtractor_Simple(t *testing.T) {
 	content := `# syntax=docker/dockerfile:1
 FROM node:18-alpine
 
@@ -58,90 +86,37 @@ EXPOSE 3000 8080
 
 CMD ["npm", "start"]
 `
-
-	file := TargetFile{
-		Repo:      "test-repo",
-		CommitSHA: "abc1234",
-		Path:      "services/auth/Dockerfile",
-		Content:   []byte(content),
+	svc := extractOne(t, "services/auth/Dockerfile", content)
+	if svc.ID != "service:auth" {
+		t.Fatalf("expected service:auth, got %s", svc.ID)
 	}
-
-	nodes, rels, unsupporteds, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
-	}
-	if len(unsupporteds) != 0 {
-		t.Errorf("expected 0 unsupporteds, got %d", len(unsupporteds))
-	}
-
-	// Should have Service node and Library base image node
-	if len(nodes) != 2 {
-		t.Fatalf("expected 2 nodes, got %d", len(nodes))
-	}
-
-	nodeMap := make(map[string]domain.Node)
-	for _, n := range nodes {
-		nodeMap[n.ID] = n
-	}
-
-	svcNode, ok := nodeMap["service:auth"]
-	if !ok {
-		t.Fatalf("expected service:auth node, got nodes: %+v", nodes)
-	}
-
-	if svcNode.Kind != domain.NodeService {
-		t.Errorf("expected kind Service, got %v", svcNode.Kind)
-	}
-
-	// Check metadata: ports, cmd
-	ports, ok := svcNode.Metadata["ports"].([]string)
+	ports, ok := svc.Metadata["ports"].([]string)
 	if !ok || len(ports) != 2 || ports[0] != "3000" || ports[1] != "8080" {
-		t.Errorf("expected ports [3000 8080], got %v", svcNode.Metadata["ports"])
+		t.Errorf("expected ports [3000 8080], got %v", svc.Metadata["ports"])
 	}
-	if svcNode.Metadata["cmd"] != `["npm", "start"]` {
-		t.Errorf("expected cmd [npm start], got %v", svcNode.Metadata["cmd"])
+	if svc.Metadata["cmd"] != `["npm", "start"]` {
+		t.Errorf("expected cmd [npm start], got %v", svc.Metadata["cmd"])
 	}
-
-	// Base image node
-	libNode, ok := nodeMap["library:node:18-alpine"]
-	if !ok {
-		t.Fatalf("expected library:node:18-alpine node, got nodes: %+v", nodes)
+	if got := entries(t, svc, "base_images", "image"); got["node:18-alpine"] != "services/auth/Dockerfile#L2" || len(got) != 1 {
+		t.Errorf("base_images = %v", got)
 	}
-	if libNode.Kind != domain.NodeLibrary {
-		t.Errorf("expected kind Library for node:18-alpine, got %v", libNode.Kind)
+	if _, ok := svc.Metadata["stages"]; ok {
+		t.Errorf("a single-stage Dockerfile records no stages: %v", svc.Metadata["stages"])
 	}
 
-	// Locators
-	if len(svcNode.Evidence) != 1 {
-		t.Fatalf("expected 1 evidence record for service, got %d", len(svcNode.Evidence))
+	if len(svc.Evidence) != 1 {
+		t.Fatalf("expected 1 evidence record for service, got %d", len(svc.Evidence))
 	}
-	ev := svcNode.Evidence[0]
-	if ev.DeploymentProfile != "dockerfile" {
-		t.Errorf("expected deployment_profile dockerfile, got %q", ev.DeploymentProfile)
-	}
-	if ev.Origin != domain.OriginExtracted {
-		t.Errorf("expected origin extracted, got %v", ev.Origin)
-	}
-	if ev.Status != domain.StatusCurrent {
-		t.Errorf("expected status current, got %v", ev.Status)
+	ev := svc.Evidence[0]
+	if ev.DeploymentProfile != "dockerfile" || ev.Origin != domain.OriginExtracted || ev.Status != domain.StatusCurrent {
+		t.Errorf("unexpected evidence %+v", ev)
 	}
 	if ev.Locator.StartLine != 2 || ev.Locator.EndLine != 2 {
 		t.Errorf("expected FROM at line 2, got %d-%d", ev.Locator.StartLine, ev.Locator.EndLine)
 	}
-
-	// Relationships
-	if len(rels) != 1 {
-		t.Fatalf("expected 1 relationship, got %d", len(rels))
-	}
-	rel := rels[0]
-	if rel.SourceID != "service:auth" || rel.TargetID != "library:node:18-alpine" || rel.Verb != domain.VerbConsumes {
-		t.Errorf("unexpected relationship: %+v", rel)
-	}
 }
 
 func TestDockerfileExtractor_Multistage(t *testing.T) {
-	ext := NewDockerfileExtractor()
-
 	content := `FROM --platform=linux/amd64 golang:1.24 AS builder
 WORKDIR /src
 COPY . .
@@ -153,129 +128,39 @@ COPY --from=builder /app/server /app/server
 EXPOSE 8080
 ENTRYPOINT ["/app/server"]
 `
-
-	file := TargetFile{
-		Repo:      "test-repo",
-		CommitSHA: "sha123",
-		Path:      "Dockerfile",
-		Content:   []byte(content),
+	// The Service is named by the directory rule, never by a stage name.
+	svc := extractOne(t, "Dockerfile", content)
+	if svc.ID != "service:app" {
+		t.Fatalf("expected service:app, got %s", svc.ID)
 	}
-
-	nodes, rels, _, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
+	if svc.Metadata["entrypoint"] != `["/app/server"]` {
+		t.Errorf("expected entrypoint of the final stage, got %v", svc.Metadata["entrypoint"])
 	}
-
-	nodeMap := make(map[string]domain.Node)
-	for _, n := range nodes {
-		nodeMap[n.ID] = n
+	stages := entries(t, svc, "stages", "name")
+	if stages["builder"] != "Dockerfile#L1" || stages["runner"] != "Dockerfile#L6" || len(stages) != 2 {
+		t.Errorf("stages = %v", stages)
 	}
-
-	// Nodes expected:
-	// - service:stage:builder (intermediate stage)
-	// - library:golang:1.24
-	// - service:runner (or service:app if final stage, here runner since named AS runner)
-	// - library:alpine:3.19
-	if _, ok := nodeMap["service:stage:builder"]; !ok {
-		t.Errorf("missing service:stage:builder, got nodes: %+v", nodes)
+	images := entries(t, svc, "base_images", "image")
+	if len(images) != 2 || images["golang:1.24"] == "" || images["alpine:3.19"] == "" {
+		t.Errorf("base_images = %v (a stage referenced by COPY --from is not an image)", images)
 	}
-	if _, ok := nodeMap["library:golang:1.24"]; !ok {
-		t.Errorf("missing library:golang:1.24")
-	}
-	if _, ok := nodeMap["service:runner"]; !ok {
-		t.Errorf("missing service:runner")
-	}
-	if _, ok := nodeMap["library:alpine:3.19"]; !ok {
-		t.Errorf("missing library:alpine:3.19")
-	}
-
-	// Check runner metadata
-	runner := nodeMap["service:runner"]
-	if runner.Metadata["entrypoint"] != `["/app/server"]` {
-		t.Errorf("expected entrypoint [\"/app/server\"], got %v", runner.Metadata["entrypoint"])
-	}
-
-	// Relationships expected:
-	// 1. builder consumes library:golang:1.24
-	// 2. runner consumes library:alpine:3.19
-	// 3. runner consumes builder (via COPY --from=builder)
-	relMap := make(map[string]bool)
-	for _, r := range rels {
-		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
-	}
-	if !relMap["service:stage:builder->consumes->library:golang:1.24"] {
-		t.Errorf("missing builder consumes golang relation")
-	}
-	if !relMap["service:runner->consumes->library:alpine:3.19"] {
-		t.Errorf("missing runner consumes alpine relation")
-	}
-
-	var copyRel *domain.Relationship
-	for i := range rels {
-		if rels[i].SourceID == "service:runner" && rels[i].TargetID == "service:stage:builder" {
-			copyRel = &rels[i]
-			break
-		}
-	}
-	if copyRel == nil {
-		t.Fatalf("missing runner consumes builder relationship")
-	}
-	if len(copyRel.Evidence) == 0 {
-		t.Fatalf("expected evidence for COPY relationship")
-	}
-	if copyRel.Evidence[0].Locator.StartLine != 8 || copyRel.Evidence[0].Locator.EndLine != 8 {
-		t.Errorf("expected COPY locator line 8, got %d-%d", copyRel.Evidence[0].Locator.StartLine, copyRel.Evidence[0].Locator.EndLine)
-	}
-	if copyRel.Evidence[0].DeploymentProfile != "dockerfile" {
-		t.Errorf("expected deployment_profile dockerfile, got %q", copyRel.Evidence[0].DeploymentProfile)
+	if svc.Evidence[0].Locator.StartLine != 6 {
+		t.Errorf("the Service cites the final FROM, got line %d", svc.Evidence[0].Locator.StartLine)
 	}
 }
 
 func TestDockerfileExtractor_InfrastructureBaseImage(t *testing.T) {
-	ext := NewDockerfileExtractor()
-
 	content := `FROM postgres:16-alpine
 ENV POSTGRES_PASSWORD=secret
 EXPOSE 5432
 `
-
-	file := TargetFile{
-		Repo:      "test-repo",
-		CommitSHA: "sha123",
-		Path:      "db.dockerfile",
-		Content:   []byte(content),
+	// An infrastructure base image is still metadata: the Dockerfile builds the Service.
+	svc := extractOne(t, "db.dockerfile", content)
+	if svc.ID != "service:db" {
+		t.Fatalf("expected service:db, got %s", svc.ID)
 	}
-
-	nodes, rels, _, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
-	}
-
-	nodeMap := make(map[string]domain.Node)
-	for _, n := range nodes {
-		nodeMap[n.ID] = n
-	}
-
-	// Service node should be service:db
-	if _, ok := nodeMap["service:db"]; !ok {
-		t.Errorf("expected service:db node, got: %+v", nodes)
-	}
-
-	// Infrastructure node for postgres
-	infraNode, ok := nodeMap["infra:image:postgres:16-alpine"]
-	if !ok {
-		t.Fatalf("expected infra:image:postgres:16-alpine node, got: %+v", nodes)
-	}
-	if infraNode.Kind != domain.NodeInfrastructure {
-		t.Errorf("expected kind Infrastructure, got %v", infraNode.Kind)
-	}
-
-	// Relationship
-	if len(rels) != 1 {
-		t.Fatalf("expected 1 relationship, got %d", len(rels))
-	}
-	if rels[0].SourceID != "service:db" || rels[0].TargetID != "infra:image:postgres:16-alpine" || rels[0].Verb != domain.VerbConsumes {
-		t.Errorf("unexpected relationship: %+v", rels[0])
+	if got := entries(t, svc, "base_images", "image"); got["postgres:16-alpine"] == "" {
+		t.Errorf("base_images = %v", got)
 	}
 }
 
@@ -315,32 +200,19 @@ FROM \
 EXPOSE \
   6379
 `
-	nodes, rels, _, err = ext.Extract(context.Background(), TargetFile{Path: "redis/Dockerfile", Content: []byte(contentContinuation)})
-	if err != nil {
-		t.Fatalf("continuation extract failed: %v", err)
+	svc := extractOne(t, "redis/Dockerfile", contentContinuation)
+	if svc.ID != "service:redis" {
+		t.Fatalf("expected service:redis, got %s", svc.ID)
 	}
-	if len(nodes) != 2 {
-		t.Fatalf("expected 2 nodes, got %d: %+v", len(nodes), nodes)
-	}
-
-	nodeMap := make(map[string]domain.Node)
-	for _, n := range nodes {
-		nodeMap[n.ID] = n
-	}
-
-	svc := nodeMap["service:redis"]
 	if svc.Evidence[0].Locator.StartLine != 2 || svc.Evidence[0].Locator.EndLine != 6 {
 		t.Errorf("expected line range 2-6 for multiline FROM, got %d-%d", svc.Evidence[0].Locator.StartLine, svc.Evidence[0].Locator.EndLine)
 	}
-
-	if _, ok := nodeMap["infra:image:redis:7.2-alpine"]; !ok {
-		t.Errorf("missing infra redis node")
+	if got := entries(t, svc, "base_images", "image"); got["redis:7.2-alpine"] != "redis/Dockerfile#L2-L6" {
+		t.Errorf("base_images = %v", got)
 	}
 }
 
 func TestDockerfileExtractor_StageToStageReference(t *testing.T) {
-	ext := NewDockerfileExtractor()
-
 	content := `FROM node:20 AS base
 WORKDIR /app
 
@@ -348,39 +220,18 @@ FROM base AS dev
 ENV NODE_ENV=development
 CMD ["yarn", "dev"]
 `
-
-	file := TargetFile{
-		Repo:    "myrepo",
-		Path:    "Dockerfile",
-		Content: []byte(content),
+	svc := extractOne(t, "Dockerfile", content)
+	images := entries(t, svc, "base_images", "image")
+	if len(images) != 1 || images["node:20"] == "" {
+		t.Errorf("FROM <stage> is not a base image: %v", images)
 	}
-
-	nodes, rels, _, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
+	stages, _ := svc.Metadata["stages"].([]map[string]any)
+	if len(stages) != 2 || stages[1]["name"] != "dev" || stages[1]["locator"] != "Dockerfile#L4" {
+		t.Errorf("stages = %v", stages)
 	}
-
-	relMap := make(map[string]bool)
-	for _, r := range rels {
-		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
-	}
-
-	// dev stage should consume base stage
-	if !relMap["service:dev->consumes->service:stage:base"] {
-		t.Errorf("missing service:dev -> consumes -> service:stage:base dependency, got rels: %+v", rels)
-	}
-
-	// base stage should consume node:20
-	if !relMap["service:stage:base->consumes->library:node:20"] {
-		t.Errorf("missing base -> consumes -> library:node:20")
-	}
-
-	_ = nodes
 }
 
 func TestDockerfileExtractor_NumericAndExternalCopy(t *testing.T) {
-	ext := NewDockerfileExtractor()
-
 	content := `FROM golang:1.24
 RUN go build -o /app/bin .
 
@@ -388,48 +239,21 @@ FROM alpine:3.19
 COPY --from=0 /app/bin /usr/local/bin/app
 COPY --from=redis:7.2 /usr/local/bin/redis-cli /usr/local/bin/redis-cli
 `
-
-	file := TargetFile{
-		Repo:    "test-repo",
-		Path:    "Dockerfile",
-		Content: []byte(content),
+	svc := extractOne(t, "Dockerfile", content)
+	images := entries(t, svc, "base_images", "image")
+	if images["redis:7.2"] != "Dockerfile#L6" {
+		t.Errorf("COPY --from=<image> is a base image at its own line: %v", images)
 	}
-
-	nodes, rels, _, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
+	if _, ok := images["0"]; ok || len(images) != 3 {
+		t.Errorf("COPY --from=<index> refers to a stage, not an image: %v", images)
 	}
-
-	nodeMap := make(map[string]domain.Node)
-	for _, n := range nodes {
-		nodeMap[n.ID] = n
-	}
-
-	// External copy from redis:7.2 should create infra node
-	if _, ok := nodeMap["infra:image:redis:7.2"]; !ok {
-		t.Errorf("missing infra:image:redis:7.2 node from external COPY, got nodes: %+v", nodes)
-	}
-
-	relMap := make(map[string]bool)
-	for _, r := range rels {
-		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
-	}
-
-	// Stage 1 (app) should consume stage 0 (stage-0)
-	if !relMap["service:app->consumes->service:stage:stage-0"] {
-		t.Errorf("missing service:app -> consumes -> service:stage:stage-0 via COPY --from=0")
-	}
-
-	// Stage 1 (app) should consume redis infra image
-	if !relMap["service:app->consumes->infra:image:redis:7.2"] {
-		t.Errorf("missing service:app -> consumes -> infra:image:redis:7.2 via COPY --from=redis:7.2")
+	stages := entries(t, svc, "stages", "name")
+	if stages["stage-0"] == "" || stages["stage-1"] == "" {
+		t.Errorf("unnamed stages are numbered: %v", stages)
 	}
 }
 
 func TestDockerfileExtractor_Deduplication(t *testing.T) {
-	ext := NewDockerfileExtractor()
-
-	// Multiple stages using the exact same base image
 	content := `FROM alpine:3.19 AS stage1
 RUN echo "stage1"
 
@@ -439,38 +263,12 @@ RUN echo "stage2"
 FROM alpine:3.19 AS final
 RUN echo "final"
 `
-
-	file := TargetFile{
-		Repo:    "test-repo",
-		Path:    "Dockerfile",
-		Content: []byte(content),
+	svc := extractOne(t, "Dockerfile", content)
+	images := entries(t, svc, "base_images", "image")
+	if len(images) != 1 || images["alpine:3.19"] != "Dockerfile#L1" {
+		t.Errorf("a repeated base image is recorded once, at its first line: %v", images)
 	}
-
-	nodes, rels, _, err := ext.Extract(context.Background(), file)
-	if err != nil {
-		t.Fatalf("Extract failed: %v", err)
-	}
-
-	// Count occurrences of library:alpine:3.19 node
-	alpineCount := 0
-	var alpineNode *domain.Node
-	for i := range nodes {
-		if nodes[i].ID == "library:alpine:3.19" {
-			alpineCount++
-			alpineNode = &nodes[i]
-		}
-	}
-
-	if alpineCount != 1 {
-		t.Fatalf("expected exactly 1 library:alpine:3.19 node due to deduplication, got %d", alpineCount)
-	}
-
-	// Should aggregate evidence from all 3 FROM directives
-	if len(alpineNode.Evidence) != 3 {
-		t.Errorf("expected 3 evidence records on deduplicated alpine node, got %d", len(alpineNode.Evidence))
-	}
-
-	if len(rels) != 3 {
-		t.Errorf("expected 3 relationships, got %d", len(rels))
+	if stages := entries(t, svc, "stages", "name"); len(stages) != 3 {
+		t.Errorf("stages = %v", stages)
 	}
 }

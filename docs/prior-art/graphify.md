@@ -24,6 +24,12 @@ Studied, never depended on. Decided in [How to reuse Graphify and Understand Any
 
 What we diverge on: "EXTRACTED" must mean deterministic; one edge per node pair loses evidence; node IDs must be stable.
 
+## How we use it: USE / COPY / NORTH STAR
+
+- **USE:** `graph.json` through an optional adapter (symbol-level evidence, rolled up to Gira-detected Components). Pin `graphify_version`; direction via link order; match on `source_file`+`label` (IDs are unstable).
+- **COPY:** validated extraction fragment; discrete confidence rubric + first-class tier/origin; canonical sorted JSON; hash+version cache; external stubs; repo-tag prefix + `local_id`; budgeted provenance-annotated output; merge driver; always-on blocks + pre-tool hook.
+- **NORTH STAR:** input adapter, never a runtime fork/dependency; daily output churn requires pinning; communities ≠ architecture.
+
 ## Study 1 — 2026-10-09 (v0.9.82, 5b74d7d)
 
 Originally on the throwaway branch `research/graphify` (commit 131ac94).

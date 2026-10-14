@@ -433,10 +433,10 @@ func TestPipeline_ApplyOverrides_NilAndEdgeCases(t *testing.T) {
 func TestPipeline_Wave2Extractors(t *testing.T) {
 	pipe := DefaultPipeline()
 
-	// Verify all 11 extractors registered (Data, Dockerfile, Compose, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST)
+	// Verify all 12 extractors registered (Data, Dockerfile, Compose, EnvFile, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST)
 	extractors := pipe.Extractors()
-	if len(extractors) != 11 {
-		t.Fatalf("expected 11 extractors in DefaultPipeline, got %d", len(extractors))
+	if len(extractors) != 12 {
+		t.Fatalf("expected 12 extractors in DefaultPipeline, got %d", len(extractors))
 	}
 
 	ghaYaml := `name: CI
@@ -677,110 +677,41 @@ EXPOSE 5432
 		nodeMap[n.ID] = n
 	}
 
-	// 1. Backend runner stage (final stage with name AS runner)
-	runnerNode, ok := nodeMap["service:runner"]
-	if !ok {
-		t.Fatalf("missing service:runner node, nodes: %+v", mm.Nodes)
+	// Each Dockerfile is one Service named by the directory rule; stages and base
+	// images are its metadata, not nodes (spec gira-impact-precision, cause 1).
+	if len(mm.Nodes) != 2 || len(mm.Relationships) != 0 {
+		t.Fatalf("want 2 Service nodes and no edges, got %+v / %+v", mm.Nodes, mm.Relationships)
 	}
-	if runnerNode.Kind != domain.NodeService {
-		t.Errorf("expected kind NodeService for runner, got %v", runnerNode.Kind)
+	backend, ok := nodeMap["service:backend"]
+	if !ok || backend.Kind != domain.NodeService {
+		t.Fatalf("missing service:backend, nodes: %+v", mm.Nodes)
 	}
-	ports, ok := runnerNode.Metadata["ports"].([]string)
+	ports, ok := backend.Metadata["ports"].([]string)
 	if !ok || len(ports) != 2 || ports[0] != "8080" || ports[1] != "9090" {
-		t.Errorf("expected ports [8080 9090], got %v", runnerNode.Metadata["ports"])
+		t.Errorf("expected ports [8080 9090], got %v", backend.Metadata["ports"])
 	}
-	if runnerNode.Metadata["entrypoint"] != `["/app/backend"]` {
-		t.Errorf("expected entrypoint [\"/app/backend\"], got %v", runnerNode.Metadata["entrypoint"])
+	if backend.Metadata["entrypoint"] != `["/app/backend"]` {
+		t.Errorf("expected entrypoint [\"/app/backend\"], got %v", backend.Metadata["entrypoint"])
 	}
-
-	// Check evidence
-	if len(runnerNode.Evidence) == 0 {
-		t.Fatalf("expected evidence on runner node")
+	ev := backend.Evidence[0]
+	if ev.DeploymentProfile != "dockerfile" || ev.Locator.Path != "services/backend/Dockerfile" || ev.Locator.StartLine != 9 || ev.Locator.EndLine != 9 {
+		t.Errorf("backend cites the final FROM at line 9, got %+v", ev)
 	}
-	ev := runnerNode.Evidence[0]
-	if ev.DeploymentProfile != "dockerfile" {
-		t.Errorf("expected deployment_profile dockerfile, got %q", ev.DeploymentProfile)
+	stages, _ := backend.Metadata["stages"].([]map[string]any)
+	if len(stages) != 2 || stages[0]["name"] != "builder" || stages[1]["name"] != "runner" {
+		t.Errorf("stages = %v", stages)
 	}
-	if ev.Locator.Path != "services/backend/Dockerfile" {
-		t.Errorf("expected path services/backend/Dockerfile, got %q", ev.Locator.Path)
-	}
-	if ev.Locator.StartLine != 9 || ev.Locator.EndLine != 9 {
-		t.Errorf("expected runner FROM at line 9, got %d-%d", ev.Locator.StartLine, ev.Locator.EndLine)
+	images, _ := backend.Metadata["base_images"].([]map[string]any)
+	if len(images) != 2 || images[0]["image"] != "golang:1.24-alpine" || images[1]["image"] != "alpine:3.19" {
+		t.Errorf("base_images = %v", images)
 	}
 
-	// 2. Builder stage
-	builderNode, ok := nodeMap["service:stage:builder"]
-	if !ok {
-		t.Fatalf("missing service:stage:builder node")
+	db, ok := nodeMap["service:db"]
+	if !ok || db.Kind != domain.NodeService {
+		t.Fatalf("missing service:db, got: %+v", mm.Nodes)
 	}
-	if builderNode.Kind != domain.NodeService {
-		t.Errorf("expected kind NodeService for builder, got %v", builderNode.Kind)
-	}
-
-	// 3. Library node for golang and alpine
-	if _, ok := nodeMap["library:golang:1.24-alpine"]; !ok {
-		t.Errorf("missing library:golang:1.24-alpine")
-	}
-	if _, ok := nodeMap["library:alpine:3.19"]; !ok {
-		t.Errorf("missing library:alpine:3.19")
-	}
-
-	// 4. Postgres infrastructure node
-	infraNode, ok := nodeMap["infra:image:postgres:16-alpine"]
-	if !ok {
-		t.Fatalf("missing infra:image:postgres:16-alpine node")
-	}
-	if infraNode.Kind != domain.NodeInfrastructure {
-		t.Errorf("expected kind NodeInfrastructure, got %v", infraNode.Kind)
-	}
-
-	// 5. Database service node from db.dockerfile
-	dbNode, ok := nodeMap["service:postgres-db"]
-	if !ok {
-		// deriveDefaultServiceName for "infra/postgres/db.dockerfile" -> dir postgres, prefix db -> "db"
-		dbNode, ok = nodeMap["service:db"]
-	}
-	if !ok {
-		t.Fatalf("missing db service node, got: %+v", mm.Nodes)
-	}
-
-	// Verify relationships
-	relMap := make(map[string]domain.Relationship)
-	for _, r := range mm.Relationships {
-		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = r
-	}
-
-	// builder consumes golang
-	if _, ok := relMap["service:stage:builder->consumes->library:golang:1.24-alpine"]; !ok {
-		t.Errorf("missing builder consumes golang relationship")
-	}
-
-	// runner consumes alpine
-	if _, ok := relMap["service:runner->consumes->library:alpine:3.19"]; !ok {
-		t.Errorf("missing runner consumes alpine relationship")
-	}
-
-	// runner consumes builder via COPY --from=builder at line 11
-	copyRel, ok := relMap["service:runner->consumes->service:stage:builder"]
-	if !ok {
-		t.Errorf("missing runner consumes builder relationship")
-	} else {
-		if len(copyRel.Evidence) == 0 {
-			t.Errorf("expected evidence for COPY relation")
-		} else {
-			copyEv := copyRel.Evidence[0]
-			if copyEv.Locator.StartLine != 11 || copyEv.Locator.EndLine != 11 {
-				t.Errorf("expected COPY locator line 11, got %d-%d", copyEv.Locator.StartLine, copyEv.Locator.EndLine)
-			}
-			if copyEv.DeploymentProfile != "dockerfile" {
-				t.Errorf("expected deployment_profile dockerfile, got %s", copyEv.DeploymentProfile)
-			}
-		}
-	}
-
-	// db service consumes postgres infra
-	if _, ok := relMap[dbNode.ID+"->consumes->infra:image:postgres:16-alpine"]; !ok {
-		t.Errorf("missing db consumes postgres infra relationship")
+	if images, _ := db.Metadata["base_images"].([]map[string]any); len(images) != 1 || images[0]["image"] != "postgres:16-alpine" {
+		t.Errorf("db base_images = %v", db.Metadata["base_images"])
 	}
 }
 
