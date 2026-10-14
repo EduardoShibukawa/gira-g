@@ -42,6 +42,13 @@ var (
 	grpcClientTypeRegex     = regexp.MustCompile(`^([A-Za-z0-9_]+)Client$`)
 )
 
+// stdlibHealthContracts is the fixed literal denylist for J1 (SC1): stdlib
+// gRPC health registrations are infrastructure, never business contracts.
+// Literal-only on purpose: no pattern that could swallow a business name.
+func stdlibHealthContract(name string) bool {
+	return name == "Health"
+}
+
 func deriveServiceName(filePath string, pkgName string) string {
 	clean := filepath.ToSlash(filepath.Clean(filePath))
 	parts := strings.Split(clean, "/")
@@ -198,6 +205,9 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 			// Server registration: Register<Contract>Server
 			if m := grpcServerRegisterRegex.FindStringSubmatch(funcName); len(m) > 1 {
 				contractName := m[1]
+				if stdlibHealthContract(contractName) {
+					return true
+				}
 				contractID := fmt.Sprintf("contract:%s", contractName)
 
 				e.ensureContractNode(nodeMap, contractID, contractName, file, startLine, endLine, discoveredAt)
@@ -209,6 +219,9 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 			// Client invocation: New<Contract>Client
 			if m := grpcClientNewRegex.FindStringSubmatch(funcName); len(m) > 1 {
 				contractName := m[1]
+				if stdlibHealthContract(contractName) {
+					return true
+				}
 				contractID := fmt.Sprintf("contract:%s", contractName)
 
 				// Building a client is not consuming: the consumes edge comes from a
@@ -232,16 +245,17 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 
 						if m := grpcServerEmbedRegex.FindStringSubmatch(typeName); len(m) > 1 {
 							contractName := m[1]
-							if contractName != "" && contractName != "grpc" {
-								startLine := fset.Position(f.Pos()).Line
-								endLine := fset.Position(f.End()).Line
-								contractID := fmt.Sprintf("contract:%s", contractName)
-
-								e.ensureContractNode(nodeMap, contractID, contractName, file, startLine, endLine, discoveredAt)
-
-								relID := fmt.Sprintf("rel:%s-provides-%s", serviceName, sanitizeRelID(contractName))
-								e.recordRelationship(relMap, relID, serviceID, contractID, domain.VerbProvides, file, startLine, endLine, discoveredAt)
+							if contractName == "" || contractName == "grpc" || stdlibHealthContract(contractName) {
+								continue
 							}
+							startLine := fset.Position(f.Pos()).Line
+							endLine := fset.Position(f.End()).Line
+							contractID := fmt.Sprintf("contract:%s", contractName)
+
+							e.ensureContractNode(nodeMap, contractID, contractName, file, startLine, endLine, discoveredAt)
+
+							relID := fmt.Sprintf("rel:%s-provides-%s", serviceName, sanitizeRelID(contractName))
+							e.recordRelationship(relMap, relID, serviceID, contractID, domain.VerbProvides, file, startLine, endLine, discoveredAt)
 						}
 					}
 				}
@@ -254,7 +268,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 				typeName := sel.Sel.Name
 				if m := grpcClientTypeRegex.FindStringSubmatch(typeName); len(m) > 1 {
 					contractName := m[1]
-					if contractName != "" && contractName != "grpc" && !strings.HasPrefix(contractName, "Client") {
+					if contractName != "" && contractName != "grpc" && !strings.HasPrefix(contractName, "Client") && !stdlibHealthContract(contractName) {
 						startLine := fset.Position(f.Pos()).Line
 						endLine := fset.Position(f.End()).Line
 						contractID := fmt.Sprintf("contract:%s", contractName)

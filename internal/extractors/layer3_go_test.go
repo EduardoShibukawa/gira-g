@@ -434,3 +434,61 @@ services:
 		t.Fatalf("canonical JSON missing expected content: %s", jsonStr)
 	}
 }
+
+// SC1 (J1): stdlib Health registrations never become contracts or provides
+// edges. Test-first: this fails while contract:Health is emitted.
+func TestGoASTExtractor_HealthDenylist(t *testing.T) {
+	ext := NewGoASTExtractor()
+
+	goSource := `package main
+
+import (
+	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/health"
+	pb "example.com/genproto/demo"
+)
+
+type checkoutServer struct {
+	pb.UnimplementedCheckoutServer
+	healthpb.UnimplementedHealthServer
+}
+
+func main() {
+	s := grpc.NewServer()
+	healthpb.RegisterHealthServer(s, health.NewServer())
+	pb.RegisterCheckoutServer(s, &checkoutServer{})
+}
+`
+
+	file := TargetFile{
+		Repo:      "otel-demo",
+		CommitSHA: "commit123",
+		Path:      "src/checkout/main.go",
+		Content:   []byte(goSource),
+	}
+
+	nodes, rels, _, err := ext.Extract(context.Background(), file)
+	if err != nil {
+		t.Fatalf("unexpected extract error: %v", err)
+	}
+	for _, n := range nodes {
+		if n.ID == "contract:Health" {
+			t.Fatalf("stdlib Health must not become a contract node")
+		}
+	}
+	for _, r := range rels {
+		if r.TargetID == "contract:Health" && r.Verb == domain.VerbProvides {
+			t.Fatalf("stdlib Health must not become a provides edge")
+		}
+	}
+	var foundBusiness bool
+	for _, r := range rels {
+		if r.TargetID == "contract:Checkout" && r.Verb == domain.VerbProvides {
+			foundBusiness = true
+		}
+	}
+	if !foundBusiness {
+		t.Fatalf("business contract Checkout must still be provided")
+	}
+}
