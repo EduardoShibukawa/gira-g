@@ -62,7 +62,7 @@ func References(root string) ([]string, error) {
 		rel, _ := filepath.Rel(root, p)
 		rel = filepath.ToSlash(rel)
 		if d.IsDir() {
-			if rel == "bench" || rel == ".git/objects" || rel == ".git/refs" || rel == ".git/logs" {
+			if rel == "bench" || rel == ".git/objects" || rel == ".git/refs" || rel == ".git/logs" || rel == ".claude/worktrees" {
 				return filepath.SkipDir
 			}
 			return nil

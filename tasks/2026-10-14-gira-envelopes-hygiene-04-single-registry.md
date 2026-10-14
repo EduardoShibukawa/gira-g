@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: pending
+status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
 spec: gira-envelopes-hygiene@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Single tool registry (R6; SC6)
@@ -12,7 +12,7 @@ verified_at: ""
 ## Routing and approvals
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-envelopes-hygiene; spec v1 approved)
-- depends on: 2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools
+- depends_on: ["2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools"]
 
 ## Objective
 
@@ -30,11 +30,11 @@ Out of scope: envelope coverage/determinism (01), honesty/ceiling (02), structur
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pending | | |
-| AC1 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -v -count=1` | pending | | |
-| AC2 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pending | | |
-| R1 | `go test ./internal/mcp ./internal/tokens -count=1` | pending | | |
-| V1 | diff read against AC1–AC2 + spec R6 | pending | | |
+| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pass | HEAD~1 | root 16 pkgs ok, bench ok, validator pass |
+| AC1 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -v -count=1` | pass | HEAD | MCP tools match registry, enveloped field present |
+| AC2 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pass | HEAD | race ok, validator pass |
+| R1 | `go test ./internal/mcp ./internal/tokens -count=1` | pass | HEAD | all touched pkgs pass |
+| V1 | diff read against AC1–AC2 + spec R6 | pass | HEAD | additive only; no ground-truth changes |
 
 ## Constraints and budget
 
@@ -56,3 +56,5 @@ Out of scope: envelope coverage/determinism (01), honesty/ceiling (02), structur
 6. Run AC1, AC2, R1, V1; commit; validator.
 
 ## Outcome
+
+Child 04 delivered: single tool registry (SC6). Created `internal/tools/registry.go` as the single source of truth for all tool definitions. Each tool declares `enveloped: bool`. Updated `internal/tokens/accounting.go` to use the registry via `ListTools()`. Updated MCP server `getToolDefinitions()` to include `Enveloped: true` for all 12 tools. Set-equality test ensures both sides stay in sync. All SC6 tests pass.

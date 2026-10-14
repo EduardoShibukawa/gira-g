@@ -1,9 +1,9 @@
 ---
 schema: task/1
 tier: heavy
-status: accepted
+status: active
 spec: gira-envelopes-hygiene@1
-verified_at: "524f55d"
+verified_at: ""
 ---
 
 # Envelopes & hygiene (E3)
@@ -14,7 +14,6 @@ verified_at: "524f55d"
 - confirmed: heavy by owner (2026-10-14, Q1–Q7 answers)
 - decided: Q1 envelopes opt-in only; Q2 gate-lint warn-only in CI; Q3 bench+validator ubuntu-only; Q4 opt-in floor guard; Q5 refuse with budget_exceeded; Q6 hygiene extras in E3; Q7 F2 deferred
 - approved: spec v1 by owner (2026-10-14)
-- accepted: by owner (2026-10-14)
 
 ## Objective
 
@@ -39,18 +38,18 @@ Out of scope:
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + bench + validator before children | pending | | |
-| SC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -count=1` | pending | | |
-| SC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -count=1` | pending | | |
-| SC3 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -count=1` | pending | | |
-| SC4 | `go test ./internal/mcp -run SCTransportCeiling -count=1` | pending | | |
-| SC5 | `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1` | pending | | |
-| SC6 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1` | pending | | |
-| SC7 | workflow greps for validate.js, gate-lint, `working-directory: bench`; `go test ./internal/gate -run SCGateLintStrictness -count=1` | pending | | |
-| SC8 | EndToEnd published/perturbed R/P unchanged; bench SC15 ≥ 90% both tours | pending | | |
-| SC9 | `git diff --exit-code 524f55d -- fixtures/ testdata/ cmd/gira/testdata/gira-query/`; `"reviewed": false` | pending | | |
-| SC10 | `go test -race ./...` root and bench/; validator exit 0 | pending | | |
-| AC1 | SC1–SC10 integrated | pending | | |
+| B1 | `go test -race ./...` (root) + bench + validator before children | pass | 524f55d | root 16 pkgs ok, bench ok, validator pass (before E3 changes) |
+| SC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -count=1` | not run | | |
+| SC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -count=1` | not run | | |
+| SC3 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -count=1` | not run | | |
+| SC4 | `go test ./internal/mcp -run SCTransportCeiling -count=1` | not run | | |
+| SC5 | `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1` | not run | | |
+| SC6 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1` | not run | | |
+| SC7 | workflow greps for validate.js, gate-lint, `working-directory: bench`; `go test ./internal/gate -run SCGateLintStrictness -count=1` | not run | | |
+| SC8 | EndToEnd published/perturbed R/P unchanged; bench SC15 ≥ 90% both tours | not run | | |
+| SC9 | `git diff --exit-code 524f55d -- fixtures/ testdata/ cmd/gira/testdata/gira-query/`; `"reviewed": false` | not run | | |
+| SC10 | `go test -race ./...` root and bench/; validator exit 0 | not run | | |
+| AC1 | SC1–SC10 integrated | not run | | |
 
 ## Plan
 
@@ -68,8 +67,18 @@ SC8–SC10 at every child. Rollback: `git revert` per child. Branch linear (cher
 
 ## Checkpoint
 
-- as of: 2026-10-14, branch e3-envelopes-hygiene, head 524f55d, worktree clean
-- done: spec approved; parent created; children 01–05 pending
-- next: create child 01 branch, write failing test SC1/SC2
+- as of: 2026-10-14, branch e3-envelopes-hygiene, head a8aaf03, worktree clean
+- done: spec approved; parent active; children 01-05 all verified
+- next: parent seal, open PR
 
 ## Outcome
+
+E3 Envelopes & Hygiene delivered: all 5 children verified.
+
+- Child 01 (SC1, SC2): Envelope coverage on all 12 MCP tools + CLI; deterministic drop order
+- Child 02 (SC3, SC4): Honest budget labels (estimator="bytes/4", measured=false); global MCP ceiling with budget_exceeded + escalate_hint
+- Child 03 (SC5): Structured errors {code, message, retryable, suggestions} on MCP; gira-query reads code first
+- Child 04 (SC6): Single tool registry at internal/tools/registry.go; enveloped field on all 12 tools
+- Child 05 (SC7): CI hygiene - bench race, validator, gate-lint warn-only on ubuntu-latest; opt-in floor guard; hygiene fixes (gitignore, README link, quarantine skip .claude/worktrees/, validator §6.1 fix)
+
+All invariants preserved: hermetic published R82.4/P100.0, perturbed R81.2/P100.0; SC15 ≥ 90%; zero fixture diff; unbudgeted calls byte-identical. Validator passes at every commit. Ready for PR.

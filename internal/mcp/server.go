@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -57,6 +58,7 @@ type ToolDefinition struct {
 	Name        string      `json:"name"`
 	Description string      `json:"description"`
 	InputSchema InputSchema `json:"inputSchema"`
+	Enveloped   bool        `json:"enveloped"`
 }
 
 type InputSchema struct {
@@ -77,8 +79,32 @@ type CallToolResult struct {
 }
 
 type ToolContent struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
+	Type string                 `json:"type"`
+	Text string                 `json:"text"`
+	Data map[string]any         `json:"data,omitempty"`
+}
+
+// StructuredError represents a structured error response for MCP tools.
+type StructuredError struct {
+	Code        string   `json:"code"`
+	Message     string   `json:"message"`
+	Retryable   bool     `json:"retryable"`
+	Suggestions []string `json:"suggestions,omitempty"`
+}
+
+func newStructuredError(code, message string, retryable bool, suggestions ...string) CallToolResult {
+	err := StructuredError{
+		Code:        code,
+		Message:     message,
+		Retryable:   retryable,
+		Suggestions: suggestions,
+	}
+	data, _ := json.Marshal(err)
+	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: string(data)}}}
+}
+
+func errorResult(msg string) CallToolResult {
+	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: msg}}}
 }
 
 // Server handles MCP protocol communication over stdio or arbitrary streams.
@@ -305,6 +331,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"target_id"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_pr_impact",
@@ -339,6 +366,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"range"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_tour",
@@ -354,8 +382,13 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "integer",
 						Description: "Maximum number of steps (default 20).",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "diff_maps",
@@ -371,9 +404,14 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Path to the later macro-map.json.",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 				Required: []string{"index_a", "index_b"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_context_slice",
@@ -402,6 +440,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 				},
 				Required: []string{"node_id"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "explain_evidence",
@@ -417,8 +456,13 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Optional edge / relationship ID to explain evidence records for.",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "locate_boundary",
@@ -430,9 +474,14 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 						Type:        "string",
 						Description: "Substring query to search across node IDs, names, contract methods, and unsupported files.",
 					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
 				},
 				Required: []string{"query"},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "verify_artifact",
@@ -466,6 +515,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_control_total",
@@ -491,6 +541,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_findings_register",
@@ -504,6 +555,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "get_token_accounting",
@@ -521,6 +573,7 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 		{
 			Name:        "gate_status",
@@ -534,9 +587,11 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 					},
 				},
 			},
+			Enveloped: true,
 		},
 	}
 }
+
 
 type toolCallParams struct {
 	Name      string          `json:"name"`
@@ -784,6 +839,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			Focus    string `json:"focus"`
 			MaxSteps int    `json:"max_steps"`
+			Budget   int    `json:"budget"`
 		}
 		if len(params.Arguments) > 0 {
 			if err := json.Unmarshal(params.Arguments, &args); err != nil {
@@ -794,8 +850,11 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		if err != nil {
 			return errorResult(fmt.Sprintf("Failed to get tour: %v", err))
 		}
-		out, err := tour.CanonicalJSON()
+		out, err := tour.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
+			}
 			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
@@ -890,6 +949,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			NodeID string `json:"node_id"`
 			EdgeID string `json:"edge_id"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return CallToolResult{
@@ -900,25 +960,15 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 		}
 		if args.NodeID == "" && args.EdgeID == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Either node_id or edge_id must be provided"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Either node_id or edge_id must be provided", false, "Provide either node_id or edge_id")
 		}
 
 		report, err := s.Engine.ExplainEvidence(args.NodeID, args.EdgeID)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to explain evidence: %v", err)},
-				},
-			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to explain evidence: %v", err), true, "Check node_id or edge_id exists")
 		}
 
-		outJSON, err := report.CanonicalJSON()
+		outJSON, err := report.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
@@ -936,36 +986,23 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 	case "locate_boundary":
 		var args struct {
-			Query string `json:"query"`
+			Query  string `json:"query"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Invalid arguments for locate_boundary: %v", err)},
-				},
-			}
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for locate_boundary: %v", err), false, "Check arguments format")
 		}
 		if strings.TrimSpace(args.Query) == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Missing required argument 'query'"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Missing required argument 'query'", false, "Provide a non-empty query")
 		}
 
 		matches, err := s.Engine.LocateBoundary(args.Query)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to locate boundary: %v", err)},
-				},
-			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to locate boundary: %v", err), true, "Check query format")
 		}
 
-		data, err := json.MarshalIndent(matches, "", "  ")
+		result := slices.BoundaryResult{Matches: matches}
+		out, err := result.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			return CallToolResult{
 				IsError: true,
@@ -977,20 +1014,12 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 		return CallToolResult{
 			Content: []ToolContent{
-				{Type: "text", Text: string(data)},
+				{Type: "text", Text: string(out)},
 			},
 		}
 
 	default:
-		return CallToolResult{
-			IsError: true,
-			Content: []ToolContent{
-				{Type: "text", Text: fmt.Sprintf("Unknown tool: %s", params.Name)},
-			},
-		}
+		return newStructuredError("tool_not_found", fmt.Sprintf("Unknown tool: %s", params.Name), false, "Check available tools with tools/list")
 	}
 }
 
-func errorResult(msg string) CallToolResult {
-	return CallToolResult{IsError: true, Content: []ToolContent{{Type: "text", Text: msg}}}
-}

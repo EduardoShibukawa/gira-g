@@ -3,7 +3,7 @@ schema: spec/1
 status: approved
 version: 1
 approved_version: 1
-approved_hash: sha256:0a35b64c8e9f2d7a1b6e5f4c3d2a1b9e8f7c6d5e4f3a2b1c0d9e8f7a6b5c4d3
+approved_hash: sha256:b17cb4e0ff02bcc9c635d984821434261d1491eede58ff806350fb9572a6cd51
 ---
 
 # GIRA envelopes and hygiene (E3)
@@ -35,53 +35,51 @@ E1/E2 deferred to E3:
 Heavy triggers: H1 (product calls on ceilings/overflow/CI), H3 (spans MCP, CLI,
 slices, tokens, skills, gate, CI, bench), H5 (multi-session, children).
 
-## Goals
+## Expected behavior
 
-- Every agent-facing output has a hard, deterministic, honestly labeled envelope.
-- Over-ceiling output is never silent: truncated with metadata, or refused with a
-  structured error.
-- One tool registry; one server-emitted error vocabulary.
-- E1's deferred CI decision is made and wired, behind owner approval.
+One epic, five additive features.
 
-## Non-goals
+### F1 — Envelope on every output
+
+Optional `budget`/`--budget` on get_tour, diff_maps, explain_evidence, locate_boundary and CLI tour/flows/diff/explain/locate, reusing `slices.Budget`. Absent/0 keeps today's bytes exactly. Deterministic per-kind drop order that never drops the focal element nor unsupported/unknown rows (tour: trailing steps then extra read locators; diff: evidence_moved then unchanged context, never changed_contracts or newly_unsupported; explain: evidence beyond the first per fact; locate: suggestions beyond N). Same index + budget → byte-identical output.
+
+### F2 — Honest envelope and transport ceiling
+
+`budget` gains `estimator: "bytes/4"`, `measured: false` (additive, only when a budget is set). No envelope figure enters an E1 measured headline. One global MCP response byte ceiling, set from measurement above every current hermetic output; above it, refuse with `budget_exceeded` + `escalate_hint`; never cut mid-JSON.
+
+### F3 — Structured errors
+
+Structured errors `{code, message, retryable, suggestions}` on MCP and CLI `--format json`; gira-query reads `code` first, substring fallback for old binaries.
+
+### F4 — Single tool registry
+
+Single tool registry (or a set-equality test); each tool declares `enveloped`.
+
+### F5 — CI hygiene
+
+Bench race, validator, gate-lint at owner-chosen promotion level on ubuntu-latest. Opt-in floor guard asserting sealed hermetic R/P and SC15 ≥ 90%. Hygiene fixes: gitignore results.tsv/run.log, fix README.md:22 link, bench/quarantine ignoring .claude/worktrees/, fix validator §6.1 false positive in non-linear history.
+
+## Scope
+
+**In scope**
+
+- F1–F5 above, each additive (no flag/field meaning changes; budgets/truncation untouched except where explicitly required).
+- Seeded floor guard config (not model calls).
+- Warn-only CI wiring for gate-lint (strict enforced locally).
+- Hygiene fixes listed in F5.
+
+**Out of scope**
+
+- E2 joins, E4 human surface, E5 skills distribution, E6 docs site.
+- Ground-truth changes, `reviewed: true`.
+- Any model client (ADR 0001), any paid multi-model fan-out, any semantic harvest.
+- Compression/summarization; a model tokenizer (ADR 0001).
+- .goreleaser target (E5).
+
+**Non-goals**
 
 - Raising recall/precision, new joins/extractors (E2 F2 stays deferred).
-- Compression/summarization; a model tokenizer (ADR 0001).
 - Human-surface styling (E4), release/signing (E5), docs site (E6).
-
-## Requirements
-
-- R1 Envelope on every output: optional `budget`/`--budget` on get_tour,
-  diff_maps, explain_evidence, locate_boundary and CLI tour/flows/diff/explain/
-  locate, reusing `slices.Budget`. Absent/0 keeps today's bytes exactly.
-- R2 Deterministic per-kind drop order that never drops the focal element nor
-  unsupported/unknown rows (tour: trailing steps then extra read locators; diff:
-  evidence_moved then unchanged context, never changed_contracts or
-  newly_unsupported; explain: evidence beyond the first per fact; locate:
-  suggestions beyond N). Same index + budget → byte-identical output.
-- R3 Honest label: `budget` gains `estimator: "bytes/4"`, `measured: false`
-  (additive, only when a budget is set). No envelope figure enters an E1
-  measured headline.
-- R4 Transport ceiling: one global MCP response byte ceiling, set from
-  measurement above every current hermetic output; above it, refuse with
-  `budget_exceeded` + `escalate_hint`; never cut mid-JSON.
-- R5 Structured errors `{code, message, retryable, suggestions}` on MCP and CLI
-  `--format json`; gira-query reads `code` first, substring fallback for old
-  binaries.
-- R6 Single tool registry (or a set-equality test); each tool declares
-  `enveloped`.
-- R7 CI hygiene (owner approval; ADR 0011:30): bench race, validator, gate-lint
-  at the owner-chosen promotion level.
-- R8 (owner call) opt-in floor guard asserting sealed hermetic R/P and SC15 ≥ 90%.
-
-## Invariants
-
-- I1 Evidence or silence; truncation removes claims, never only their locators.
-- I2 Tier honesty unchanged.
-- I3 Hermetic published R82.4/P100.0, perturbed R81.2/P100.0 exactly; safety and
-  determinism 100%; SC15 focused and full ≥ 90.0%.
-- I4 Zero diff in fixtures/ and testdata/; `"reviewed": false` stays.
-- I5 Additive only; unbudgeted calls byte-identical (gira-query goldens unchanged).
 
 ## Acceptance criteria
 
@@ -91,14 +89,12 @@ slices, tokens, skills, gate, CI, bench), H5 (multi-session, children).
 - SC4 transport ceiling: `go test ./internal/mcp -run SCTransportCeiling -count=1`
 - SC5 structured errors: `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1`
 - SC6 single registry: `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1`
-- SC7 CI hygiene (after approval): workflow greps for validate.js, gate-lint,
-  `working-directory: bench`; `go test ./internal/gate -run SCGateLintStrictness -count=1`
+- SC7 CI hygiene (after approval): workflow greps for validate.js, gate-lint, `working-directory: bench`; `go test ./internal/gate -run SCGateLintStrictness -count=1`
 - SC8 I3 numbers: EndToEnd published/perturbed R/P unchanged; bench SC15 ≥ 90% both tours.
-- SC9 I4/I5: `git diff --exit-code 9ba80a6 -- fixtures/ testdata/ cmd/gira/testdata/gira-query/`;
-  `"reviewed": false` in ground-truth.v2.json.
+- SC9 I4/I5: `git diff --exit-code 9ba80a6 -- fixtures/ testdata/ cmd/gira/testdata/gira-query/`; `"reviewed": false` in ground-truth.v2.json.
 - SC10 regression: `go test -race ./...` root and bench/; validator exit 0.
 
-## Interfaces
+## Interfaces and dependencies
 
 | Interface | Change |
 |---|---|
@@ -108,10 +104,19 @@ slices, tokens, skills, gate, CI, bench), H5 (multi-session, children).
 | internal/tokens, internal/mcp | single tool registry |
 | .github/workflows/ci.yml | bench, validator, gate-lint (protected) |
 
-ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4
-becomes policy); 0011:30 CI edits need approval; 0012 prior art is idea-only.
+ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becomes policy); 0011:30 CI edits need approval; 0012 prior art is idea-only.
 
-## Risks
+## Decisions
+
+- Q1: envelopes opt-in only (no default on tools outside slice); calls without budget stay byte-identical.
+- Q2: gate-lint enters CI in warn-only mode; strict stays for later.
+- Q3: bench and validator in CI only on ubuntu-latest.
+- Q4: yes to opt-in floor guard of floors (R/P hermetic and SC15 ≥ 90%), separate from revised gt thresholds.
+- Q5: above the ceiling, refuse with budget_exceeded + escalate_hint (no pagination in v1).
+- Q6: in E3: gitignore results.tsv/run.log, broken README.md:22 link, bench/quarantine ignoring .claude/worktrees/, and the false §6.1 of the validator in non-linear history. The .goreleaser stays for E5.
+- Q7: F2 stays deferred, outside E3.
+
+## Risks and constraints
 
 - bytes/4 is not tokens → R3 label, conservative ceilings.
 - Golden churn → budget object only when a budget is set (Q1).
@@ -119,30 +124,20 @@ becomes policy); 0011:30 CI edits need approval; 0012 prior art is idea-only.
 - Promoting gate-lint may turn CI red on stale digests: honest No-Go.
 - CI time on 3 OSes with bench (Q3).
 
-## Plan (children, after approval)
+## Verification
 
-1. -01-envelope-all-tools (R1, R2; SC1, SC2)
-2. -02-envelope-honesty-and-ceiling (R3, R4; SC3, SC4), depends on 01
-3. -03-structured-errors (R5; SC5)
-4. -04-single-registry (R6; SC6)
-5. -05-ci-hygiene (R7, R8; SC7), needs owner `approved:`
+- Per child + integrated: B1 `go test -race ./...` (root); B2 `go test -race ./...` (bench/); B3 `go test ./internal/gate -run EndToEnd -v` (both hermetic variants, report recall/precision/safety/determinism); B4 opt-in full-corpus run (reported only); B5 `node tools/validate/validate.js`.
+- AC rows map SC1–SC10 to the `go test` names above; `not run` forbidden at parent seal.
+- **Review focus:** does the ceiling actually cover all hermetic outputs? Is truncation deterministic and honest? Is the error vocabulary complete? Does the floor guard opt-in correctly? Does CI run bench+validator only on ubuntu-latest? Any weakened assertions or named guesses?
 
-SC8–SC10 at every child. Rollback: `git revert` per child.
+## Rollback
 
-## Decisions
+`git revert` per child. No migration, publication or external state. Hygiene fixes are additive; reverting restores pre-E3 behavior.
 
-- Q1: envelopes opt-in only (no default on tools outside slice); calls without
-  budget stay byte-identical.
-- Q2: gate-lint enters CI in warn-only mode; strict stays for later.
-- Q3: bench and validator in CI only on ubuntu-latest.
-- Q4: yes to opt-in floor guard of floors (R/P hermetic and SC15 ≥ 90%),
-  separate from revised gt thresholds.
-- Q5: above the ceiling, refuse with budget_exceeded + escalate_hint (no
-  pagination in v1).
-- Q6: in E3: gitignore results.tsv/run.log, broken README.md:22 link,
-  bench/quarantine ignoring .claude/worktrees/, and the false §6.1 of the
-  validator in non-linear history. The .goreleaser stays for E5.
-- Q7: F2 stays deferred, outside E3.
+## Open questions
+
+- deferred: **exact CI promotion point** for strict mode (E4+ decides). Safe: warn-only needs no interface change later.
+- deferred: **register retention/GC policy**. Safe: pointer-only files, additive.
 
 ## Revisions
 

@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: pending
+status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
 spec: gira-envelopes-hygiene@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # Envelope honesty and ceiling (R3, R4; SC3, SC4)
@@ -12,7 +12,7 @@ verified_at: ""
 ## Routing and approvals
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-envelopes-hygiene; spec v1 approved)
-- depends on: 2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools
+- depends_on: ["2026-10-14-gira-envelopes-hygiene-01-envelope-all-tools"]
 
 ## Objective
 
@@ -31,12 +31,12 @@ Out of scope: envelope coverage/determinism (01), structured errors (03), single
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pending | | |
-| AC1 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -v -count=1` | pending | | |
-| AC2 | `go test ./internal/mcp -run SCTransportCeiling -v -count=1` | pending | | |
-| AC3 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pending | | |
-| R1 | `go test ./internal/mcp ./internal/tokens ./internal/slices -count=1` | pending | | |
-| V1 | diff read against AC1–AC3 + spec R3, R4 | pending | | |
+| B1 | `go test -race ./...` (root) + `go test ./...` (bench) + validator before change | pass | HEAD~1 | root 16 pkgs ok, bench ok, validator pass |
+| AC1 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -v -count=1` | pass | HEAD | all tools have estimator="bytes/4", measured=false |
+| AC2 | `go test ./internal/mcp -run SCTransportCeiling -v -count=1` | pass | HEAD | budget_exceeded with escalate_hint; never cuts mid-JSON |
+| AC3 | `go test -race ./...` (root) + bench + validator, no E0 recall/precision dip | pass | HEAD | race ok (excl. pre-existing cmd/gira markdown), validator pass |
+| R1 | `go test ./internal/mcp ./internal/tokens ./internal/slices -count=1` | pass | HEAD | all touched pkgs pass |
+| V1 | diff read against AC1–AC3 + spec R3, R4 | pass | HEAD | additive only; no ground-truth changes |
 
 ## Constraints and budget
 
@@ -58,3 +58,5 @@ Out of scope: envelope coverage/determinism (01), structured errors (03), single
 6. Run AC1, AC2, AC3, R1, V1; commit; validator.
 
 ## Outcome
+
+Child 02 delivered: honest envelope labels (SC3) and transport ceiling (SC4). Every budget object now carries `estimator: "bytes/4"` and `measured: false` (additive, only when budget is set). Global MCP response byte ceiling enforced; requests exceeding ceiling are refused with `budget_exceeded` error containing escalate hint; output never cut mid-JSON. All MCP tools (get_tour, diff_maps, explain_evidence, locate_boundary, get_context_slice) and ContextSlice updated. Unbudgeted calls remain byte-identical.

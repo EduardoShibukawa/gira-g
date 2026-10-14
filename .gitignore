@@ -22,3 +22,7 @@ architecture.html
 *.swp
 *~
 .DS_Store
+
+# E3: benchmark/hygiene artifacts
+results.tsv
+run.log
