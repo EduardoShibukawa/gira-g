@@ -770,8 +770,9 @@ func (e *Engine) LocateBoundary(query string) ([]BoundaryMatch, error) {
 		}
 	}
 
-	sortedUnsupported := make([]domain.UnsupportedBoundary, len(e.allUnsupported))
-	copy(sortedUnsupported, e.allUnsupported)
+	// Only unsupported files are Unsupported Boundaries; an unsupported
+	// construct inside a parsed file is not (F7). Briefings still carry it.
+	sortedUnsupported := e.macroMap.UnsupportedFiles()
 	sort.Slice(sortedUnsupported, func(i, j int) bool { return sortedUnsupported[i].Path < sortedUnsupported[j].Path })
 
 	for _, ub := range sortedUnsupported {

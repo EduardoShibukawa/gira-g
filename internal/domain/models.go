@@ -123,6 +123,46 @@ type MacroMap struct {
 	Nodes         []Node                `json:"nodes"`
 	Relationships []Relationship        `json:"relationships"`
 	Unsupported   []UnsupportedBoundary `json:"unsupported,omitempty"`
+	// UnsupportedConstructs lists the paths whose Unsupported row is an
+	// unsupported construct inside a file an Extractor did parse, as opposed
+	// to a file no Extractor parses. The row stays in Unsupported (briefings
+	// keep the explicit unknown), but it is not an unsupported file.
+	UnsupportedConstructs []string `json:"unsupported_constructs,omitempty"`
+}
+
+// IsUnsupportedConstruct reports whether the Unsupported row at path is an
+// unsupported construct inside a parsed file rather than an unsupported file.
+func (m *MacroMap) IsUnsupportedConstruct(path string) bool {
+	for _, p := range m.UnsupportedConstructs {
+		if p == path {
+			return true
+		}
+	}
+	return false
+}
+
+// UnsupportedFiles returns the Unsupported rows that are whole files no
+// Extractor parses: the Unsupported Boundaries proper.
+func (m *MacroMap) UnsupportedFiles() []UnsupportedBoundary {
+	out := make([]UnsupportedBoundary, 0, len(m.Unsupported))
+	for _, ub := range m.Unsupported {
+		if !m.IsUnsupportedConstruct(ub.Path) {
+			out = append(out, ub)
+		}
+	}
+	return out
+}
+
+// UnsupportedConstructRows returns the Unsupported rows that are constructs
+// inside parsed files.
+func (m *MacroMap) UnsupportedConstructRows() []UnsupportedBoundary {
+	out := make([]UnsupportedBoundary, 0)
+	for _, ub := range m.Unsupported {
+		if m.IsUnsupportedConstruct(ub.Path) {
+			out = append(out, ub)
+		}
+	}
+	return out
 }
 
 // NewMacroMap initializes an empty MacroMap with canonical schema version.
@@ -197,6 +237,11 @@ func (m *MacroMap) CanonicalJSON() ([]byte, error) {
 		Nodes:         sortedNodes,
 		Relationships: sortedRels,
 		Unsupported:   sortedUnsupported,
+	}
+	if len(m.UnsupportedConstructs) > 0 {
+		constructs := append([]string(nil), m.UnsupportedConstructs...)
+		sort.Strings(constructs)
+		normalized.UnsupportedConstructs = constructs
 	}
 
 	var buf bytes.Buffer

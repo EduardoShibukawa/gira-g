@@ -38,7 +38,9 @@ func UnsupportedSafety(mm *domain.MacroMap, paths []string) (float64, []string) 
 	for _, prefix := range paths {
 		checks++
 		reported := false
-		for _, ub := range mm.Unsupported {
+		// Only an unsupported file reports the path; an unsupported construct
+		// inside a parsed file does not (F7).
+		for _, ub := range mm.UnsupportedFiles() {
 			if under(ub.Path, prefix) {
 				reported = true
 				break

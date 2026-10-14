@@ -124,9 +124,16 @@ func resolve(r *resolution) {
 
 // pruneOrderingOnlyEdges drops service-consumes-service edges whose evidence
 // is all compose depends_on lines (J2, SC2): start ordering is not
-// consumption. Any other evidence — a call-site line, an env-wiring entry,
-// a contract reference — corroborates the edge, which then cites both lines
-// via its merged evidence. Infrastructure accesses edges are untouched.
+// consumption. Corroboration between the same pair keeps the edge, which
+// then cites both the depends_on line and the corroborating line:
+//   - other evidence on the edge itself (a call-site line, an env-wiring
+//     entry), already merged into its evidence;
+//   - an accesses edge between the same pair resting on a non-depends_on
+//     line, whose lines are appended to the kept edge (F5);
+//   - a contract reference: the source consumes a Contract the target
+//     provides; the source's consumption lines are appended (F5).
+//
+// Infrastructure accesses edges are untouched.
 func pruneOrderingOnlyEdges(r *resolution) {
 	type lineKey struct {
 		repo, path string
@@ -143,6 +150,7 @@ func pruneOrderingOnlyEdges(r *resolution) {
 		}
 		ordering[k][lineKey{h.Locator.Repo, h.Locator.Path, h.Locator.StartLine}] = true
 	}
+	accesses, consumed, provided := corroborationIndex(r.rels)
 	for id, rel := range r.rels {
 		if rel.Verb != domain.VerbConsumes {
 			continue
@@ -161,10 +169,82 @@ func pruneOrderingOnlyEdges(r *resolution) {
 				break
 			}
 		}
-		if onlyOrdering {
+		if !onlyOrdering {
+			continue
+		}
+		var extra []domain.EvidenceRecord
+		corroborate := func(evs []domain.EvidenceRecord) {
+			for _, ev := range evs {
+				if !lines[lineKey{ev.Locator.Repo, ev.Locator.Path, ev.Locator.StartLine}] {
+					extra = append(extra, ev)
+				}
+			}
+		}
+		if acc, ok := accesses[rel.SourceID+"\x00"+rel.TargetID]; ok {
+			corroborate(acc.Evidence)
+		}
+		for _, c := range sortedKeys(consumed[rel.SourceID]) {
+			if provided[rel.TargetID+"\x00"+c] {
+				corroborate(consumed[rel.SourceID][c].Evidence)
+			}
+		}
+		if len(extra) == 0 {
 			delete(r.rels, id)
+			continue
+		}
+		rel.Evidence = appendNewEvidence(rel.Evidence, extra)
+	}
+}
+
+// corroborationIndex indexes the edges that can corroborate a depends_on
+// edge: service-accesses-service edges by "source\x00target", the Contracts
+// each service consumes, and the "service\x00contract" pairs provided.
+func corroborationIndex(rels map[string]*domain.Relationship) (accesses map[string]*domain.Relationship, consumed map[string]map[string]*domain.Relationship, provided map[string]bool) {
+	accesses = map[string]*domain.Relationship{}
+	consumed = map[string]map[string]*domain.Relationship{}
+	provided = map[string]bool{}
+	for _, rel := range rels {
+		if !strings.HasPrefix(rel.SourceID, "service:") {
+			continue
+		}
+		switch {
+		case rel.Verb == domain.VerbAccesses && strings.HasPrefix(rel.TargetID, "service:"):
+			accesses[rel.SourceID+"\x00"+rel.TargetID] = rel
+		case rel.Verb == domain.VerbConsumes && strings.HasPrefix(rel.TargetID, "contract:"):
+			if consumed[rel.SourceID] == nil {
+				consumed[rel.SourceID] = map[string]*domain.Relationship{}
+			}
+			consumed[rel.SourceID][rel.TargetID] = rel
+		case rel.Verb == domain.VerbProvides && strings.HasPrefix(rel.TargetID, "contract:"):
+			provided[rel.SourceID+"\x00"+rel.TargetID] = true
 		}
 	}
+	return accesses, consumed, provided
+}
+
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
+}
+
+// appendNewEvidence appends the records of extra whose locator evs does not
+// already cite.
+func appendNewEvidence(evs, extra []domain.EvidenceRecord) []domain.EvidenceRecord {
+	seen := map[string]bool{}
+	for _, ev := range evs {
+		seen[ev.Locator.String()] = true
+	}
+	for _, ev := range extra {
+		if k := ev.Locator.String(); !seen[k] {
+			seen[k] = true
+			evs = append(evs, ev)
+		}
+	}
+	return evs
 }
 
 // envScopes holds each compose project's .env, keyed by repo and directory.

@@ -22,7 +22,7 @@ func ExportMarkdown(mm *domain.MacroMap) string {
 	sb.WriteString(fmt.Sprintf("- Schema Version: `%s`\n", mm.SchemaVersion))
 	sb.WriteString(fmt.Sprintf("- Total Nodes: %d\n", len(mm.Nodes)))
 	sb.WriteString(fmt.Sprintf("- Total Relationships: %d\n", len(mm.Relationships)))
-	sb.WriteString(fmt.Sprintf("- Unsupported Boundaries: %d\n\n", len(mm.Unsupported)))
+	sb.WriteString(fmt.Sprintf("- Unsupported Boundaries: %d\n\n", len(mm.UnsupportedFiles())))
 
 	// Group nodes by Kind
 	services := make([]domain.Node, 0)
@@ -129,8 +129,7 @@ func ExportMarkdown(mm *domain.MacroMap) string {
 	}
 
 	// Section 6: Unsupported Boundaries & Known Unknowns (Mandatory per ADR 0008)
-	sortedUnsupported := make([]domain.UnsupportedBoundary, len(mm.Unsupported))
-	copy(sortedUnsupported, mm.Unsupported)
+	sortedUnsupported := mm.UnsupportedFiles()
 	sort.Slice(sortedUnsupported, func(i, j int) bool { return sortedUnsupported[i].Path < sortedUnsupported[j].Path })
 
 	sb.WriteString(fmt.Sprintf("## Unsupported Boundaries & Known Unknowns (%d)\n\n", len(sortedUnsupported)))
@@ -146,7 +145,28 @@ func ExportMarkdown(mm *domain.MacroMap) string {
 		}
 	}
 
+	// Section 7: unsupported constructs inside parsed files (F7). Not
+	// Unsupported Boundaries, but still explicit unknowns, never silent.
+	if constructs := sortedConstructs(mm); len(constructs) > 0 {
+		sb.WriteString(fmt.Sprintf("\n## Unsupported Constructs in Parsed Files (%d)\n\n", len(constructs)))
+		for _, ub := range constructs {
+			locStr := ""
+			if ub.Locator.Path != "" {
+				locStr = fmt.Sprintf(" [%s]", ub.Locator.String())
+			}
+			sb.WriteString(fmt.Sprintf("> ⚠️ UNKNOWN: `%s` - %s%s\n", ub.Path, ub.Reason, locStr))
+		}
+	}
+
 	return sb.String()
+}
+
+// sortedConstructs returns the unsupported constructs inside parsed files,
+// sorted by path.
+func sortedConstructs(mm *domain.MacroMap) []domain.UnsupportedBoundary {
+	rows := mm.UnsupportedConstructRows()
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Path < rows[j].Path })
+	return rows
 }
 
 func sortNodesByID(nodes []domain.Node) {
@@ -206,8 +226,7 @@ func ExportHTML(mm *domain.MacroMap) string {
 	copy(sortedRels, mm.Relationships)
 	sort.Slice(sortedRels, func(i, j int) bool { return sortedRels[i].ID < sortedRels[j].ID })
 
-	sortedUnsupported := make([]domain.UnsupportedBoundary, len(mm.Unsupported))
-	copy(sortedUnsupported, mm.Unsupported)
+	sortedUnsupported := mm.UnsupportedFiles()
 	sort.Slice(sortedUnsupported, func(i, j int) bool { return sortedUnsupported[i].Path < sortedUnsupported[j].Path })
 
 	sb.WriteString(`<!DOCTYPE html>
@@ -387,7 +406,7 @@ tr:last-child td { border-bottom: none; }
     <div class="meta-item">Schema: <strong>` + html.EscapeString(mm.SchemaVersion) + `</strong></div>
     <div class="meta-item">Nodes: <strong>` + fmt.Sprintf("%d", len(mm.Nodes)) + `</strong></div>
     <div class="meta-item">Relationships: <strong>` + fmt.Sprintf("%d", len(mm.Relationships)) + `</strong></div>
-    <div class="meta-item">Unsupported Boundaries: <strong>` + fmt.Sprintf("%d", len(mm.Unsupported)) + `</strong></div>
+    <div class="meta-item">Unsupported Boundaries: <strong>` + fmt.Sprintf("%d", len(sortedUnsupported)) + `</strong></div>
   </div>
 </header>
 
@@ -460,6 +479,23 @@ tr:last-child td { border-bottom: none; }
 		sb.WriteString("<p style=\"color: var(--text-dim);\">No unsupported boundaries or unhandled languages recorded.</p>\n")
 	} else {
 		for _, ub := range sortedUnsupported {
+			loc := ""
+			if ub.Locator.Path != "" {
+				loc = fmt.Sprintf(" [%s]", ub.Locator.String())
+			}
+			sb.WriteString(fmt.Sprintf("<div class=\"unsupported-banner\"><span class=\"unsupported-path\">%s</span>: %s%s</div>\n",
+				html.EscapeString(ub.Path),
+				html.EscapeString(ub.Reason),
+				html.EscapeString(loc),
+			))
+		}
+	}
+
+	// Unsupported constructs inside parsed files (F7): explicit unknowns,
+	// not Unsupported Boundaries.
+	if constructs := sortedConstructs(mm); len(constructs) > 0 {
+		sb.WriteString(fmt.Sprintf("<h2>Unsupported Constructs in Parsed Files (%d)</h2>\n", len(constructs)))
+		for _, ub := range constructs {
 			loc := ""
 			if ub.Locator.Path != "" {
 				loc = fmt.Sprintf(" [%s]", ub.Locator.String())
