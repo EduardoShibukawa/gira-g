@@ -675,9 +675,11 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	var outputDir string
 	var indexPath string
+	var noOpen bool
 
 	fs.StringVar(&outputDir, "output", "", "Directory to generate HTML artifact (default temp dir)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.BoolVar(&noOpen, "no-open", false, "Write the artifact but do not open a browser")
 
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -717,14 +719,17 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 	fileURI := "file://" + filepath.ToSlash(absPath)
 	fmt.Fprintf(stdout, "Exported HTML view to: %s\n", fileURI)
 
-	// Attempt non-blocking browser open if not in headless/CI environment
-	openInBrowser(absPath)
+	// Attempt non-blocking browser open unless --no-open or headless/CI.
+	openInBrowser(absPath, noOpen)
 
 	return nil
 }
 
-func openInBrowser(filePath string) {
-	// If CI or NO_BROWSER environment variable is set, avoid launching external process
+func openInBrowser(filePath string, noOpen bool) {
+	// --no-open, or a CI/NO_BROWSER environment, never launches a browser.
+	if noOpen {
+		return
+	}
 	if os.Getenv("CI") != "" || os.Getenv("NO_BROWSER") != "" {
 		return
 	}

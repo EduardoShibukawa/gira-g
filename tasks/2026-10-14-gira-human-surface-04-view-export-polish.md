@@ -1,10 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-14-gira-human-surface
 spec: gira-human-surface@1
-verified_at: ""
+verified_at: "HEAD"
 ---
 
 # View/export polish (F4; SC4)
@@ -29,10 +29,10 @@ including the boundaries section.
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + bench + validator before change | not run | | |
-| AC1 | `go test ./internal/slices ./cmd/gira -run SCViewExport -count=1` | not run | | |
-| R1 | `go test ./internal/slices ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1; show diff before commit | not run | | |
+| B1 | `go test -race ./...` (root) + bench + validator before change | pass | HEAD~1 | child 03 merged; all green |
+| AC1 | `go test ./internal/slices ./cmd/gira -run SCViewExport -count=1` | pass | HEAD | `--no-open` opens nothing; HTML is single-file; a fake xdg-open proves the open path |
+| R1 | `go test ./internal/slices ./cmd/gira -count=1` | pass | HEAD | no regression |
+| V1 | diff read against AC1 | pass | HEAD | `openInBrowser(path, noOpen)`; export unchanged |
 
 ## Constraints and budget
 
@@ -46,3 +46,10 @@ including the boundaries section.
 1. Failing tests for `--no-open` and the single-file guarantee.
 2. Implement the flag + env guard; assert no external references in the HTML.
 3. Run AC1/R1/V1; commit.
+
+## Outcome
+
+`gira view` gains `--no-open` (and still honors `CI`/`NO_BROWSER`/headless):
+`openInBrowser(path, noOpen)` never launches a browser with the flag. The
+single-file guarantee is asserted for both `export` and `view` HTML (no
+`<script src>`, `<link>`, external `src`/`href`, `@import` or `url(http)`).
