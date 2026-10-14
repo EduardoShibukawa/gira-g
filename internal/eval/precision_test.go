@@ -2,7 +2,12 @@ package eval_test
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"os"
 	"path"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -15,6 +20,7 @@ import (
 // ground truth (spec gira-impact-precision).
 type variant struct {
 	name string
+	dir  string // the corpus source tree
 	gt   *eval.GroundTruth
 	mm   *domain.MacroMap
 }
@@ -31,7 +37,7 @@ func hermeticVariants(t *testing.T) []variant {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return []variant{{"published", gt, pub.MacroMap}, {"perturbed", ps.GroundTruth, per.MacroMap}}
+	return []variant{{"published", publishedCorpus(gt).Dir, gt, pub.MacroMap}, {"perturbed", ps.Corpus.Dir, ps.GroundTruth, per.MacroMap}}
 }
 
 func isDockerfile(p string) bool {
@@ -243,6 +249,78 @@ func TestSC5HTTPAndEnvWiring(t *testing.T) {
 				default:
 					t.Errorf("%s: %s cites %s", v.name, r.ID, ev.Locator.Path)
 				}
+			}
+		}
+	}
+}
+
+// line returns line n of a corpus file.
+func line(t *testing.T, dir, p string, n int) string {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(p)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(string(data), "\n")
+	if n < 1 || n > len(lines) {
+		t.Fatalf("%s#L%d out of bounds", p, n)
+	}
+	return lines[n-1]
+}
+
+var composeHeader = regexp.MustCompile(`^  [A-Za-z0-9_.-]+:\s*$`)
+
+// SC6: compose-derived edges cite their depends_on entry or environment line,
+// never the service header; declared ports carry their own locator; tour entry
+// steps cite it.
+func TestSC6LocatorsCiteTheirLine(t *testing.T) {
+	for _, v := range hermeticVariants(t) {
+		for _, r := range v.mm.Relationships {
+			for _, ev := range r.Evidence {
+				if !strings.HasPrefix(path.Base(ev.Locator.Path), "compose") {
+					continue
+				}
+				if l := line(t, v.dir, ev.Locator.Path, ev.Locator.StartLine); composeHeader.MatchString(l) {
+					t.Errorf("%s: %s cites the service header %s#L%d %q", v.name, r.ID, ev.Locator.Path, ev.Locator.StartLine, l)
+				}
+			}
+		}
+		for _, n := range v.mm.Nodes {
+			if _, ok := n.Metadata["ports"]; !ok {
+				continue
+			}
+			for _, key := range []string{"exposed_ports", "published_ports"} {
+				entries, _ := n.Metadata[key].([]map[string]any)
+				for _, e := range entries {
+					loc, _ := e["locator"].(string)
+					p, ln, ok := strings.Cut(loc, "#L")
+					num := 0
+					fmt.Sscanf(ln, "%d", &num)
+					if !ok || num == 0 || !strings.Contains(line(t, v.dir, p, num), fmt.Sprint(e["port"])) {
+						t.Errorf("%s: %s %s entry %v does not cite its own line", v.name, n.ID, key, e)
+					}
+				}
+			}
+			if n.Metadata["exposed_ports"] == nil && n.Metadata["published_ports"] == nil {
+				t.Errorf("%s: %s declares ports %v without a locator", v.name, n.ID, n.Metadata["ports"])
+			}
+		}
+		// The CLI and MCP read the index back from JSON: check the tour there.
+		data, err := v.mm.CanonicalJSON()
+		if err != nil {
+			t.Fatal(err)
+		}
+		var loaded domain.MacroMap
+		if err := json.Unmarshal(data, &loaded); err != nil {
+			t.Fatal(err)
+		}
+		tour, err := slices.NewEngine(&loaded).GetTour("", 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, s := range tour.Steps {
+			if (s.WhyTemplate == slices.WhyEntry || s.WhyTemplate == slices.WhyEntryDeclared) && s.WhyLocator == "" {
+				t.Errorf("%s: entry step %s has no why_locator: %s", v.name, s.NodeIDs[0], s.Why)
 			}
 		}
 	}

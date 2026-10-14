@@ -135,9 +135,21 @@
           }
         ],
         "entrypoint": "[\"sh\", \"-c\", \"exec /usr/local/bin/currency \\\"${CURRENCY_PORT}\\\"\"]",
+        "exposed_ports": [
+          {
+            "locator": "src/currency/Dockerfile#L58",
+            "port": "${CURRENCY_PORT}"
+          }
+        ],
         "image": "${IMAGE_NAME}:${DEMO_VERSION}-currency",
         "ports": [
           "${CURRENCY_PORT}"
+        ],
+        "published_ports": [
+          {
+            "locator": "compose.yaml#L194",
+            "port": "${CURRENCY_PORT}"
+          }
         ],
         "stages": [
           {

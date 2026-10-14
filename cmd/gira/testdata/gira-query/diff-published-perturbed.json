@@ -192,7 +192,7 @@
       "source": "service:checkout",
       "verb": "consumes",
       "target": "service:currency",
-      "locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L116-L116"
+      "locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L158-L158"
     }
   ],
   "changed_contracts": [],

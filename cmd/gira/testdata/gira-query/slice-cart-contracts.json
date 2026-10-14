@@ -20,9 +20,21 @@
         }
       ],
       "entrypoint": "[ \"./cart\" ]",
+      "exposed_ports": [
+        {
+          "locator": "src/cart/src/Dockerfile#L54",
+          "port": "${CART_PORT}"
+        }
+      ],
       "image": "${IMAGE_NAME}:${DEMO_VERSION}-cart",
       "ports": [
         "${CART_PORT}"
+      ],
+      "published_ports": [
+        {
+          "locator": "compose.yaml#L94",
+          "port": "${CART_PORT}"
+        }
       ],
       "stages": [
         {
@@ -86,10 +98,22 @@
           }
         ],
         "entrypoint": "[ \"./checkout\" ]",
+        "exposed_ports": [
+          {
+            "locator": "src/checkout/Dockerfile#L32",
+            "port": "${CHECKOUT_PORT}"
+          }
+        ],
         "image": "",
         "package": "kafka",
         "ports": [
           "${CHECKOUT_PORT}"
+        ],
+        "published_ports": [
+          {
+            "locator": "compose.yaml#L130",
+            "port": "${CHECKOUT_PORT}"
+          }
         ],
         "stages": [
           {
@@ -135,8 +159,8 @@
             "repo": "opentelemetry-demo",
             "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "compose.yaml",
-            "start_line": 116,
-            "end_line": 116
+            "start_line": 156,
+            "end_line": 156
           },
           "origin": "extracted",
           "deployment_profile": "compose:compose.yaml",
@@ -148,13 +172,13 @@
   ],
   "budget": {
     "limit": 1500,
-    "estimated": 1240,
+    "estimated": 1383,
     "truncated": true,
     "dropped": {
       "nodes": 4,
       "relationships": 4,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 2734: rerun with budget >= 2734"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 3123: rerun with budget >= 3123"
   }
 }

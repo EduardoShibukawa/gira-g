@@ -52,7 +52,14 @@ type dockerfileCopy struct {
 	endLine   int
 }
 
+type dockerfilePort struct {
+	port      string
+	startLine int
+	endLine   int
+}
+
 type dockerfileStage struct {
+	exposed       []dockerfilePort
 	baseImage     string
 	stageName     string
 	fromStartLine int
@@ -291,6 +298,9 @@ func (e *DockerfileExtractor) Extract(ctx context.Context, file TargetFile) ([]d
 			if currentStage != nil {
 				ports := strings.Fields(inst.args)
 				currentStage.ports = append(currentStage.ports, ports...)
+				for _, p := range ports {
+					currentStage.exposed = append(currentStage.exposed, dockerfilePort{port: p, startLine: inst.startLine, endLine: inst.endLine})
+				}
 			}
 
 		case "CMD":
@@ -374,6 +384,11 @@ func (e *DockerfileExtractor) Extract(ctx context.Context, file TargetFile) ([]d
 	}
 	if len(final.ports) > 0 {
 		metadata["ports"] = final.ports
+		var exposed []map[string]any
+		for _, p := range final.exposed {
+			exposed = append(exposed, map[string]any{"port": p.port, "locator": locate(p.startLine, p.endLine)})
+		}
+		metadata["exposed_ports"] = exposed
 	}
 	if final.entrypoint != "" {
 		metadata["entrypoint"] = final.entrypoint

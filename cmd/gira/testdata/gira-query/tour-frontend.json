@@ -11,7 +11,18 @@
         "service:frontend"
       ],
       "read": [
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253"
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L296-L296",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L298-L298",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L300-L300",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L302-L302",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L304-L304",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L306-L306",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L308-L308",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L310-L310",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L312-L312",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L314-L314",
+        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L316-L316"
       ],
       "why": "`service:frontend` is the focus of this tour.",
       "why_template": "focus",
@@ -39,7 +50,7 @@
         "service:frontend",
         "accesses"
       ],
-      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253"
+      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L312-L312"
     },
     {
       "order": 3,
@@ -57,7 +68,7 @@
         "service:frontend",
         "accesses"
       ],
-      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253"
+      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L316-L316"
     },
     {
       "order": 4,
@@ -79,7 +90,7 @@
         "service:frontend",
         "consumes"
       ],
-      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253"
+      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L304-L304"
     },
     {
       "order": 5,
@@ -97,7 +108,7 @@
         "service:frontend",
         "consumes"
       ],
-      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L253-L253"
+      "why_locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L314-L314"
     }
   ],
   "truncated": true

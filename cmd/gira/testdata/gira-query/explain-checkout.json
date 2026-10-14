@@ -22,10 +22,22 @@
         }
       ],
       "entrypoint": "[ \"./checkout\" ]",
+      "exposed_ports": [
+        {
+          "locator": "src/checkout/Dockerfile#L32",
+          "port": "${CHECKOUT_PORT}"
+        }
+      ],
       "image": "",
       "package": "kafka",
       "ports": [
         "${CHECKOUT_PORT}"
+      ],
+      "published_ports": [
+        {
+          "locator": "compose.yaml#L130",
+          "port": "${CHECKOUT_PORT}"
+        }
       ],
       "stages": [
         {

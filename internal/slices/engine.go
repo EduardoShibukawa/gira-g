@@ -401,14 +401,14 @@ func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing,
 			librariesList = append(librariesList, cloneNode(n))
 			continue
 		}
-		upstreamList = append(upstreamList, cloneNode(n))
+		upstreamList = append(upstreamList, briefingNode(n))
 	}
 	sort.Slice(upstreamList, func(i, j int) bool { return upstreamList[i].ID < upstreamList[j].ID })
 	sort.Slice(librariesList, func(i, j int) bool { return librariesList[i].ID < librariesList[j].ID })
 
 	downstreamList := make([]domain.Node, 0, len(downstreamServicesMap))
 	for _, n := range downstreamServicesMap {
-		downstreamList = append(downstreamList, cloneNode(n))
+		downstreamList = append(downstreamList, briefingNode(n))
 	}
 	sort.Slice(downstreamList, func(i, j int) bool { return downstreamList[i].ID < downstreamList[j].ID })
 
@@ -858,6 +858,21 @@ func cloneRel(r domain.Relationship) domain.Relationship {
 	return c
 }
 
+// briefingDetails are the Service metadata an Impact Briefing leaves to slices,
+// explain and tours: how the Service is built and where each port is declared.
+var briefingDetails = []string{"stages", "base_images", "exposed_ports", "published_ports"}
+
+// briefingNode is a Service as an Impact Briefing lists it: without the build
+// and port-declaration details, which would crowd affected Services out of a
+// budget.
+func briefingNode(n domain.Node) domain.Node {
+	c := cloneNode(n)
+	if c.Kind == domain.NodeService {
+		c.Metadata = stripKeys(c.Metadata, briefingDetails...)
+	}
+	return c
+}
+
 // stripSummaryDetails drops what the summary tier leaves to deeper tiers: a
 // Contract's method and message definitions, and how a Service is built (its
 // Dockerfile stages and base images).
@@ -866,7 +881,7 @@ func stripSummaryDetails(kind domain.NodeType, meta map[string]any) map[string]a
 	case domain.NodeContract:
 		return stripContractDetails(meta)
 	case domain.NodeService:
-		return stripKeys(meta, "stages", "base_images")
+		return stripKeys(meta, briefingDetails...)
 	}
 	return meta
 }
