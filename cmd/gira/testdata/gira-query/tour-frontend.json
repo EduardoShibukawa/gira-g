@@ -75,12 +75,10 @@
       "title": "product-catalog (Service)",
       "node_ids": [
         "service:product-catalog",
-        "contract:Health",
         "contract:ProductCatalogService"
       ],
       "read": [
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:compose.yaml#L518-L518",
-        "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/product-catalog/main.go#L208-L208",
         "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/product-catalog/main.go#L54-L54"
       ],
       "why": "`service:product-catalog` is reached because `service:frontend` consumes it.",
