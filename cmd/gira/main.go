@@ -44,6 +44,38 @@ func emitMarkdownLine(stdout io.Writer, text string) error {
 	return err
 }
 
+// sourceSection renders the on-demand source excerpts for an evidence report,
+// one block per distinct locator. A locator whose source cannot be read shows
+// the "source unavailable" marker. Reading is at render time only (ADR 0001).
+func sourceSection(r *slices.EvidenceReport, repoRoot string) string {
+	var sb strings.Builder
+	seen := map[string]bool{}
+	blocks := 0
+	for _, ev := range r.Evidence {
+		loc := ev.Locator
+		if loc.Path == "" {
+			continue
+		}
+		key := loc.String()
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		if blocks == 0 {
+			sb.WriteString("\n## Source Excerpts\n")
+		}
+		blocks++
+		fmt.Fprintf(&sb, "\n### %s\n\n```\n", key)
+		if ex, ok := slices.Excerpt(repoRoot, loc, slices.SourceWindow); ok {
+			sb.WriteString(ex)
+		} else {
+			sb.WriteString(slices.SourceUnavailable + "\n")
+		}
+		sb.WriteString("```\n")
+	}
+	return sb.String()
+}
+
 var (
 	version = "0.1.0-dev"
 	commit  = "none"
@@ -455,11 +487,15 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	var edgeID string
 	var indexPath string
 	var format string
+	var repo string
+	var noSource bool
 
 	fs.StringVar(&nodeID, "node", "", "Node ID")
 	fs.StringVar(&edgeID, "edge", "", "Edge ID")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&repo, "repo", ".", "Local checkout the locators are read from (source excerpts)")
+	fs.BoolVar(&noSource, "no-source", false, "Do not fetch source excerpts (locators only)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -487,7 +523,11 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
-		if err := emitMarkdownLine(stdout, report.RenderMarkdown()); err != nil {
+		text := report.RenderMarkdown()
+		if !noSource {
+			text += sourceSection(report, repo)
+		}
+		if err := emitMarkdownLine(stdout, text); err != nil {
 			return err
 		}
 	default:
