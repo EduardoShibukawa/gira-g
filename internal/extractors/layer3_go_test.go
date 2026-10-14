@@ -2,6 +2,7 @@ package extractors
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -221,18 +222,72 @@ func initPaymentClient(conn *grpc.ClientConn) {
 		t.Fatalf("contract:PaymentService node not found")
 	}
 
-	// Verify consumes relationship: checkoutservice -consumes-> contract:PaymentService
-	var foundConsumesRel bool
+	// A client that is built and declared but never called is not consumed (spec
+	// gira-impact-precision, cause 3): no consumes relationship from the file alone.
 	for _, r := range rels {
-		if r.SourceID == "service:checkoutservice" && r.TargetID == "contract:PaymentService" && r.Verb == domain.VerbConsumes {
-			foundConsumesRel = true
-			if len(r.Evidence) == 0 {
-				t.Fatalf("expected evidence for consumes relationship")
-			}
+		if r.TargetID == "contract:PaymentService" && r.Verb == domain.VerbConsumes {
+			t.Fatalf("an uncalled client must not be consumed: %+v", r)
 		}
 	}
-	if !foundConsumesRel {
-		t.Fatalf("expected consumes relationship for contract:PaymentService")
+}
+
+// A gRPC Contract is consumed when a method is called on a client bound to it:
+// a field, a local alias of the field, or a variable assigned New<X>Client, in
+// any file of the service. Uncalled clients are not consumed.
+func TestGoGRPCConsumptionFollowsCalls(t *testing.T) {
+	types := `package main
+
+import pb "example.com/demo/genproto"
+
+type svc struct {
+	cart     pb.CartServiceClient
+	payment  pb.PaymentServiceClient
+	email    pb.EmailServiceClient
+	shipping pb.ShippingServiceClient
+}
+`
+	init := `package main
+
+import pb "example.com/demo/genproto"
+
+func setup(s *svc, c any) {
+	s.cart = pb.NewCartServiceClient(c)
+	s.payment = pb.NewPaymentServiceClient(c)
+	s.email = pb.NewEmailServiceClient(c)
+	s.shipping = pb.NewShippingServiceClient(c)
+	quote := pb.NewQuoteServiceClient(c)
+	quote.GetQuote(nil, nil)
+}
+`
+	calls := `package main
+
+func (s *svc) order() {
+	s.cart.GetCart(nil, nil)
+	p := s.payment
+	p.Charge(nil, nil)
+}
+`
+	mm, err := NewPipeline(NewGoASTExtractor()).ProcessFiles(context.Background(), "t", []TargetFile{
+		{Repo: "r", Path: "src/checkout/types.go", Content: []byte(types)},
+		{Repo: "r", Path: "src/checkout/init.go", Content: []byte(init)},
+		{Repo: "r", Path: "src/checkout/calls.go", Content: []byte(calls)},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	consumed := map[string]string{}
+	for _, r := range mm.Relationships {
+		if r.Verb == domain.VerbConsumes && r.SourceID == "service:checkout" {
+			consumed[r.TargetID] = fmt.Sprintf("%s#L%d", r.Evidence[0].Locator.Path, r.Evidence[0].Locator.StartLine)
+		}
+	}
+	want := map[string]string{
+		"contract:CartService":    "src/checkout/calls.go#L4", // field, call in another file
+		"contract:PaymentService": "src/checkout/calls.go#L6", // local alias of the field
+		"contract:QuoteService":   "src/checkout/init.go#L11", // variable assigned New<X>Client
+	}
+	if fmt.Sprint(consumed) != fmt.Sprint(want) {
+		t.Fatalf("consumed %v, want %v (EmailService and ShippingService are never called)", consumed, want)
 	}
 }
 
@@ -280,7 +335,7 @@ import (
 
 func callPayment(conn *grpc.ClientConn) {
 	client := pb.NewPaymentServiceClient(conn)
-	_ = client
+	client.Charge(nil, nil)
 }
 `
 

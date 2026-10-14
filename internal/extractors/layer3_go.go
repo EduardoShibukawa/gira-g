@@ -182,7 +182,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 		default:
 		}
 
-		// A. Function calls: Register<Name>Server or New<Name>Client
+		// A. Function calls: Register<Name>Server, or New<Name>Client (the Contract node only)
 		if call, ok := n.(*ast.CallExpr); ok {
 			var funcName string
 			switch fn := call.Fun.(type) {
@@ -211,10 +211,9 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 				contractName := m[1]
 				contractID := fmt.Sprintf("contract:%s", contractName)
 
+				// Building a client is not consuming: the consumes edge comes from a
+				// method call on it, joined across the package (Hints, ADR 0013).
 				e.ensureContractNode(nodeMap, contractID, contractName, file, startLine, endLine, discoveredAt)
-
-				relID := fmt.Sprintf("rel:%s-consumes-%s", serviceName, sanitizeRelID(contractName))
-				e.recordRelationship(relMap, relID, serviceID, contractID, domain.VerbConsumes, file, startLine, endLine, discoveredAt)
 			}
 		}
 
@@ -249,7 +248,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 			}
 		}
 
-		// C. Struct field: client field like `pb.<Contract>Client`
+		// C. Struct field: client field like `pb.<Contract>Client` (the Contract node only)
 		if f, ok := n.(*ast.Field); ok && len(f.Names) > 0 {
 			if sel, isSel := f.Type.(*ast.SelectorExpr); isSel {
 				typeName := sel.Sel.Name
@@ -260,10 +259,8 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 						endLine := fset.Position(f.End()).Line
 						contractID := fmt.Sprintf("contract:%s", contractName)
 
+						// Declaring a client field is not consuming either (see above).
 						e.ensureContractNode(nodeMap, contractID, contractName, file, startLine, endLine, discoveredAt)
-
-						relID := fmt.Sprintf("rel:%s-consumes-%s", serviceName, sanitizeRelID(contractName))
-						e.recordRelationship(relMap, relID, serviceID, contractID, domain.VerbConsumes, file, startLine, endLine, discoveredAt)
 					}
 				}
 			}

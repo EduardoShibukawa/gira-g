@@ -118,7 +118,7 @@
       "from": "service:checkout",
       "to": "service:ordering",
       "kind": "Service",
-      "score": 3,
+      "score": 3.029,
       "origin": "inferred"
     },
     {
@@ -186,7 +186,7 @@
       "source": "service:checkout",
       "verb": "consumes",
       "target": "contract:CurrencyService",
-      "locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/checkout/main.go#L157-L157"
+      "locator": "opentelemetry-demo@f86810059635dbfec0daadab1123f47f8e08ae7c:src/checkout/main.go#L563-L566"
     },
     {
       "source": "service:checkout",

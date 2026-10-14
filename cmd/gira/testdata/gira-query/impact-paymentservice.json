@@ -247,34 +247,8 @@
             "repo": "opentelemetry-demo",
             "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
             "path": "src/checkout/main.go",
-            "start_line": 159,
-            "end_line": 159
-          },
-          "origin": "extracted",
-          "deployment_profile": "grpc",
-          "status": "current",
-          "discovered_at": "2026-01-01T00:00:00Z"
-        },
-        {
-          "locator": {
-            "repo": "opentelemetry-demo",
-            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-            "path": "src/checkout/main.go",
-            "start_line": 245,
-            "end_line": 245
-          },
-          "origin": "extracted",
-          "deployment_profile": "grpc",
-          "status": "current",
-          "discovered_at": "2026-01-01T00:00:00Z"
-        },
-        {
-          "locator": {
-            "repo": "opentelemetry-demo",
-            "commit_sha": "f86810059635dbfec0daadab1123f47f8e08ae7c",
-            "path": "src/checkout/main.go",
-            "start_line": 578,
-            "end_line": 578
+            "start_line": 581,
+            "end_line": 584
           },
           "origin": "extracted",
           "deployment_profile": "grpc",

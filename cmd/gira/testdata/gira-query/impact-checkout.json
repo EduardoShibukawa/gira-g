@@ -121,10 +121,10 @@
     "estimated": 1060,
     "truncated": true,
     "dropped": {
-      "nodes": 57,
-      "relationships": 58,
+      "nodes": 55,
+      "relationships": 56,
       "evidence": 0
     },
-    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 34748: rerun with budget >= 34748"
+    "escalate_hint": "truncated to fit 1500 tokens; the full output needs about 32216: rerun with budget >= 32216"
   }
 }

@@ -43,6 +43,13 @@ const (
 	// HintGoCallArg is argument Index of a call to function Key of import path
 	// Value, when the argument reads field or variable Ref.
 	HintGoCallArg HintKind = "go_call_arg"
+	// HintGRPCClient binds field or variable Key to a client of gRPC Contract
+	// Value (a field typed pkg.<Value>Client, or assigned pkg.New<Value>Client).
+	HintGRPCClient HintKind = "grpc_client"
+	// HintGoAlias records Key = Ref, a variable assigned from a field or variable.
+	HintGoAlias HintKind = "go_alias"
+	// HintGoMethodCall is a call of exported method Value on field or variable Key.
+	HintGoMethodCall HintKind = "go_method_call"
 )
 
 // Hint is an internal resolution record an Extractor emits next to its facts.
@@ -99,7 +106,9 @@ func resolve(r *resolution) {
 	})
 	env := newEnvScopes(r.hints)
 	attributeDockerfiles(r, env)
-	resolveKafkaTopics(r, newWiring(r.hints, env))
+	w := newWiring(r.hints, env)
+	resolveKafkaTopics(r, w)
+	resolveGRPCCalls(r, w)
 }
 
 // envScopes holds each compose project's .env, keyed by repo and directory.

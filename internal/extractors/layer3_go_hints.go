@@ -75,6 +75,7 @@ func (e *GoASTExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, er
 		}
 	}
 	g.packageVars(f)
+	g.clientFields(f)
 	for _, d := range f.Decls {
 		fd, ok := d.(*ast.FuncDecl)
 		if !ok || fd.Body == nil {
@@ -223,9 +224,13 @@ func (g *goHints) visit(n ast.Node) bool {
 	case *ast.AssignStmt:
 		if len(t.Lhs) == len(t.Rhs) {
 			for i := range t.Lhs {
-				if x, ok := g.getenv(t.Rhs[i]); ok && bindingName(t.Lhs[i]) != "" {
-					g.add(Hint{Kind: HintGoEnvBinding, Key: bindingName(t.Lhs[i]), Value: x}, t)
-				}
+				g.assign(t.Lhs[i], t.Rhs[i], t)
+			}
+		}
+	case *ast.ValueSpec:
+		if len(t.Names) == len(t.Values) {
+			for i := range t.Names {
+				g.assign(t.Names[i], t.Values[i], t)
 			}
 		}
 	case *ast.CallExpr:
@@ -236,7 +241,81 @@ func (g *goHints) visit(n ast.Node) bool {
 	return true
 }
 
+// assign records what lhs = rhs binds: an environment variable, a gRPC client,
+// or an alias of another field or variable.
+func (g *goHints) assign(lhs, rhs ast.Expr, at ast.Node) {
+	name := bindingName(lhs)
+	if name == "" || name == "_" {
+		return
+	}
+	if x, ok := g.getenv(rhs); ok {
+		g.add(Hint{Kind: HintGoEnvBinding, Key: name, Value: x}, at)
+		return
+	}
+	if p, fn, _ := g.pkgCall(rhs); p != "" {
+		if m := grpcClientNewRegex.FindStringSubmatch(fn); len(m) > 1 {
+			g.add(Hint{Kind: HintGRPCClient, Key: name, Value: m[1]}, at)
+		}
+		return
+	}
+	if ref := g.localRef(rhs); ref != "" && ref != name {
+		g.add(Hint{Kind: HintGoAlias, Key: name, Ref: ref}, at)
+	}
+}
+
+// localRef is the field or variable an expression reads (x.f → f, v → v), or ""
+// for anything else, including an imported package's member.
+func (g *goHints) localRef(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.SelectorExpr:
+		if x, ok := t.X.(*ast.Ident); ok && g.imports[x.Name] != "" {
+			return ""
+		}
+		return t.Sel.Name
+	case *ast.Ident:
+		if g.imports[t.Name] != "" || t.Name == "nil" || t.Name == "true" || t.Name == "false" {
+			return ""
+		}
+		return t.Name
+	}
+	return ""
+}
+
+// clientFields records struct fields typed as a gRPC client, pkg.<Contract>Client.
+func (g *goHints) clientFields(f *ast.File) {
+	ast.Inspect(f, func(n ast.Node) bool {
+		st, ok := n.(*ast.StructType)
+		if !ok || st.Fields == nil {
+			return true
+		}
+		for _, field := range st.Fields.List {
+			sel, ok := field.Type.(*ast.SelectorExpr)
+			if !ok {
+				continue
+			}
+			if x, ok := sel.X.(*ast.Ident); !ok || g.imports[x.Name] == "" {
+				continue
+			}
+			m := grpcClientTypeRegex.FindStringSubmatch(sel.Sel.Name)
+			if len(m) < 2 || m[1] == "" || m[1] == "grpc" || strings.HasPrefix(m[1], "Client") {
+				continue
+			}
+			for _, name := range field.Names {
+				g.add(Hint{Kind: HintGRPCClient, Key: name.Name, Value: m[1]}, field)
+			}
+		}
+		return true
+	})
+}
+
 func (g *goHints) call(call *ast.CallExpr) {
+	// recv.Method(...): a method call on a field or variable.
+	if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.IsExported() {
+		if recv := g.localRef(sel.X); recv != "" {
+			g.add(Hint{Kind: HintGoMethodCall, Key: recv, Value: sel.Sel.Name}, call)
+		}
+	}
+
 	// f(&field, "VAR"): a helper that maps an environment variable into a field.
 	if len(call.Args) == 2 {
 		if u, ok := call.Args[0].(*ast.UnaryExpr); ok && u.Op == token.AND {

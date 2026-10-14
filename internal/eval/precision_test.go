@@ -180,3 +180,34 @@ func TestSC3KafkaTopicContracts(t *testing.T) {
 		}
 	}
 }
+
+// SC4: a gRPC Contract is consumed only when a method is called on a client
+// bound to it; checkout builds EmailService and ShippingService clients and never
+// calls them.
+func TestSC4GRPCConsumptionNeedsACall(t *testing.T) {
+	for _, v := range hermeticVariants(t) {
+		svc, never, called := "service:checkout", []string{"contract:EmailService", "contract:ShippingService"}, []string{"contract:CartService", "contract:ProductCatalogService", "contract:PaymentService", "contract:CurrencyService"}
+		if v.name == "perturbed" {
+			// The perturbation removes checkout's CurrencyService client.
+			svc, never, called = "service:ordering", []string{"contract:NotifyService", "contract:DispatchService", "contract:ExchangeService"}, []string{"contract:BasketService", "contract:InventoryService", "contract:BillingService"}
+		}
+		for _, c := range never {
+			if r, ok := edgeTo(v.mm, svc, domain.VerbConsumes, c); ok {
+				t.Errorf("%s: %s never calls %s but consumes it: %s", v.name, svc, c, origins(r))
+			}
+		}
+		for _, c := range called {
+			if r, ok := edgeTo(v.mm, svc, domain.VerbConsumes, c); !ok || !hasEvidence(r.Evidence, domain.OriginExtracted, "main.go") {
+				t.Errorf("%s: %s calls %s and must consume it at the call: %+v", v.name, svc, c, r)
+			}
+		}
+	}
+}
+
+func origins(r domain.Relationship) string {
+	var out []string
+	for _, ev := range r.Evidence {
+		out = append(out, string(ev.Origin)+"@"+ev.Locator.String())
+	}
+	return strings.Join(out, " ")
+}
