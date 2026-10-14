@@ -45,8 +45,37 @@ var (
 // stdlibHealthContracts is the fixed literal denylist for J1 (SC1): stdlib
 // gRPC health registrations are infrastructure, never business contracts.
 // Literal-only on purpose: no pattern that could swallow a business name.
-func stdlibHealthContract(name string) bool {
-	return name == "Health"
+func stdlibHealthContract(name, pkgPath string) bool {
+	return name == "Health" && strings.HasPrefix(pkgPath, stdlibHealthPkg)
+}
+
+// stdlibHealthPkg is the import path of the stdlib gRPC health service: a
+// business contract named Health in its own package is never denylisted.
+const stdlibHealthPkg = "google.golang.org/grpc/health"
+
+// importPaths maps each file-level package name to its import path (the alias,
+// or the last path element, which is the generated package name in practice).
+func importPaths(f *ast.File) map[string]string {
+	out := map[string]string{}
+	for _, imp := range f.Imports {
+		p := strings.Trim(imp.Path.Value, `"`)
+		name := p[strings.LastIndex(p, "/")+1:]
+		if imp.Name != nil {
+			name = imp.Name.Name
+		}
+		out[name] = p
+	}
+	return out
+}
+
+// qualifierPath returns the import path of a `pkg.Name` expression, or "".
+func qualifierPath(imports map[string]string, x ast.Expr) string {
+	if sel, ok := x.(*ast.SelectorExpr); ok {
+		if id, ok := sel.X.(*ast.Ident); ok {
+			return imports[id.Name]
+		}
+	}
+	return ""
 }
 
 // unsupportedGoConstructs is the fixed literal table for J3 (SC3): Go
@@ -216,6 +245,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 	}
 
 	// 3. Inspect AST for gRPC server providers and client consumers
+	imports := importPaths(astFile)
 	ast.Inspect(astFile, func(n ast.Node) bool {
 		if n == nil {
 			return true
@@ -243,7 +273,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 			// Server registration: Register<Contract>Server
 			if m := grpcServerRegisterRegex.FindStringSubmatch(funcName); len(m) > 1 {
 				contractName := m[1]
-				if stdlibHealthContract(contractName) {
+				if stdlibHealthContract(contractName, qualifierPath(imports, call.Fun)) {
 					return true
 				}
 				contractID := fmt.Sprintf("contract:%s", contractName)
@@ -257,7 +287,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 			// Client invocation: New<Contract>Client
 			if m := grpcClientNewRegex.FindStringSubmatch(funcName); len(m) > 1 {
 				contractName := m[1]
-				if stdlibHealthContract(contractName) {
+				if stdlibHealthContract(contractName, qualifierPath(imports, call.Fun)) {
 					return true
 				}
 				contractID := fmt.Sprintf("contract:%s", contractName)
@@ -283,7 +313,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 
 						if m := grpcServerEmbedRegex.FindStringSubmatch(typeName); len(m) > 1 {
 							contractName := m[1]
-							if contractName == "" || contractName == "grpc" || stdlibHealthContract(contractName) {
+							if contractName == "" || contractName == "grpc" || stdlibHealthContract(contractName, qualifierPath(imports, f.Type)) {
 								continue
 							}
 							startLine := fset.Position(f.Pos()).Line
@@ -306,7 +336,7 @@ func (e *GoASTExtractor) Extract(ctx context.Context, file TargetFile) ([]domain
 				typeName := sel.Sel.Name
 				if m := grpcClientTypeRegex.FindStringSubmatch(typeName); len(m) > 1 {
 					contractName := m[1]
-					if contractName != "" && contractName != "grpc" && !strings.HasPrefix(contractName, "Client") && !stdlibHealthContract(contractName) {
+					if contractName != "" && contractName != "grpc" && !strings.HasPrefix(contractName, "Client") && !stdlibHealthContract(contractName, qualifierPath(imports, f.Type)) {
 						startLine := fset.Position(f.Pos()).Line
 						endLine := fset.Position(f.End()).Line
 						contractID := fmt.Sprintf("contract:%s", contractName)

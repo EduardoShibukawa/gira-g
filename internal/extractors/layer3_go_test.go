@@ -492,3 +492,30 @@ func main() {
 		t.Fatalf("business contract Checkout must still be provided")
 	}
 }
+
+// SC1 review: the Health denylist is stdlib-only. A business contract named
+// Health in its own generated package is still a provides edge.
+func TestGoASTExtractor_HealthDenylistIsStdlibOnly(t *testing.T) {
+	goSource := `package main
+
+import (
+	"google.golang.org/grpc"
+	pb "example.com/genproto/demo"
+)
+
+func main() {
+	s := grpc.NewServer()
+	pb.RegisterHealthServer(s, &srv{})
+}
+`
+	_, rels, _, err := NewGoASTExtractor().Extract(context.Background(), TargetFile{Repo: "r", CommitSHA: "c", Path: "src/vitals/main.go", Content: []byte(goSource)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range rels {
+		if r.TargetID == "contract:Health" && r.Verb == domain.VerbProvides {
+			return
+		}
+	}
+	t.Fatalf("business contract Health (example.com/genproto) must still be provided")
+}
