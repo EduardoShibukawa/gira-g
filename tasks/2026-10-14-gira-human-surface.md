@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 spec: gira-human-surface@1
 verified_at: "47e79a8"
 ---
@@ -14,6 +14,7 @@ verified_at: "47e79a8"
 - confirmed: heavy by owner (2026-10-14, "Sim, heavy (Recommended)")
 - decided: Q1 add charmbracelet/lipgloss (ADR 0008) with strict NO_COLOR/non-TTY plain fallback; Q2 explain source excerpt on demand, capped ±40, --no-source; Q3 staleness vs indexing commit first, HEAD when resolvable; Q4 view --no-open + CI guard; Q5 golden the plain path byte-for-byte; Q6 network available, go get allowed; Q7 prose minimal, docs site is E6
 - approved: spec v1 by owner (2026-10-14, "Aprovar v1 (Recommended)")
+- accepted: by owner (2026-10-14, "Mergear e aceitar (Recommended)")
 
 ## Objective
 
@@ -87,7 +88,7 @@ SC6–SC7 at every child. Rollback: `git revert` per child. Branch linear.
 
 - as of: 2026-10-14, branch e4-human-surface-impl, head 47e79a8, worktree clean
 - done: children 01–05 verified; SC1–SC7 + R1–R3 + V1 pass at 47e79a8; review F1–F9 fixed
-- next: owner acceptance (`accepted:`) after the implementation PR merges
+- next: none — accepted; E4 closed
 
 ## Outcome
 
