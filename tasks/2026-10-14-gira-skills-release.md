@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: active
+status: verified
+verified_at: "d39a0ce"
 spec: gira-skills-release@1
 ---
 
@@ -49,18 +50,18 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + quarantined suite + validator before E5 children | pass | f404ce0 | E4 merged on main; clean baseline |
-| SC1 | `go test ./cmd/gira -run SCGoReleaserConfig -count=1` | not run | | |
-| SC2 | `go test ./cmd/gira -run SCSBOMAndCosign -count=1` | not run | | |
-| SC3 | `go test ./internal/skills ./cmd/gira -run SCSkillsManifestAndCheck -count=1` | not run | | |
-| SC4 | `go test ./internal/mcp ./cmd/gira -run SCReleaseWorkflow -count=1` | not run | | |
-| SC5 | `go test ./internal/gate ./internal/eval ./cmd/gira -run SCE5Deferrals -count=1` | not run | | |
-| SC6 | `go test -race ./...` root and quarantined module; validator exit 0 | not run | | |
-| SC7 | EndToEnd published/perturbed R/P unchanged; SC15 ≥ 90%; `git diff --exit-code f404ce0 -- fixtures/ testdata/`; `"reviewed": false` | not run | | |
-| AC1 | SC1–SC7 integrated | not run | | |
-| R1 | `go test -race ./...` (root) | not run | | |
-| R2 | `go test -race ./...` (quarantined module) | not run | | |
-| R3 | `node tools/validate/validate.js` | not run | | |
-| V1 | integrated diff read + fresh-context adversarial review | not run | | |
+| SC1 | `go test ./cmd/gira -run SCGoReleaserConfig -count=1` | pass | d39a0ce | child 02 verified; 05 rerun pass (EduardoShibukawa/gira-g, CGO_ENABLED=0, sboms+signs, LICENSE+NOTICES, check exit 0) |
+| SC2 | `go test ./cmd/gira -run SCSBOMAndCosign -count=1` | pass | d39a0ce | child 02 verified; 05 rerun pass (syft SPDX-2.3 17 pkgs; cosign ephemeral round-trip + tamper rejection) |
+| SC3 | `go test ./internal/skills ./cmd/gira -run SCSkillsManifestAndCheck -count=1` | pass | d39a0ce | child 01 verified; 05 rerun pass (deterministic manifest, 6 digests; read-only check, non-zero on drift) |
+| SC4 | `go test ./internal/mcp ./cmd/gira -run SCReleaseWorkflow -count=1` | pass | d39a0ce | child 03 verified; 05 rerun pass (v*.*.* + dispatch triggers, least-privilege perms, quarantine clean) |
+| SC5 | `go test ./internal/gate ./internal/eval ./cmd/gira -run SCE5Deferrals -count=1` | pass | d39a0ce | child 04 verified; 05 rerun pass (--fail-on-ci fail-closed under CI, default warn-only; GC keeps open) |
+| SC6 | `go test -race ./...` root and quarantined module; validator exit 0 | pass | d39a0ce | root race `-count=1` exit 0 (17 ok); bench race `-count=1` exit 0; validator exit 0 |
+| SC7 | EndToEnd published/perturbed R/P unchanged; SC15 ≥ 90%; `git diff --exit-code f404ce0 -- fixtures/ testdata/`; `"reviewed": false` | pass | d39a0ce | published R82.4/P100.0, perturbed R81.2/P100.0; SC15 focused 95.0/full 100.0; fixture diff exit 0; `reviewed: false` |
+| AC1 | SC1–SC7 integrated | pass | d39a0ce | all SC rows pass on integrated head; snapshot dry-run exit 0 + cleanup (child 05 R1) |
+| R1 | `go test -race ./...` (root) | pass | d39a0ce | `-count=1` exit 0, 17 ok 0 fail (one mid-run env collision with concurrent snapshot dry-run; clean rerun) |
+| R2 | `go test -race ./...` (quarantined module) | pass | d39a0ce | bench `-count=1` exit 0 (layer0/1/2/quarantine ok) |
+| R3 | `node tools/validate/validate.js` | pass | d39a0ce | exit 0 (manifest-integrity + artifact-records pass) |
+| V1 | integrated diff read + fresh-context adversarial review | pass | d39a0ce | diff f404ce0..d39a0ce vs spec; 1 minor observation rejected with reason; zero open findings |
 
 ## Plan
 
@@ -76,7 +77,14 @@ SC6–SC7 at every child. Rollback: `git revert` per child.
 
 ## Review
 
-skip: runs after child 05 is verified.
+- [O1] `Register.Save` single-write vs crash-atomic (spec F5 "saved atomically") -> rejected: pre-existing shared `Save` semantics, no new risk from GC, rework out of scope (see child 05 ## Review).
+- [C1–C6] Child 05 adversarial review: `skills check` strictly read-only; manifest hashes exact embedded `SKILL.md` bytes; snapshot build verified live; `release.yml` least-privilege + quarantine clean; `GC` never drops `open`; `FailOnCI` truth table matches Q5=A. All clean, no fixes needed.
+
+No open findings. All divergences: none.
+
+## Outcome
+
+Delivered E5 (F1–F5; SC1–SC7) at spec v1: GoReleaser packaging (`EduardoShibukawa/gira-g`, `CGO_ENABLED=0`, `signs:` + `syft` SBOMs, MIT `LICENSE` + `THIRD_PARTY_NOTICES.md`), `gira skills manifest` + read-only `gira skills check` + `skills-manifest.json` artifact, tag-triggered `release.yml`, and both E3 deferrals (`gate-lint --fail-on-ci`, findings `--gc`). Integrated evidence at `d39a0ce`: SC1–SC7 pass, root + quarantined race suites pass, validator exit 0, invariants unchanged. Pending (require separate explicit owner commands): `accepted:` owner acceptance; any tag push or live GitHub Release publish.
 
 ## Checkpoint
 
