@@ -27,3 +27,7 @@ architecture.html
 results.tsv
 run.log
 .claude/worktrees/
+
+# GoReleaser snapshot outputs and generated release manifest
+dist/
+skills-manifest.json

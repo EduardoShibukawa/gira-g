@@ -29,4 +29,4 @@ run = "goreleaser check"
 
 [tasks.release]
 description = "Build snapshot release artifacts using GoReleaser"
-run = "goreleaser release --snapshot --clean"
+run = "goreleaser release --snapshot --clean --skip=sign"
