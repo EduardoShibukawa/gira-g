@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "d39a0ce"
 spec: gira-skills-release@1
 ---
@@ -20,6 +20,7 @@ spec: gira-skills-release@1
 - decided: Q6 close findings register GC with Register.GC and gira review --gc [--keep-resolved <n>] (Option A) by owner (2026-10-14, "Q6. A")
 - approved: spec v1 by owner (2026-10-14, "vamos criar a spec e as TASKS sem execucao, sera executado no modelo deep seek v4 pro")
 - approved: edits to protected files (.github/workflows/release.yml, mise.toml, .goreleaser.yaml) for E5 by owner (2026-10-14, "vamos criar a spec e as TASKS sem execucao, sera executado no modelo deep seek v4 pro")
+- accepted: by owner (2026-10-15, "Aceito E5")
 
 ## Objective
 
@@ -84,7 +85,7 @@ No open findings. All divergences: none.
 
 ## Outcome
 
-Delivered E5 (F1–F5; SC1–SC7) at spec v1: GoReleaser packaging (`EduardoShibukawa/gira-g`, `CGO_ENABLED=0`, `signs:` + `syft` SBOMs, MIT `LICENSE` + `THIRD_PARTY_NOTICES.md`), `gira skills manifest` + read-only `gira skills check` + `skills-manifest.json` artifact, tag-triggered `release.yml`, and both E3 deferrals (`gate-lint --fail-on-ci`, findings `--gc`). Integrated evidence at `d39a0ce`: SC1–SC7 pass, root + quarantined race suites pass, validator exit 0, invariants unchanged. Pending (require separate explicit owner commands): `accepted:` owner acceptance; any tag push or live GitHub Release publish.
+Delivered E5 (F1–F5; SC1–SC7) at spec v1: GoReleaser packaging (`EduardoShibukawa/gira-g`, `CGO_ENABLED=0`, `signs:` + `syft` SBOMs, MIT `LICENSE` + `THIRD_PARTY_NOTICES.md`), `gira skills manifest` + read-only `gira skills check` + `skills-manifest.json` artifact, tag-triggered `release.yml`, and both E3 deferrals (`gate-lint --fail-on-ci`, findings `--gc`). Integrated evidence at `d39a0ce`: SC1–SC7 pass, root + quarantined race suites pass, validator exit 0, invariants unchanged. Accepted by owner 2026-10-15. Pending (require separate explicit owner commands): any tag push (`v0.1.0` planejada, só após merge no `main`) or live GitHub Release publish.
 
 ## Checkpoint
 
