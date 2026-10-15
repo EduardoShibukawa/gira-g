@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "2ecd1ef"
 parent: 2026-10-14-gira-skills-release
 spec: gira-skills-release@1
 depends_on:
@@ -46,10 +47,10 @@ Out of scope:
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + quarantined suite + validator before change | not run | | |
-| AC1 | `go test ./internal/gate ./internal/eval ./cmd/gira -run SCE5Deferrals -count=1` | not run | | |
-| R1 | `go test -race ./internal/gate ./internal/eval ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1 (SC5); verify `TestSCGateLintStrictness` and `TestSCL3TaxonomyRegister` stay green | not run | | |
+| B1 | `go test ./internal/gate ./internal/eval ./cmd/gira -count=1` before editing | pass | 3947a0d | clean tree, all ok |
+| AC1 | `go test ./internal/gate ./internal/eval ./cmd/gira -run SCE5Deferrals -count=1` | pass | 2ecd1ef | gate --fail-on-ci fail-closed under CI=true, default warn-only; GC keeps open, compacts resolved |
+| R1 | `go test -race ./internal/gate ./internal/eval ./cmd/gira -count=1` | pass | 2ecd1ef | full suites with race detector |
+| V1 | diff read against AC1 (SC5); `TestSCGateLintStrictness` + `TestSCL3TaxonomyRegister` green | pass | 2ecd1ef | additive-only diff; ci.yml untouched |
 
 ## Constraints and budget
 
@@ -62,3 +63,15 @@ Out of scope:
 2. Add `FailOnCI` to `gate.LintOptions` and `--fail-on-ci` to `cmd/gira/gate.go`.
 3. Add `Register.GC(keepResolved int)` to `internal/eval/findings.go` and `--gc` / `--keep-resolved` to `cmd/gira/review.go`.
 4. Run AC1, R1, V1 and validator; commit.
+
+## Outcome
+
+Delivered F5 (SC5): `gate.LintOptions.FailOnCI` + `gira gate-lint --fail-on-ci`
+fail closed under CI for explicit ledgers while the default CI job stays
+warn-only (`ci.yml` untouched, `TestSCGateLintStrictness` green); and
+`eval.Register.GC(keepResolved)` + `gira review --gc [--keep-resolved <n>]`
+(default 0, negative clamped to 0) preserving every `open` finding in order
+and compacting `fixed`/`closed`/`verified` to the last `keepResolved`
+entries with validate-and-save. Test-first `TestSCE5Deferrals` in all three
+packages (`internal/gate`, `internal/eval`, `cmd/gira`). No follow-ups;
+child 05 (integrated) can proceed.
