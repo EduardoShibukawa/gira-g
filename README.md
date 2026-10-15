@@ -4,6 +4,16 @@ A tool that builds and maintains an evidence-backed architectural map of any sof
 
 > **Name origin:** *Gira-G* (*Gira* + *G* [a nota Sol na cifra musical] = *Girassol*). No terminal, executado diretamente como **`gira`**.
 
+## Instalação
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh
+```
+
+Detecta SO/arquitetura, baixa o tarball do release, confere o sha256 contra
+o `checksums.txt` publicado e instala o binário `gira` (`/usr/local/bin`, ou
+`~/.local/bin` sem root). Versão específica: `sh -s -- --version v0.1.0`.
+
 ## CLI
 
 ```bash
