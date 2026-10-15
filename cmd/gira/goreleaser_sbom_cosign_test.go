@@ -170,8 +170,8 @@ func TestSCGoReleaserConfig(t *testing.T) {
 			t.Errorf("signs args missing %s: %v", want, sign.Args)
 		}
 	}
-	if !strings.Contains(sign.Artifacts, "checksum") {
-		t.Errorf("signs must target checksums, got %q", sign.Artifacts)
+	if sign.Artifacts != "checksum" {
+		t.Errorf("signs artifacts = %q, want exactly checksum (GoReleaser enum, singular)", sign.Artifacts)
 	}
 
 	lic, err := os.ReadFile(filepath.Join(root, "LICENSE"))
