@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "35869c8"
 parent: 2026-10-14-gira-skills-release
 spec: gira-skills-release@1
 ---
@@ -43,10 +44,10 @@ Out of scope:
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + quarantined suite + validator before change | not run | | |
-| AC1 | `go test ./internal/skills ./cmd/gira -run SCSkillsManifestAndCheck -count=1` | not run | | |
-| R1 | `go test -race ./internal/skills ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1 (SC3); verify `skills check` never writes to disk | not run | | |
+| B1 | `go test ./internal/skills ./cmd/gira -count=1` before change | pass | 030e746 | clean tree, both packages ok |
+| AC1 | `go test ./internal/skills ./cmd/gira -run SCSkillsManifestAndCheck -count=1` | pass | 35869c8 | both packages ok; manifest deterministic, 6 valid digests; check clean after install incl. --hook, non-zero on missing/drift |
+| R1 | `go test -race ./internal/skills ./cmd/gira -count=1` | pass | 35869c8 | both packages ok incl. pre-existing install/marker tests |
+| V1 | diff read against AC1 (SC3); verify `skills check` never writes to disk | pass | 35869c8 | code diff only in-scope files; Check/CLI use read-only paths, tests assert zero disk mutation |
 
 ## Constraints and budget
 
@@ -60,3 +61,13 @@ Out of scope:
 2. Implement `skills.BuildManifest(version string)` and `skills.Check(host string, opts Options)` in `internal/skills`.
 3. Wire `gira skills manifest` and `gira skills check` in `cmd/gira/main.go`.
 4. Run AC1, R1, V1 and validator; commit.
+
+## Outcome
+
+Delivered F3 (SC3): `skills.BuildManifest` (deterministic manifest, catalog
+`sha256:<hex>` digest, per-skill digests over canonical `SKILL.md` bytes) and
+`skills.Check` (read-only drift report `{host, in_sync, missing, drifted, ok}`;
+non-zero CLI exit on missing/drifted), wired as `gira skills manifest`
+(`--format json|md`, `--output`) and `gira skills check` (`--host`, `--dir`,
+`--index`, `--command`, `--hook`). `Install` behavior unchanged (shared
+`planFiles` builder); `fixtures/`/`testdata/` untouched; no `dist/` left behind.
