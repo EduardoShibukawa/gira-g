@@ -53,6 +53,7 @@ type goreleaserFile struct {
 	} `yaml:"sboms"`
 	Signs []struct {
 		Cmd       string   `yaml:"cmd"`
+		Signature string   `yaml:"signature"`
 		Args      []string `yaml:"args"`
 		Artifacts string   `yaml:"artifacts"`
 	} `yaml:"signs"`
@@ -164,10 +165,18 @@ func TestSCGoReleaserConfig(t *testing.T) {
 	if sign.Cmd != "cosign" {
 		t.Errorf("signs cmd = %q, want cosign", sign.Cmd)
 	}
+	if sign.Signature != "${artifact}.sigstore.json" {
+		t.Errorf("signs signature = %q, want ${artifact}.sigstore.json (cosign v3 bundle)", sign.Signature)
+	}
 	argText := strings.Join(sign.Args, " ")
-	for _, want := range []string{"sign-blob", "--yes", "${signature}", "${certificate}", "${artifact}"} {
+	for _, want := range []string{"sign-blob", "--yes", "--bundle=${signature}", "${artifact}"} {
 		if !strings.Contains(argText, want) {
 			t.Errorf("signs args missing %s: %v", want, sign.Args)
+		}
+	}
+	for _, legacy := range []string{"--output-signature", "--output-certificate"} {
+		if strings.Contains(argText, legacy) {
+			t.Errorf("signs args use removed cosign v2 flag %s: %v", legacy, sign.Args)
 		}
 	}
 	if sign.Artifacts != "checksum" {

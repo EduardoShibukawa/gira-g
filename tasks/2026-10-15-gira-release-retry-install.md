@@ -35,9 +35,12 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | release job `38780553092` log (before fix) | pass | 6392407 | `signing artifacts` fails: `invalid list of artifacts to sign: checksums`; root cause `artifacts: checksums` (plural) vs GoReleaser enum `checksum` (singular, confirmed via `goreleaser jsonschema`) |
+| B2 | release job `38807111633` log (bundle fix) | pass | b44ac84 | signs com enum ok, mas cosign 3.1.3 rejeita flags v2: `must specify --bundle with --new-bundle-format`; padrão oficial GoReleaser é `--bundle` com `signature` `.sigstore.json` |
 | AC1a | `go test ./cmd/gira -run 'TestSCSBOMAndCosign\|TestSCGoReleaserConfig' -count=1` | pass | local | tightened assertion to exact `checksum`; `goreleaser check` still exit 0 |
 | AC2a | `sh -n install.sh` | pass | local | POSIX syntax |
 | AC2b | simulated install flow (local tarball + checksums.txt, asset name `gira_0.1.0_linux_amd64.tar.gz` as in failed release log) | pass | local | checksum match → extract → `gira --version` ok; tampered tarball rejected |
+| AC1b | `go test ./cmd/gira -run TestSCGoReleaserConfig -count=1` após padrão bundle | pass | local | exige `signature` `${artifact}.sigstore.json`, `--bundle` e rejeita flags v2 removidas |
+| AC2c | `sh -n install.sh` + `--help` após flag `--cosign` | pass | local | sintaxe ok; verificação live vira AC2 abaixo |
 | AC1 | release retry on re-pushed `v0.1.0` | not run | — | needs: merge PR, owner re-tag, watch `release` workflow |
 | AC2 | live curl install against published `v0.1.0` assets | not run | — | needs AC1 green first |
 | R1 | `node tools/validate/validate.js` | pass | local | exit 0 |

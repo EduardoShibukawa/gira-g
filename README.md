@@ -13,6 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/instal
 Detecta SO/arquitetura, baixa o tarball do release, confere o sha256 contra
 o `checksums.txt` publicado e instala o binário `gira` (`/usr/local/bin`, ou
 `~/.local/bin` sem root). Versão específica: `sh -s -- --version v0.1.0`.
+Com cosign instalado, `--cosign` verifica o bundle Sigstore keyless antes.
 
 ## CLI
 
