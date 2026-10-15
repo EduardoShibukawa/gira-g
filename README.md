@@ -6,8 +6,13 @@ A tool that builds and maintains an evidence-backed architectural map of any sof
 
 ## Instalação
 
+O repositório é privado: o install e os downloads exigem um token com
+leitura (`gh auth login` feito, ou PAT fino com `contents: read`).
+
 ```bash
-curl -fsSL https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh
+export GITHUB_TOKEN="$(gh auth token)"
+curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+  https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh
 ```
 
 Detecta SO/arquitetura, baixa o tarball do release, confere o sha256 contra

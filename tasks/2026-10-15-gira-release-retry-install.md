@@ -41,11 +41,11 @@ Out of scope:
 | AC2b | simulated install flow (local tarball + checksums.txt, asset name `gira_0.1.0_linux_amd64.tar.gz` as in failed release log) | pass | local | checksum match → extract → `gira --version` ok; tampered tarball rejected |
 | AC1b | `go test ./cmd/gira -run TestSCGoReleaserConfig -count=1` após padrão bundle | pass | local | exige `signature` `${artifact}.sigstore.json`, `--bundle` e rejeita flags v2 removidas |
 | AC2c | `sh -n install.sh` + `--help` após flag `--cosign` | pass | local | sintaxe ok; verificação live vira AC2 abaixo |
-| AC1 | release retry on re-pushed `v0.1.0` | not run | — | needs: merge PR, owner re-tag, watch `release` workflow |
-| AC2 | live curl install against published `v0.1.0` assets | not run | — | needs AC1 green first |
+| AC1 | release retry on re-pushed `v0.1.0` | pass | run `38819865583` | preflight + release success no commit `f5dad05`; `v0.1.0` publicado com 12 assets incl bundle |
+| AC2 | live curl install against published `v0.1.0` assets | pass | local | via gh: sha256 ok + `gira 0.1.0` roda; via python3 com `--cosign`: `Verified OK` + sha256 ok + roda |
 | R1 | `node tools/validate/validate.js` | pass | local | exit 0 |
 | V1 | diff read (fix + test + install.sh + README) | pass | local | no workflow/quarantine tokens; `ci.yml` untouched |
 
 ## Outcome
 
-Pending: merge, owner re-tag `v0.1.0`, green `release` workflow, live curl test — then flip to `verified`.
+Delivered: bundle-signing fix, `install.sh` (gh + python3 paths, sha256 fail-closed, `--cosign` keyless), README. Verified live against `v0.1.0`. Pending: merge install-token PR; then flip to `verified`.
