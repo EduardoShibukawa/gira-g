@@ -32,14 +32,13 @@ type Report struct {
 	Unchanged []string `json:"unchanged"`
 }
 
-// Install generates the host files for host from the canonical catalog.
-func Install(host string, opts Options) (*Report, error) {
+// planFiles builds the expected host file renderers from the canonical
+// catalog. It is shared by Install (which writes) and Check (which only
+// reads), so the two can never disagree on what "in sync" means.
+func planFiles(host string, opts Options) (map[string]func([]byte) ([]byte, error), error) {
 	skills, err := Catalog()
 	if err != nil {
 		return nil, err
-	}
-	if opts.Root == "" {
-		opts.Root = "."
 	}
 	if opts.Command == "" {
 		opts.Command = "gira"
@@ -63,6 +62,18 @@ func Install(host string, opts Options) (*Report, error) {
 		files[filepath.Join(".cursor", "mcp.json")] = mcpEntry(opts, nil)
 	default:
 		return nil, fmt.Errorf("unknown host %q: want one of %s", host, strings.Join(Hosts, ", "))
+	}
+	return files, nil
+}
+
+// Install generates the host files for host from the canonical catalog.
+func Install(host string, opts Options) (*Report, error) {
+	if opts.Root == "" {
+		opts.Root = "."
+	}
+	files, err := planFiles(host, opts)
+	if err != nil {
+		return nil, err
 	}
 
 	rep := &Report{Host: host, Created: []string{}, Updated: []string{}, Unchanged: []string{}}
