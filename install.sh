@@ -2,8 +2,10 @@
 # install.sh — instala o binário `gira` a partir dos GitHub Releases.
 #
 # Uso:
-#   curl -fsSL https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh
-#   curl -fsSL .../install.sh | sh -s -- --version v0.1.0 --dir ~/.local/bin
+#   export GITHUB_TOKEN="$(gh auth token)"   # repo privado exige token
+#   curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+#     https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh
+#   curl .../install.sh | sh -s -- --version v0.1.0 --dir ~/.local/bin --cosign
 #
 # O script detecta SO/arquitetura, baixa o tarball do release, confere o
 # sha256 contra o `checksums.txt` publicado e instala o binário `gira`.
@@ -15,6 +17,17 @@ REPO="EduardoShibukawa/gira-g"
 VERSION="latest"
 DIR=""
 COSIGN="0"
+
+# O repositório é privado: downloads exigem token com acesso de leitura.
+# Exporte GITHUB_TOKEN (ex: export GITHUB_TOKEN="$(gh auth token)") e o
+# script envia como Authorization em todas as chamadas.
+gh_curl() {
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" "$@"
+  else
+    curl -fsSL "$@"
+  fi
+}
 
 usage() {
   echo "usage: install.sh [--version vX.Y.Z] [--dir DIR] [--cosign]" >&2
@@ -60,15 +73,23 @@ fi
 # sem o prefixo `v`: gira_0.1.0_linux_amd64.tar.gz
 TAG="$VERSION"
 if [ "$VERSION" = "latest" ]; then
-  TAG="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
-    "https://github.com/${REPO}/releases/latest" | sed 's#.*/##')"
+  if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+    TAG="$(gh release view --json tagName -q .tagName -R "$REPO")"
+  elif [ -n "${GITHUB_TOKEN:-}" ]; then
+    TAG="$(gh_curl "https://api.github.com/repos/${REPO}/releases/latest" \
+      | grep '"tag_name"' | head -n 1 | sed 's/.*: *"//;s/".*//')"
+  else
+    echo "install.sh: latest exige gh autenticado ou GITHUB_TOKEN" >&2
+    exit 1
+  fi
   [ -n "$TAG" ] || { echo "install.sh: não resolveu a versão latest" >&2; exit 1; }
 fi
 ASSET_VER="$(printf '%s' "$TAG" | sed 's/^v//')"
 EXT="tar.gz"
 [ "$OS" = "windows" ] && EXT="zip"
 ASSET="gira_${ASSET_VER}_${OS}_${ARCH}.${EXT}"
-BASE="https://github.com/${REPO}/releases/download/${TAG}"
+WANT_FILES="$ASSET checksums.txt"
+[ "$COSIGN" = "1" ] && WANT_FILES="$WANT_FILES checksums.txt.sigstore.json"
 
 if [ -z "$DIR" ]; then
   if [ -w "/usr/local/bin" ]; then
@@ -82,13 +103,47 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM
 cd "$TMP"
 
+# Downloads do repo privado via API do GitHub (browser URL não aceita
+# header Authorization). Prefere gh autenticado; senão, GITHUB_TOKEN.
 echo "baixando ${ASSET} (${TAG})..." >&2
-curl -fsSL -o "$ASSET" "${BASE}/${ASSET}"
-curl -fsSL -o checksums.txt "${BASE}/checksums.txt"
+if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
+  # shellcheck disable=SC2086
+  gh release download "$TAG" -R "$REPO" --dir "$TMP" --clobber $(
+    for f in $WANT_FILES; do printf ' --pattern %s' "$f"; done
+  )
+elif [ -n "${GITHUB_TOKEN:-}" ] && command -v python3 >/dev/null 2>&1; then
+  GIRA_REPO="$REPO" GIRA_TAG="$TAG" GIRA_FILES="$WANT_FILES" python3 - <<'EOF'
+import json, os, urllib.request
+repo = os.environ["GIRA_REPO"]
+tag = os.environ["GIRA_TAG"]
+want = os.environ["GIRA_FILES"].split()
+tok = os.environ["GITHUB_TOKEN"]
+def api(url, accept="application/vnd.github+json"):
+    req = urllib.request.Request(url, headers={
+        "Authorization": f"Bearer {tok}", "Accept": accept})
+    return urllib.request.urlopen(req)
+rel = json.load(api(
+    f"https://api.github.com/repos/{repo}/releases/tags/{tag}"))
+by_name = {a["name"]: a["id"] for a in rel["assets"]}
+for name in want:
+    if name not in by_name:
+        raise SystemExit(f"asset ausente no release: {name}")
+    data = api(
+        f"https://api.github.com/repos/{repo}/releases/assets/{by_name[name]}",
+        accept="application/octet-stream").read()
+    with open(name, "wb") as f:
+        f.write(data)
+EOF
+else
+  echo "install.sh: precisa de gh autenticado, ou GITHUB_TOKEN + python3" >&2
+  exit 1
+fi
+for f in $WANT_FILES; do
+  [ -s "$f" ] || { echo "install.sh: download falhou: $f" >&2; exit 1; }
+done
 
 if [ "$COSIGN" = "1" ]; then
   need cosign
-  curl -fsSL -o checksums.txt.sigstore.json "${BASE}/checksums.txt.sigstore.json"
   echo "conferindo assinatura keyless..." >&2
   cosign verify-blob \
     --certificate-identity "https://github.com/${REPO}/.github/workflows/release.yml@refs/tags/${TAG}" \
