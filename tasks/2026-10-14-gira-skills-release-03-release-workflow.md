@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "56466ee"
 parent: 2026-10-14-gira-skills-release
 spec: gira-skills-release@1
 depends_on:
@@ -46,10 +47,10 @@ Out of scope:
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + quarantined suite + validator before change | not run | | |
-| AC1 | `go test ./internal/mcp ./cmd/gira -run SCReleaseWorkflow -count=1` | not run | | |
-| R1 | `go test -race ./internal/mcp ./cmd/gira -count=1` + quarantined module static check | not run | | |
-| V1 | diff read against AC1 (SC4) and ADR 0012 rule 3 (zero forbidden tokens in `.github/workflows/`) | not run | | |
+| B1 | `go test ./internal/mcp ./cmd/gira -count=1` + quarantined suite + validator before change | pass | 1066136 | mcp ok, cmd/gira ok; bench ./... ok; validator pass |
+| AC1 | `go test ./internal/mcp ./cmd/gira -run SCReleaseWorkflow -count=1` | pass | 56466ee | both TestSCReleaseWorkflow pass; failed first (missing release.yml) |
+| R1 | `go test -race ./internal/mcp ./cmd/gira -count=1` + quarantined module static check | pass | 56466ee | race suites ok; bench ./... ok incl. TestNoReferencesFromGuardedFiles |
+| V1 | diff read against AC1 (SC4) and ADR 0012 rule 3 (zero forbidden tokens in `.github/workflows/`) | pass | 56466ee | triggers/perms/preflight/snapshot/tag-job all present; zero tokens; ci.yml untouched |
 
 ## Constraints and budget
 
@@ -61,3 +62,16 @@ Out of scope:
 1. Write failing test `TestSCReleaseWorkflow` in `internal/mcp` and `cmd/gira`.
 2. Author `.github/workflows/release.yml`.
 3. Run AC1, R1 (including the quarantined module's static check), V1 and validator; commit.
+
+## Outcome
+
+Delivered `.github/workflows/release.yml` (83 lines): tag triggers
+`v*.*.*` + `workflow_dispatch`, top-level `contents: read`, preflight
+(checkout fetch-depth 0, mise v5, Node 22 + validator, `go test -race ./...`),
+snapshot dry-run (`--snapshot --clean --skip=sign` + `skills manifest`), and
+tag release job (`startsWith(github.ref,'refs/tags/v')`,
+`contents: write` + `id-token: write`, `goreleaser release --clean` with
+`GITHUB_TOKEN`, keyless cosign OIDC). `TestSCReleaseWorkflow` in
+`internal/mcp` and `cmd/gira` guards the contract incl. the ADR 0012
+quarantine check (pattern assembled from fragments so the guarded test files
+stay clean). `ci.yml` untouched; no tags pushed. No follow-ups.
