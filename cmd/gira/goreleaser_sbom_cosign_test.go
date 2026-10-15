@@ -4,7 +4,9 @@ package main
 // hermetic syft SPDX SBOM and cosign blob signing round-trip.
 
 import (
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -227,6 +229,9 @@ func TestSCSBOMAndCosign(t *testing.T) {
 	dir := t.TempDir()
 
 	binPath := filepath.Join(dir, "gira")
+	if runtime.GOOS == "windows" {
+		binPath += ".exe"
+	}
 	build := exec.Command("go", "build", "-o", binPath, "./cmd/gira")
 	build.Dir = root
 	if out, err := build.CombinedOutput(); err != nil {
@@ -264,8 +269,14 @@ func TestSCSBOMAndCosign(t *testing.T) {
 	}
 
 	blob := filepath.Join(dir, "checksums.txt")
-	digestOut := runTool(t, root, nil, "sha256sum", binPath)
-	runTool(t, dir, nil, "sh", "-c", "printf '%s' '"+strings.TrimSpace(digestOut)+"  gira' > "+blob)
+	binBytes, err := os.ReadFile(binPath)
+	if err != nil {
+		t.Fatalf("read built gira binary: %v", err)
+	}
+	sum := sha256.Sum256(binBytes)
+	if err := os.WriteFile(blob, []byte(fmt.Sprintf("%x  gira\n", sum)), 0o644); err != nil {
+		t.Fatalf("write checksums blob: %v", err)
+	}
 
 	bundle := filepath.Join(dir, "checksums.bundle.json")
 	runTool(t, dir, []string{"COSIGN_PASSWORD="}, "cosign",
