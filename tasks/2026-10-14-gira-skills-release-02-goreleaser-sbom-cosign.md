@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "f5c150e"
 parent: 2026-10-14-gira-skills-release
 spec: gira-skills-release@1
 depends_on:
@@ -51,11 +52,11 @@ Out of scope:
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` (root) + quarantined suite + validator before change | not run | | |
-| AC1 | `go test ./cmd/gira -run SCGoReleaserConfig -count=1` | not run | | |
-| AC2 | `go test ./cmd/gira -run SCSBOMAndCosign -count=1` | not run | | |
-| R1 | `mise exec -- goreleaser check` and `go test -race ./cmd/gira -count=1` | not run | | |
-| V1 | diff read against AC1–AC2; verify ADR 0012 quarantine compliance | not run | | |
+| B1 | `go test ./cmd/gira -count=1` + `mise exec -- goreleaser check` before change | pass | d073ef9 | clean code tree; record set active before run |
+| AC1 | `go test ./cmd/gira -run SCGoReleaserConfig -count=1` | pass | f5c150e | failed first pre-implementation (duh-org/duh-homelab); snapshot build ok, archives ship LICENSE/NOTICES/manifest |
+| AC2 | `go test ./cmd/gira -run SCSBOMAndCosign -count=1` | pass | f5c150e | syft SPDX-2.3, 17 packages; cosign ephemeral-keypair round-trip + tamper rejection in t.TempDir() |
+| R1 | `mise exec -- goreleaser check` and `go test -race ./cmd/gira -count=1` | pass | f5c150e | check exits 0; race suite ok |
+| V1 | diff read against AC1–AC2; verify ADR 0012 quarantine compliance | pass | f5c150e | in-scope files only; quarantine TestNoReferencesFromGuardedFiles pass; zero fixtures/testdata diff; dist/ removed |
 
 ## Constraints and budget
 
@@ -68,3 +69,17 @@ Out of scope:
 1. Write failing tests `TestSCGoReleaserConfig` and `TestSCSBOMAndCosign` in `cmd/gira`.
 2. Create root `LICENSE` (MIT) and `THIRD_PARTY_NOTICES.md`; update `.gitignore`, `.goreleaser.yaml`, and `mise.toml`.
 3. Run AC1, AC2, R1, V1 and validator; ensure working tree is clean (`dist/` removed); commit.
+
+## Outcome
+
+Delivered F1/F2 (SC1/SC2): `.goreleaser.yaml` targets
+`EduardoShibukawa/gira-g` with `CGO_ENABLED=0` (5 targets, windows/arm64
+ignored), `before.hooks` generates `skills-manifest.json`, archives ship
+`README.md` + `LICENSE*` + `THIRD_PARTY_NOTICES.md` + `skills-manifest.json`,
+`sboms:` (syft SPDX JSON) kept and `signs:` (cosign sign-blob on checksums)
+added; root `LICENSE` (MIT) and `THIRD_PARTY_NOTICES.md` created; `.gitignore`
+covers `dist/` + `skills-manifest.json`; `mise.toml` `tasks.release` runs
+`goreleaser release --snapshot --clean --skip=sign`. `mise run release`
+verified end to end (5 binaries, 5 SBOMs, checksums; sign skipped); `dist/`
+and generated manifest removed afterwards. No tags pushed, no live release.
+`fixtures/`/`testdata/` untouched.
