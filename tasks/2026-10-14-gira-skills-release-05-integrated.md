@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "40acf09"
 parent: 2026-10-14-gira-skills-release
 spec: gira-skills-release@1
 depends_on:
@@ -45,10 +46,10 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + quarantined suite + validator before integrated run | pass | d39a0ce | validator exit 0; bench race pass; root race started pre-run (see R1 note on collision + clean rerun) |
-| AC1 | `go test -race ./...` root and quarantined module; `node tools/validate/validate.js` | pass | d39a0ce | root race `-count=1` exit 0 (17 ok, 0 fail); bench race `-count=1` exit 0; validator exit 0 |
-| AC2 | `go test ./internal/eval -run EndToEnd -v`; SC15 ≥ 90%; `git diff --exit-code f404ce0 -- fixtures/ testdata/`; `"reviewed": false` | pass | d39a0ce | published R82.4/P100.0, perturbed R81.2/P100.0; SC15 focused 95.0/full 100.0; fixture diff exit 0; `reviewed: false` confirmed |
-| R1 | SC1–SC5 test commands + `mise exec -- goreleaser release --snapshot --clean --skip=sign` (and clean `dist/`) | pass | d39a0ce | SC1–SC5 suites pass; snapshot exit 0 (5 bins, 5 archives, 5 SBOMs, checksums); archives ship README+LICENSE*+NOTICES+manifest; SBOM SPDX-2.3 17 pkgs; `dist/` + root manifest removed |
-| V1 | fresh-context adversarial review (`.agents/skills/work/review.md`); resolve all findings in parent `## Review` | pass | d39a0ce | diff f404ce0..d39a0ce read vs spec F1–F5/SC1–SC7; 1 minor observation rejected with reason; zero open findings |
+| AC1 | `go test -race ./...` root and quarantined module; `node tools/validate/validate.js` | pass | 40acf09 | root race `-count=1` exit 0 (17 ok, 0 fail); bench race `-count=1` exit 0; validator exit 0; ran on d39a0ce, 40acf09 record-only |
+| AC2 | `go test ./internal/eval -run EndToEnd -v`; SC15 ≥ 90%; `git diff --exit-code f404ce0 -- fixtures/ testdata/`; `"reviewed": false` | pass | 40acf09 | published R82.4/P100.0, perturbed R81.2/P100.0; SC15 focused 95.0/full 100.0; fixture diff exit 0; `reviewed: false` confirmed; ran on d39a0ce, 40acf09 record-only |
+| R1 | SC1–SC5 test commands + `mise exec -- goreleaser release --snapshot --clean --skip=sign` (and clean `dist/`) | pass | 40acf09 | SC1–SC5 suites pass; snapshot exit 0 (5 bins, 5 archives, 5 SBOMs, checksums); archives ship README+LICENSE*+NOTICES+manifest; SBOM SPDX-2.3 17 pkgs; `dist/` + root manifest removed; ran on d39a0ce, 40acf09 record-only |
+| V1 | fresh-context adversarial review (`.agents/skills/work/review.md`); resolve all findings in parent `## Review` | pass | 40acf09 | diff f404ce0..d39a0ce read vs spec F1–F5/SC1–SC7; 1 minor observation rejected with reason; zero open findings |
 
 ## Constraints and budget
 
