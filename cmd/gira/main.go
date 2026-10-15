@@ -235,8 +235,8 @@ Commands:
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)
   verify --check <c> --expect <e> [--cwd <d>]               Print ARTIFACT-VERIFIED closing line for inputs (F1)
-  review --findings-register <path> [--fix-check]           L3 findings register + independent fix-check (F3)
-  gate-lint --strict [--state <path> --digest <hex>]        Strict gate lint: warn-only in CI, fail-closed locally (F5)
+  review --findings-register <path> [--fix-check] [--gc] L3 findings register + independent fix-check (F3); --gc compacts resolved (F5)
+  gate-lint --strict [--fail-on-ci] [--state <p> --digest <h>] Strict gate lint: warn-only in CI, fail-closed locally (F5); --fail-on-ci enforces in CI
   gate --status | --reverify [--state <p> --digest <h>]     Non-executing status vs re-verification split (F5)
   version                                                   Show harness version
 

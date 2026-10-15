@@ -10,20 +10,24 @@ import (
 )
 
 // runGateLint is the additive F5 entry point: `gira gate-lint --strict`.
-// CI mode (GIRA_CI=1) is warn-only until E3; local runs fail closed.
+// CI mode (GIRA_CI=1) is warn-only by default (E3 Q2); callers with an
+// explicit ledger pass --fail-on-ci to enforce fail-closed --strict under
+// CI (E5, Q5=A). Local runs fail closed.
 func runGateLint(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs := flag.NewFlagSet("gate-lint", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var strict bool
+	var failOnCI bool
 	var state, digest string
 	fs.BoolVar(&strict, "strict", false, "Strict lint (fail-closed locally, warn-only in CI)")
+	fs.BoolVar(&failOnCI, "fail-on-ci", false, "Enforce fail-closed --strict even under CI (explicit ledger)")
 	fs.StringVar(&state, "state", ".gira/gate.json", "Gate ledger file")
 	fs.StringVar(&digest, "digest", "", "Expected digest hex")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	ci := os.Getenv("GIRA_CI") != "" || os.Getenv("CI") != ""
-	res := gate.LintFile(state, digest, gate.LintOptions{Strict: strict, CI: ci})
+	res := gate.LintFile(state, digest, gate.LintOptions{Strict: strict, CI: ci, FailOnCI: failOnCI})
 	for _, w := range res.Warnings {
 		fmt.Fprintf(stderr, "warning: %s\n", w)
 	}
