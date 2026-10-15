@@ -7,22 +7,24 @@
 #
 # O script detecta SO/arquitetura, baixa o tarball do release, confere o
 # sha256 contra o `checksums.txt` publicado e instala o binário `gira`.
-# Verificação cosign keyless: follow-up após o primeiro release com
-# artefatos (nomes exatos de .sig/.pem ainda não confirmados).
+# Com --cosign, verifica também o bundle Sigstore keyless
+# (`checksums.txt.sigstore.json`) contra a identidade do workflow release.
 set -eu
 
 REPO="EduardoShibukawa/gira-g"
 VERSION="latest"
 DIR=""
+COSIGN="0"
 
 usage() {
-  echo "usage: install.sh [--version vX.Y.Z] [--dir DIR]" >&2
+  echo "usage: install.sh [--version vX.Y.Z] [--dir DIR] [--cosign]" >&2
 }
 
 while [ $# -gt 0 ]; do
   case "$1" in
     --version) VERSION="${2:?--version precisa de valor}"; shift 2 ;;
     --dir) DIR="${2:?--dir precisa de valor}"; shift 2 ;;
+    --cosign) COSIGN="1"; shift ;;
     -h|--help) usage; exit 0 ;;
     *) echo "flag desconhecida: $1" >&2; usage; exit 1 ;;
   esac
@@ -83,6 +85,16 @@ cd "$TMP"
 echo "baixando ${ASSET} (${TAG})..." >&2
 curl -fsSL -o "$ASSET" "${BASE}/${ASSET}"
 curl -fsSL -o checksums.txt "${BASE}/checksums.txt"
+
+if [ "$COSIGN" = "1" ]; then
+  need cosign
+  curl -fsSL -o checksums.txt.sigstore.json "${BASE}/checksums.txt.sigstore.json"
+  echo "conferindo assinatura keyless..." >&2
+  cosign verify-blob \
+    --certificate-identity "https://github.com/${REPO}/.github/workflows/release.yml@refs/tags/${TAG}" \
+    --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+    --bundle checksums.txt.sigstore.json checksums.txt
+fi
 
 echo "conferindo sha256..." >&2
 LINE="$(grep "  ${ASSET}\$" checksums.txt || true)"

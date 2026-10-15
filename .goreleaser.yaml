@@ -70,13 +70,13 @@ checksum:
 signs:
   - id: checksums
     cmd: cosign
+    signature: "${artifact}.sigstore.json"
     artifacts: checksum
     args:
       - sign-blob
-      - --yes
-      - --output-signature=${signature}
-      - --output-certificate=${certificate}
+      - --bundle=${signature}
       - ${artifact}
+      - --yes
 
 changelog:
   sort: asc
