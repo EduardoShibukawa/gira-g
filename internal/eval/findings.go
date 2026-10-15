@@ -209,6 +209,47 @@ func LoadRegister(path string) (Register, error) {
 	return out, nil
 }
 
+// GC compacts the register deterministically (E5, Q6=A): every finding
+// with status "open" is preserved unconditionally in original order, while
+// resolved findings ("fixed", "closed", "verified") are compacted to the
+// last keepResolved entries in original order. Findings with any other
+// status are preserved (never dropped). A negative keepResolved is treated
+// as 0. The receiver is never mutated.
+func (r Register) GC(keepResolved int) Register {
+	if keepResolved < 0 {
+		keepResolved = 0
+	}
+	isResolved := func(status string) bool {
+		switch status {
+		case "fixed", "closed", "verified":
+			return true
+		default:
+			return false
+		}
+	}
+	total := 0
+	for _, f := range r.Findings {
+		if isResolved(f.Status) {
+			total++
+		}
+	}
+	skip := total - keepResolved
+	if skip < 0 {
+		skip = 0
+	}
+	out := Register{Findings: make([]Finding, 0, len(r.Findings))}
+	for _, f := range r.Findings {
+		if isResolved(f.Status) {
+			if skip > 0 {
+				skip--
+				continue
+			}
+		}
+		out.Findings = append(out.Findings, f)
+	}
+	return out
+}
+
 // FixCheck re-runs the finding's real path independently through rerun and
 // never reads the fixer's log: rerun must be non-nil and must report fixed.
 // It loads the register entry by ID so the check runs against the recorded

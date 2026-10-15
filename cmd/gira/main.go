@@ -227,14 +227,16 @@ Commands:
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
   diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
   skills install --host claude|cursor|agents [--dir <project>] [--index <path>] Generate GIRA skills and MCP registration for a host
+  skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
+  skills check --host claude|cursor|agents [--dir <project>] [--hook] Non-mutating drift check for installed host files
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)
   verify --check <c> --expect <e> [--cwd <d>]               Print ARTIFACT-VERIFIED closing line for inputs (F1)
-  review --findings-register <path> [--fix-check]           L3 findings register + independent fix-check (F3)
-  gate-lint --strict [--state <path> --digest <hex>]        Strict gate lint: warn-only in CI, fail-closed locally (F5)
+  review --findings-register <path> [--fix-check] [--gc] L3 findings register + independent fix-check (F3); --gc compacts resolved (F5)
+  gate-lint --strict [--fail-on-ci] [--state <p> --digest <h>] Strict gate lint: warn-only in CI, fail-closed locally (F5); --fail-on-ci enforces in CI
   gate --status | --reverify [--state <p> --digest <h>]     Non-executing status vs re-verification split (F5)
   version                                                   Show harness version
 
@@ -900,8 +902,14 @@ func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Write
 	if len(args) > 0 && args[0] == "nudge" {
 		return runNudge(args[1:], stdin, stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "manifest" {
+		return runSkillsManifest(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "check" {
+		return runSkillsCheck(args[1:], stdout, stderr)
+	}
 	if len(args) == 0 || args[0] != "install" {
-		return fmt.Errorf("usage: gira skills install --host %s [--dir <project>] [--index <path>] [--hook]", strings.Join(skills.Hosts, "|"))
+		return fmt.Errorf("usage: gira skills install|manifest|check --host %s [--dir <project>] [--index <path>] [--hook]", strings.Join(skills.Hosts, "|"))
 	}
 	fs := flag.NewFlagSet("skills install", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -925,6 +933,72 @@ func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Write
 	}
 	_, err = fmt.Fprintln(stdout, string(data))
 	return err
+}
+
+func runSkillsManifest(args []string, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("skills manifest", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var format, output string
+	fs.StringVar(&format, "format", "json", "Output format: json|md")
+	fs.StringVar(&output, "output", "", "Write manifest to <path> instead of stdout")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if format != "json" && format != "md" {
+		return fmt.Errorf("invalid --format %q: want json|md", format)
+	}
+	m, err := skills.BuildManifest(version)
+	if err != nil {
+		return err
+	}
+	var data []byte
+	if format == "md" {
+		data = []byte(m.Markdown())
+	} else {
+		data, err = json.MarshalIndent(m, "", "  ")
+		if err != nil {
+			return err
+		}
+		data = append(data, '\n')
+	}
+	if output != "" {
+		if err := os.MkdirAll(filepath.Dir(output), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(output, data, 0o644)
+	}
+	_, err = stdout.Write(data)
+	return err
+}
+
+func runSkillsCheck(args []string, stdout io.Writer, stderr io.Writer) error {
+	fs := flag.NewFlagSet("skills check", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	var host, dir, index, command string
+	fs.StringVar(&host, "host", "", "Host family: "+strings.Join(skills.Hosts, ", "))
+	fs.StringVar(&dir, "dir", ".", "Project directory to check")
+	fs.StringVar(&index, "index", "", "Index the registered MCP server should load")
+	fs.StringVar(&command, "command", "gira", "Command the host runs to start the MCP server")
+	var hook bool
+	fs.BoolVar(&hook, "hook", false, "claude host: also check the opt-in PreToolUse nudge")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	rep, err := skills.Check(host, skills.Options{Root: dir, Index: index, Command: command, Hook: hook})
+	if err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(rep, "", "  ")
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintln(stdout, string(data)); err != nil {
+		return err
+	}
+	if !rep.InSync {
+		return fmt.Errorf("skills check: host %q out of sync (%d missing, %d drifted)", host, len(rep.Missing), len(rep.Drifted))
+	}
+	return nil
 }
 
 // runNudge is the PreToolUse hook command. It never fails the hook: problems

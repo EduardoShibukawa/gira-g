@@ -1,22 +1,27 @@
 # GoReleaser configuration for Gira-G (ADR 0010)
-# Supports native compilation across matrix runners for CGO (Tree-Sitter seam)
+# Pure-Go build (CGO_ENABLED=0); the tree-sitter seam from ADR 0002 stays
+# intact for future use.
 version: 2
 
 project_name: gira
 
 release:
   github:
-    owner: duh-org
-    name: duh-homelab
+    owner: EduardoShibukawa
+    name: gira-g
   draft: false
   prerelease: auto
+
+before:
+  hooks:
+    - go run ./cmd/gira skills manifest --format json --output skills-manifest.json
 
 builds:
   - id: gira
     main: ./cmd/gira
     binary: gira
     env:
-      - CGO_ENABLED=1
+      - CGO_ENABLED=0
     goos:
       - linux
       - darwin
@@ -44,6 +49,8 @@ archives:
     files:
       - README.md
       - LICENSE*
+      - THIRD_PARTY_NOTICES.md
+      - skills-manifest.json
 
 sboms:
   - id: archive-sbom
@@ -59,6 +66,17 @@ sboms:
 checksum:
   name_template: "checksums.txt"
   algorithm: sha256
+
+signs:
+  - id: checksums
+    cmd: cosign
+    artifacts: checksums
+    args:
+      - sign-blob
+      - --yes
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - ${artifact}
 
 changelog:
   sort: asc

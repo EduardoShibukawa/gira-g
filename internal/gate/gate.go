@@ -80,9 +80,14 @@ func Reverify(path, expectedDigest string) error {
 }
 
 // LintOptions selects strictness and the CI warn-only path.
+// FailOnCI (E5, Q5=A) lets callers with an explicit committed/generated
+// ledger enforce fail-closed --strict even when CI is set; without it the
+// default unconfigured CI job stays warn-only. FailOnCI only takes effect
+// with Strict: a non-strict lint reports, it does not gate.
 type LintOptions struct {
-	Strict bool
-	CI     bool
+	Strict   bool
+	CI       bool
+	FailOnCI bool
 }
 
 // LintResult is the gate-lint outcome.
@@ -95,7 +100,9 @@ type LintResult struct {
 
 // LintFile lints one ledger file against the expected digest.
 // --strict fails closed on any deviation locally and warns in CI (owner
-// decision: warn-only in CI until E3). Without --strict, deviations warn and
+// decision: warn-only in CI until E3), unless FailOnCI is set: callers with
+// an explicit ledger pass FailOnCI to enforce fail-closed --strict even
+// under CI (E5, Q5=A). Without --strict, deviations warn and
 // pass: the lint reports, it does not gate. A missing ledger follows the
 // same rule: it is a deviation like any other.
 func LintFile(path, expectedDigest string, opts LintOptions) LintResult {
@@ -103,7 +110,10 @@ func LintFile(path, expectedDigest string, opts LintOptions) LintResult {
 		return LintResult{Pass: true, Status: status, Warnings: []string{msg}}
 	}
 	fail := func(status, msg string) LintResult {
-		if opts.CI {
+		if opts.CI && !opts.FailOnCI {
+			return warn(status, msg)
+		}
+		if !opts.Strict {
 			return warn(status, msg)
 		}
 		return LintResult{Error: msg}
