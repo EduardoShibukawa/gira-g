@@ -24,3 +24,12 @@ gira index --output .gira/index.json
 
 - [`gira index`](./index.md)
 - [Concepts: Macro Map](../concepts/macro-map.md)
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success (`gira index`) |
+| `1` | Usage, flag, index-load, engine, or emit error — including `gira map` itself, which is an unknown command |
+
+`gira` has no other exit codes. Errors print `Error: ...` to stderr.

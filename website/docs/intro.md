@@ -21,13 +21,13 @@ This documentation covers:
 
 ```bash
 # Index a target system
-gira map
+gira index
 
-# Ask what breaks if you change a contract
-gira impact --service <service-id>
+# Ask what breaks if you change a target
+gira impact <target_id> --index .gira/index.json
 
 # Explore a slice
-gira slice --contract <contract-id>
+gira slice <node_id> --tier contracts --view architecture
 ```
 
 See the [Guides](./guides/quickstart) for a complete walkthrough.

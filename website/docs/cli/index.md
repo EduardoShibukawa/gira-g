@@ -48,6 +48,15 @@ gira index --output .gira/index.json --offline
 - Run before any other command that needs `--index`.
 - Re-run after changing extractors or overlays to keep the index current.
 
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Usage, flag, index-load, engine, or emit error |
+
+No other exit codes. Errors print `Error: ...` to stderr.
+
 ## See also
 
 - [Impact](./impact.md) — analyze change impact from an index

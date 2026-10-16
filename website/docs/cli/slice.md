@@ -45,3 +45,12 @@ gira slice service:checkout --tier contracts --view architecture --index .gira/i
 
 - [Impact](./impact.md)
 - [Quickstart guide](../guides/quickstart.md)
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Usage, flag, index-load, engine, or emit error |
+
+No other exit codes. Errors print `Error: ...` to stderr.

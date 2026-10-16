@@ -36,6 +36,12 @@ const sidebars: SidebarsConfig = {
         'cli/slice',
         'cli/index',
         'cli/serve',
+        'cli/explain',
+        'cli/tour',
+        'cli/diff',
+        'cli/flows',
+        'cli/locate',
+        'cli/skills',
       ],
     },
     {
@@ -45,7 +51,6 @@ const sidebars: SidebarsConfig = {
         'guides/quickstart',
         'guides/change-maker-workflow',
         'guides/evidence-inspection',
-        'guides/export',
       ],
     },
     {

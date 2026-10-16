@@ -16,7 +16,7 @@ gira serve mcp [--index <path>]
 
 | Argument | Description |
 |---|---|
-| `mcp` | Required: enables the stdio MCP adapter (ADR 0004) |
+| `mcp` | Required: enables the stdio MCP adapter |
 
 ## Flags
 
@@ -42,6 +42,15 @@ gira serve mcp --index .gira/index.json
   server surface is the stdio MCP adapter used by coding agents.
 - Invoke with `serve mcp` only.
 
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success (adapter running until stdin closes) |
+| `1` | Usage, flag, index-load, engine, or emit error |
+
+No other exit codes. Errors print `Error: ...` to stderr.
+
 ## See also
 
-- [ADR 0004: CLI core with stdio MCP adapter](#)
+- [Slice](./slice.md)

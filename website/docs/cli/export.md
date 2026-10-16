@@ -39,6 +39,15 @@ gira view [--output <dir>] [--index <path>] [--no-open]
 | `--index` | Path to `macro-map.json` |
 | `--no-open` | Generate without launching the browser |
 
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Usage, flag, index-load, engine, or emit error |
+
+No other exit codes. Errors print `Error: ...` to stderr.
+
 ## See also
 
 - [Export guide](../guides/export.md)

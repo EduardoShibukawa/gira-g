@@ -43,7 +43,7 @@ SHA is printed; locators pointing at other commits are flagged `stale`.
 
 ```bash
 # Impact of a contract
-gira impact --contract kafka:orders.created --index .gira/index.json
+gira impact kafka:orders.created --index .gira/index.json
 
 # Impact of all nodes a diff touches
 gira impact --from-diff HEAD~1..HEAD --repo .
@@ -53,3 +53,12 @@ gira impact --from-diff HEAD~1..HEAD --repo .
 
 - [Slice](./slice.md)
 - [Concepts: Impact Set](../concepts/impact-set.md)
+
+## Exit codes
+
+| Code | Meaning |
+|---|---|
+| `0` | Success |
+| `1` | Usage, flag, index-load, engine, or emit error |
+
+No other exit codes. Errors print `Error: ...` to stderr.

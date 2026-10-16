@@ -41,6 +41,7 @@ const config: Config = {
       {
         hashed: true,
         language: ['en'],
+        indexBlog: false,
       },
     ],
   ],
