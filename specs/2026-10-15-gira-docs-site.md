@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:fd7d80b4cfe821f39103c8cd0c4207919fa26b7b88c539ae4d510af64c4c78c8
 ---
 
 # GIRA documentation website (E6)
