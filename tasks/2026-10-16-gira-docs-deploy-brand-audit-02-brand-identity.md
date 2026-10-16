@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "afd1eaf"
 parent: 2026-10-16-gira-docs-deploy-brand-audit
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 depends_on:
@@ -51,10 +52,10 @@ Out of scope: `docusaurus.config.ts` hosting URLs, CI workflows, Go code.
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
-| AC1 | SVG validity, < 8 KB size, no <text> in logo/favicon, distinct favicon | not run | - | pending implementation |
-| AC2 | custom.css Solar Graph light (#b45309) and dark (#f59e0b) palette | not run | - | pending implementation |
-| R1 | mise run docs:build + quarantine grep + validator | not run | - | pending implementation |
-| V1 | diff + gira impact --from-diff review against AC1–AC2 | not run | - | pending implementation |
+| AC1 | SVG validity, < 8 KB size, no <text> in logo/favicon, distinct favicon | pass | afd1eaf | logo.svg (4410 B), favicon.svg (1444 B), gira-social-card.svg (7582 B); 0 <text> in logo/favicon; distinct 16x16 favicon |
+| AC2 | custom.css Solar Graph light (#b45309) and dark (#f59e0b) palette | pass | afd1eaf | replaced stock Infima green with Solar Graph amber/gold scale in :root and [data-theme='dark'] |
+| R1 | mise run docs:build + quarantine grep + validator | pass | afd1eaf | docs:build exit 0; quarantine grep exit 1 (0 matches); go test -race exit 0; validate.js exit 0 |
+| V1 | diff + gira impact --from-diff review against AC1–AC2 | pass | afd1eaf | 4 files changed within exact scope; gira impact --from-diff verified |
 
 ## Plan
 
@@ -63,3 +64,11 @@ Out of scope: `docusaurus.config.ts` hosting URLs, CI workflows, Go code.
 3. Design and write `website/static/img/gira-social-card.svg` (`1200x630` Helio-Graph lockup and architectural graph constellation).
 4. Update `website/src/css/custom.css` with the Solar Graph palette (`#b45309` light / `#f59e0b` dark).
 5. Verify with `mise run docs:build`, canonical quarantine grep, `bin/gira impact --from-diff`, and `node tools/validate/validate.js`.
+
+## Outcome
+
+- Delivered definitive **Helio-Graph** pure vector brand assets at commit `afd1eaf`:
+  - `website/static/img/logo.svg` (4,410 bytes, `viewBox="0 0 64 64"`, zero `<text>` elements): geometric sunflower petal crown (`#f59e0b` / `#fbbf24`) around a dark slate core (`#0f172a`) featuring an architectural node-and-edge graph tracing the letter **G** with `#38bdf8` evidence highlights.
+  - `website/static/img/favicon.svg` (1,444 bytes, `viewBox="0 0 32 32"`, zero `<text>` elements): distinct 16×16-optimized high-contrast Helio-Graph badge with simplified 8-point crown and thicker G-graph strokes.
+  - `website/static/img/gira-social-card.svg` (7,582 bytes, `1200×630`): OpenGraph card with architectural constellation background, Helio-Graph emblem, geometric `<path>` wordmark `GIRA`, positioning copy, and `gira index` / `gira impact` / `gira slice` workflow pills.
+- Updated `website/src/css/custom.css` to replace stock Infima green (`#2e8550` / `#25c2a0`) with the **Solar Graph** primary color palette (`#b45309` in light mode `:root` and `#f59e0b` in `[data-theme='dark']`).
