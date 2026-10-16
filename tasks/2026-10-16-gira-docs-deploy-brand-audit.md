@@ -15,6 +15,7 @@ spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 - decided: Q2 docs.yml workflow → two jobs (docs-build + docs-deploy on main push / workflow_dispatch with deploy-pages@v4) by owner (2026-10-16, "(Recommended) Dois jobs (docs-build + docs-deploy em push na main / workflow_dispatch, com deploy-pages@v4 incondicional na main)")
 - decided: Q3 SVG brand direction → Helio-Graph pure path vector mark with dedicated 16x16 favicon.svg by owner (2026-10-16, "(Recommended) Helio-Graph (coroa de pétalas de girassol + núcleo em grafo formando G em <path> puro) com favicon.svg dedicado otimizado para 16x16")
 - decided: Q4 theme palette → Solar Graph amber/gold (#b45309 light / #f59e0b dark) in custom.css by owner (2026-10-16, "(Recommended) Paleta Solar Graph: atualizar custom.css do verde padrão Infima para Âmbar/Ouro Girassol acessível (#b45309 light / #f59e0b dark) coeso com os SVGs")
+- approved: spec v1 by owner (2026-10-16, "(Recommended) Aprovar spec v1 (specs/2026-10-16-gira-docs-deploy-brand-audit.md) e prosseguir com a decomposição e execução das 3 tasks filhas via subagents")
 
 ## Objective
 

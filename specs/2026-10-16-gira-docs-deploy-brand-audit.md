@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:f77dd660243ed103e655acff3240bb14228b865b49f9f499c8d670e051b9f21b
 ---
 
 # Gira docs hosting deploy, real brand visual identity, and integrated Gira NFR audit
