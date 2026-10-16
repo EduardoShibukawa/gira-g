@@ -8,8 +8,8 @@ const config: Config = {
   favicon: 'img/favicon.svg',
   url: 'https://gira.local',
   baseUrl: '/',
-  organizationName: 'gira-g',
-  projectName: 'gira-docs',
+  organizationName: 'EduardoShibukawa',
+  projectName: 'gira-g',
   onBrokenLinks: 'throw',
   markdown: {
     hooks: {
