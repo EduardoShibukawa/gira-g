@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "56c1212"
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 ---
@@ -17,6 +17,7 @@ spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 - decided: Q3 SVG brand direction → Helio-Graph pure path vector mark with dedicated 16x16 favicon.svg by owner (2026-10-16, "(Recommended) Helio-Graph (coroa de pétalas de girassol + núcleo em grafo formando G em <path> puro) com favicon.svg dedicado otimizado para 16x16")
 - decided: Q4 theme palette → Solar Graph amber/gold (#b45309 light / #f59e0b dark) in custom.css by owner (2026-10-16, "(Recommended) Paleta Solar Graph: atualizar custom.css do verde padrão Infima para Âmbar/Ouro Girassol acessível (#b45309 light / #f59e0b dark) coeso com os SVGs")
 - approved: spec v1 by owner (2026-10-16, "(Recommended) Aprovar spec v1 (specs/2026-10-16-gira-docs-deploy-brand-audit.md) e prosseguir com a decomposição e execução das 3 tasks filhas via subagents")
+- accepted: by owner (2026-10-16, "(Recommended) Aceitar a entrega integrada (tasks: accept gira-docs-deploy-brand-audit by owner)")
 
 ## Objective
 
