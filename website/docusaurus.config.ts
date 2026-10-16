@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 const config: Config = {
   title: 'Gira',
   tagline: 'Evidence-backed architectural maps for software systems',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/favicon.svg',
   url: 'https://gira.local',
   baseUrl: '/',
   organizationName: 'gira-g',
@@ -45,7 +45,7 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    image: 'img/gira-social-card.jpg',
+    image: 'img/gira-social-card.svg',
     navbar: {
       title: 'Gira',
       logo: {
