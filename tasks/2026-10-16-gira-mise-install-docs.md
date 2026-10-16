@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "bd47f59"
 ---
 
 # Mise installation path + README and Quickstart alignment
@@ -42,8 +43,15 @@ skip: single atomic documentation update across three markdown files verified ag
 |---|---|---|---|---|
 | B1 | `node tools/validate/validate.js` (baseline) | pass | 418bcb6 | exit 0 before edits |
 | B2 | `mise run docs:build` (baseline) | pass | 418bcb6 | exit 0 before edits |
-| AC1 | isolated `mise exec github:EduardoShibukawa/gira-g@0.1.0 -- gira version` | not run | | |
-| AC2 | `README.md` inspection (`github:EduardoShibukawa/gira-g`, no `gira map`) | not run | | |
-| AC3 | `mise run docs:build` + quarantine grep on `website/` | not run | | |
-| R1 | `node tools/validate/validate.js` | not run | | |
-| V1 | `git diff` review against AC1–AC3 | not run | | |
+| AC1 | isolated `mise exec github:EduardoShibukawa/gira-g@0.1.0 -- gira version` | pass | bd47f59 | downloaded `gira_0.1.0_linux_amd64.tar.gz` and printed `gira 0.1.0 (commit: f5dad05...)` |
+| AC2 | `README.md` inspection (`github:EduardoShibukawa/gira-g`, no `gira map`) | pass | bd47f59 | `mise use -g` + `mise.toml` documented; `grep "gira map" README.md` empty (exit 1) |
+| AC3 | `mise run docs:build` + quarantine grep on `website/` | pass | bd47f59 | `docs:build` exit 0; canonical quarantine grep exit 1 (no matches) |
+| R1 | `node tools/validate/validate.js` | pass | bd47f59 | exit 0 on working tree before verified commit |
+| V1 | `git diff` review against AC1–AC3 | pass | bd47f59 | all 3 criteria covered; no unintended files or quarantined tokens |
+
+## Outcome
+
+Delivered and verified at `bd47f59`:
+- Verified `mise` native `github:` backend installation against published `v0.1.0` release assets (`github:EduardoShibukawa/gira-g@0.1.0`, avoiding the deprecated `ubi:` backend);
+- Updated `README.md`, `website/docs/guides/quickstart.md`, and `website/versioned_docs/version-0.1.0/guides/quickstart.md` with `mise` and `install.sh` instructions;
+- Replaced the residual `gira map` entry in `README.md` `## CLI` with real commands (`gira index`, `gira impact`, `gira slice`, `gira explain`, `gira serve`).
