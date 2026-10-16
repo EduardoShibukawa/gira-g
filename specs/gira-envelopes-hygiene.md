@@ -1,9 +1,9 @@
 ---
 schema: spec/1
 status: approved
-version: 2
-approved_version: 2
-approved_hash: sha256:01fbac6a07126948d410ab4e0ac6b88aab15436d7d4bdff991f863fc4d567bf8
+version: 3
+approved_version: 3
+approved_hash: sha256:1fa731ec22ab1372e0092afccc03268471f80c0df24d238909ba1400726bb1b6
 ---
 
 # GIRA envelopes and hygiene (E3)
@@ -115,6 +115,8 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 - Q5: above the ceiling, refuse with budget_exceeded + escalate_hint (no pagination in v1).
 - Q6: in E3: gitignore results.tsv/run.log, broken README.md:22 link, bench/quarantine ignoring .claude/worktrees/, and the false §6.1 of the validator in non-linear history. The .goreleaser stays for E5.
 - Q7: F2 stays deferred, outside E3.
+- Q8: strict-mode promotion point. CI gate-lint remains warn-only by default on ubuntu-latest; promotion to fail-closed is data-gated and explicit via `--fail-on-ci` (skills-release 04), allowed only after a clean `gira gate-lint --strict` dry-run reports zero stale digests on `main` and `TestSCGateLintStrictness`/`SCGateLint` pass. Those checks must land before the switch, never in the same commit that flips it.
+- Q9: register retention/GC. Findings registers stay append-only by default with indefinite, pointer-only retention. Compaction is always explicit: `gira review --gc [--keep-resolved <n>]` (default 0) preserves every `open`/`inferred`/`assumed` finding in order and trims only `fixed`/`closed`/`verified` findings to the last N, retaining ID+status tombstones plus a pre-compaction digest. No time-based or automatic purge ever runs.
 
 ## Risks and constraints
 
@@ -136,10 +138,11 @@ ADRs: 0001 stands; 0006 tier budgets extend to all outputs (addendum if R4 becom
 
 ## Open questions
 
-- deferred: **exact CI promotion point** for strict mode (E4+ decides). Safe: warn-only needs no interface change later.
-- deferred: **register retention/GC policy**. Safe: pointer-only files, additive.
+- resolved: **exact CI promotion point** for strict mode (Q8 in `## Decisions`): warn-only stays the default; promotion runs only through the explicit `--fail-on-ci` switch, and it requires a clean strict dry-run with zero stale digests plus green `SCGateLint` before the switch is flipped.
+- resolved: **register retention/GC policy** (Q9 in `## Decisions`): append-only indefinite retention by default; compaction is explicit, `--gc`-driven, open/inferred/assumed findings are never dropped, and compaction keeps tombstones plus a pre-compaction digest.
 
 ## Revisions
 
 - v1 (2026-10-14): approved v1 with owner decisions Q1–Q7.
 - v2 (2026-10-14): ADR 0012 takes precedence over the v1 CI-bench clause (owner decision). The product CI no longer runs the quarantined comparative module; an opt-in hermetic R/P floor guard replaces it; SC15 remains in the quarantined module. F5, SC7, Q3, Q4 (and the CI interface row) updated; B3 path corrected to `internal/eval`. SC9 scoped to the frozen ground-truth/corpus (`fixtures/`, `testdata/`); the `cmd/gira/testdata/gira-query/` goldens are regenerated to the E3 contract because F2's `estimator`/`measured` are additive to budgeted answers. Also folds the fix pass that made the E3 tests green: the no-truncation budget now settles its estimate with the escalate hint included, and `locate_boundary` without a budget returns the bare array (Q1).
+- v3 (2026-10-16): closes the two deferred questions of v2 via Q8 (strict-mode promotion point) and Q9 (register retention/GC policy), drawing on the mechanisms shipped in gira-skills-release-04 (FailOnCI, --fail-on-ci, Register.GC, --gc). No code, gate, or criteria changes; Decisions and Open questions updated only. Approved by owner on 2026-10-16 ("Confirm heavy ...").

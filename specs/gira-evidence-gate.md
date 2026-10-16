@@ -1,9 +1,9 @@
 ---
 schema: spec/1
 status: approved
-version: 1
-approved_version: 1
-approved_hash: sha256:422ed174fbe24646e7ad58150d46bdd5cda808a25e164463b77819ab4b62ac68
+version: 2
+approved_version: 2
+approved_hash: sha256:931ba41b6c8aaae9c99045419fbff21fac70d91a8538a085db39c199b07d1ea3
 ---
 
 # GIRA Evidence & Gate Hardening
@@ -110,6 +110,8 @@ All additive. No existing flag, field or tool changes meaning.
 - `decided` sampling default → strict `max(20,5%)` Gallon default by owner (2026-10-14).
 - `decided` taxonomy → Gallon S1 verbatim + mapping table to Gira tiers by owner (2026-10-14).
 - `decided` `gate-lint --strict` → warn-only in CI, fail-closed locally, until E3 by owner (2026-10-14).
+- `decided` strict-mode promotion point → warn-only remains the default CI posture; promotion to fail-closed happens only via the explicit `--fail-on-ci` switch (skills-release 04) after a clean `gira gate-lint --strict` dry-run reports zero stale digests on `main` and `SCGateLint`/`SCGateLintStrictness` pass. Checks must land before the switch, never in the same commit.
+- `decided` register retention/GC policy → registers are append-only with indefinite pointer-only retention by default; compaction is always explicit (`gira review --gc [--keep-resolved <n>]`, default 0), preserving every `open`/`inferred`/`assumed` finding and trimming only `fixed`/`closed`/`verified` to the last N, keeping ID+status tombstones and a pre-compaction digest. No time-based or automatic purge.
 - **COPY = idea, never literal code.** Reimplement in Go; verbatim snippets only as rare exceptions with license header + `THIRD_PARTY_NOTICES`.
 
 ## Risks and constraints
@@ -132,9 +134,10 @@ All additive. No existing flag, field or tool changes meaning.
 
 ## Open questions
 
-- deferred: **exact CI promotion point** for strict mode (E3 decides). Safe: warn-only needs no interface change later.
-- deferred: **register retention/GC policy**. Safe: pointer-only files, additive.
+- resolved: **exact CI promotion point** for strict mode (decision above + envelopes spec v3 Q8): warn-only stays the default; promotion runs through the explicit `--fail-on-ci` switch and requires a clean strict dry-run with zero stale digests plus green `SCGateLint` before it is flipped.
+- resolved: **register retention/GC policy** (decision above + envelopes spec v3 Q9): append-only indefinite retention by default; compaction is explicit, `--gc`-driven, open/inferred/assumed findings are never dropped, and compaction keeps tombstones plus a pre-compaction digest.
 
 ## Revisions
 
 - v1 (2026-10-14): first draft.
+- v2 (2026-10-16): closes the two deferred questions of v1 via the decided promotion point and register retention/GC policy, drawing on the mechanisms shipped in gira-skills-release-04 (FailOnCI, --fail-on-ci, Register.GC, --gc). No code, gate, or criteria changes; Decisions and Open questions updated only. Approved by owner on 2026-10-16 ("Confirm heavy ...").

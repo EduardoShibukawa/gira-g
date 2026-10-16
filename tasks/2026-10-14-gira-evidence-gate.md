@@ -2,7 +2,7 @@
 schema: task/1
 tier: heavy
 status: accepted
-spec: gira-evidence-gate@1
+spec: gira-evidence-gate@2
 verified_at: "02bf776"
 ---
 
@@ -16,6 +16,8 @@ verified_at: "02bf776"
 - decided: L3 taxonomy → Gallon S1 verbatim + mapping table to Gira tiers by owner (2026-10-14, "Gallon verbatim + mapa (Recommended)")
 - decided: gate-lint --strict → warn-only in CI, fail-closed locally, until E3 by owner (2026-10-14, "Warn-only (Recommended)")
 - approved: spec v1 by owner (2026-10-14, "Approve v1 (Recommended)")
+- approved: spec v2 by owner (2026-10-16, promotion point + retention/GC policy closure anchored to skills-release 04)
+- spec-version: v1 → v2; unaffected: no AC/SC criteria changed
 - accepted: by owner (2026-10-14, "fix all aproe tudo de o accepted e continue fazendo tudo que pode" + "Acima + implementar E2")
 
 ## Objective

@@ -3,7 +3,7 @@ schema: task/1
 tier: standard
 status: verified
 parent: 2026-10-14-gira-envelopes-hygiene
-spec: gira-envelopes-hygiene@2
+spec: gira-envelopes-hygiene@3
 verified_at: "HEAD"
 ---
 
@@ -13,6 +13,7 @@ verified_at: "HEAD"
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-envelopes-hygiene; spec v1 approved)
 - spec-version: v1 → v2; unaffected: spec clarification only (ADR 0012 precedence over the CI bench clause)
+- spec-version: v2 → v3; unaffected: policy definition only (Decisions/Open questions, no code, gate, or criteria change)
 
 ## Objective
 

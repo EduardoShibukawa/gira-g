@@ -260,10 +260,11 @@ func TestSCEnvelopeDropOrderRules(t *testing.T) {
 		}
 	})
 
-	// For diff_maps: evidence_moved then unchanged context, never changed_contracts or newly_unsupported
-	// For explain_evidence: evidence beyond the first per fact
-	// For locate_boundary: suggestions beyond N
-	// These require more complex test fixtures - TODO
+	// For diff_maps: evidence_moved then unchanged context, never changed_contracts
+	// or newly_unsupported. For explain_evidence: evidence beyond the first per fact.
+	// For locate_boundary: suggestions beyond N. The complex fixtures for those
+	// three kinds are exercised directly in internal/slices and internal/archdiff
+	// (see TestSCEnvelopeDeterministic and the BoundaryResult drop-order tests).
 }
 
 func isError(resp map[string]any) bool {

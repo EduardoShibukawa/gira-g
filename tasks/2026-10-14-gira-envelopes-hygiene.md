@@ -2,7 +2,7 @@
 schema: task/1
 tier: heavy
 status: accepted
-spec: gira-envelopes-hygiene@2
+spec: gira-envelopes-hygiene@3
 verified_at: "3369500"
 ---
 
@@ -16,7 +16,9 @@ verified_at: "3369500"
 - decided: ADR 0012 takes precedence over the v1 CI-bench clause; the quarantined comparative module is not run from the product CI (owner 2026-10-14, "Honrar o ADR: tirar bench do CI")
 - approved: spec v1 by owner (2026-10-14)
 - approved: spec v2 by owner (2026-10-14, ADR 0012 precedence over the CI bench clause; opt-in hermetic R/P floor guard)
+- approved: spec v3 by owner (2026-10-16, Q8 promotion point + Q9 retention/GC policy closure)
 - spec-version: v1 → v2; rerun: SC7 (CI hygiene) only
+- spec-version: v2 → v3; unaffected: no AC, SC, or V criterion changes (Decisions and Open questions only)
 - accepted: by owner (2026-10-14, "Corrigir as falhas agora")
 
 ## Objective

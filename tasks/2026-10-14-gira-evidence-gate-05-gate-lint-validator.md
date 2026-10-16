@@ -3,7 +3,7 @@ schema: task/1
 tier: standard
 status: verified
 parent: 2026-10-14-gira-evidence-gate
-spec: gira-evidence-gate@1
+spec: gira-evidence-gate@2
 depends_on: [2026-10-14-gira-evidence-gate-03-l3-taxonomy-register, 2026-10-14-gira-evidence-gate-04-token-honesty]
 verified_at: "3e5f7f4"
 ---
@@ -13,6 +13,7 @@ verified_at: "3e5f7f4"
 ## Routing and approvals
 
 - tier: standard (decomposed from heavy parent 2026-10-14-gira-evidence-gate; spec v1 approved)
+- spec-version: v1 → v2; unaffected: policy definition only (Decisions/Open questions, no code, gate, or criteria change)
 
 ## Objective
 
