@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "ae5acf3"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 depends_on: [2026-10-15-gira-docs-site-05-navigation-search, 2026-10-15-gira-docs-site-06-build-pipeline]
@@ -35,11 +36,11 @@ Out of scope: content, build, navigation.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | |
-| AC1 | grep Docusaurus in THIRD_PARTY_NOTICES.md | not run | | |
-| AC2 | grep -r <benchmark-ids> website/ returns empty | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | |
+| AC1 | grep Docusaurus in THIRD_PARTY_NOTICES.md | pass | ae5acf3 | license entry present |
+| AC2 | quarantine grep returns empty | pass | ae5acf3 | no benchmark refs in website/ |
+| R1 | go test -race ./... (no Go change) | pass | ae5acf3 | no Go touched |
+| V1 | diff read against AC1–AC2 | pass | ae5acf3 | only THIRD_PARTY_NOTICES touched |
 
 ## Plan
 
@@ -49,4 +50,6 @@ Out of scope: content, build, navigation.
 
 ## Outcome
 
-pending
+Added Docusaurus MIT entry to `THIRD_PARTY_NOTICES.md` and confirmed
+quarantine compliance (no benchmark references under `website/`). AC1–AC2,
+R1, V1 pass at ae5acf3.
