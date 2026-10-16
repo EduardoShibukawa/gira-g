@@ -9,6 +9,22 @@ A tool that builds and maintains an evidence-backed architectural map of any sof
 O repositório é privado: o install e os downloads exigem um token com
 leitura (`gh auth login` feito, ou PAT fino com `contents: read`).
 
+### Via `mise` (backend nativo `github:`)
+
+```bash
+export GITHUB_TOKEN="$(gh auth token)"
+mise use -g github:EduardoShibukawa/gira-g@0.1.0
+```
+
+Ou no `mise.toml` do projeto:
+
+```toml
+[tools]
+"github:EduardoShibukawa/gira-g" = "0.1.0"
+```
+
+### Via `install.sh` (`curl`)
+
 ```bash
 export GITHUB_TOKEN="$(gh auth token)"
 curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
@@ -23,10 +39,10 @@ Com cosign instalado, `--cosign` verifica o bundle Sigstore keyless antes.
 ## CLI
 
 ```bash
-gira impact <contract-or-service>   # Briefing de impacto (Impact Set)
-gira map                            # Macro Map da arquitetura
-gira slice <component>              # Recorte de contexto direcionado
-gira index                          # Indexação determinística
+gira index                          # Indexação determinística (gera .gira/index.json)
+gira impact <target_id>             # Briefing de impacto (Impact Set)
+gira slice <node_id>                # Recorte de contexto direcionado
+gira explain <subject>              # Cadeia de evidência (Evidence Chain)
 gira serve                          # Servidor MCP stdio para agentes
 ```
 
