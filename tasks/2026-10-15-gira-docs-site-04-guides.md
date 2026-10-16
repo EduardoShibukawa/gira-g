@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "64919c8"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 depends_on: [2026-10-15-gira-docs-site-02-concepts, 2026-10-15-gira-docs-site-03-cli-reference]
@@ -34,11 +35,11 @@ Out of scope: concepts (02), CLI reference (03).
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | |
-| AC1 | ls website/docs/guides/ — 4 guides present | not run | | |
-| AC2 | content review: quickstart, workflow, evidence, export | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | |
+| AC1 | ls website/docs/guides/ — 4 guides present | pass | 64919c8 | quickstart, change-maker-workflow, evidence-inspection, export |
+| AC2 | content review: quickstart, workflow, evidence, export | pass | 64919c8 | each guide has working examples |
+| R1 | go test -race ./... (no Go change) | pass | 64919c8 | no Go touched |
+| V1 | diff read against AC1–AC2 | pass | 64919c8 | only guide pages |
 
 ## Plan
 
@@ -50,4 +51,6 @@ Out of scope: concepts (02), CLI reference (03).
 
 ## Outcome
 
-pending
+Created 4 guide pages (quickstart, change-maker workflow, evidence inspection,
+export) with working examples and cross-references. AC1–AC2, R1, V1 all pass
+at 64919c8.

@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "64919c8"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 depends_on: [2026-10-15-gira-docs-site-01-scaffold]
@@ -33,11 +34,11 @@ Out of scope: guides (04), concepts (02).
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | |
-| AC1 | ls website/docs/cli/ — all 5 commands present | not run | | |
-| AC2 | content review: flags, inputs, output, examples | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | |
+| AC1 | ls website/docs/cli/ — all 5 commands present | pass | 64919c8 | index, impact, slice, serve, export |
+| AC2 | content review: flags, inputs, output, examples | pass | 64919c8 | each page documents flags, inputs, output, examples |
+| R1 | go test -race ./... (no Go change) | pass | 64919c8 | no Go touched |
+| V1 | diff read against AC1–AC2 | pass | 64919c8 | only cli pages |
 
 ## Plan
 
@@ -47,4 +48,8 @@ Out of scope: guides (04), concepts (02).
 
 ## Outcome
 
-pending
+Created 5 CLI reference pages (index, impact, slice, serve, export) from
+`gira --help` output, each documenting flags, inputs, output shape, and
+examples. Note: the spec originally named 5 commands including `gira map` and
+bare `serve`; the actual CLI exposes `index`, `serve mcp`, and `export/view`,
+which are documented instead. Build passes at 64919c8. AC1–AC2, R1, V1 pass.
