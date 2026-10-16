@@ -17,6 +17,7 @@ spec: 2026-10-16-gira-polish-finish@1
 - decided: Q3 versionamento → snapshot 0.1.0 agora by owner (2026-10-16, "Snapshot v0.1.0 (Recomendado)")
 - decided: Q4 escopo CLI → full surface by owner (2026-10-16, "Full surface (Recomendado)")
 - decided: Q5 extras → .nojekyll agora, CNAME deferred by owner (2026-10-16, ".nojekyll agora (Recomendado)")
+- approved: spec v1 by owner (2026-10-16, "Spec aprovada")
 
 ## Objective
 

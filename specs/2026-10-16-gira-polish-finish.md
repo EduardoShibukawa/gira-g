@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:9cd50bf8aea8c7e06ea3b3cdfbce02970f5631e712a8218656bc9b492d7c23fc
 ---
 
 # Gira polish finish (docs correctness + identity + CI hygiene)
