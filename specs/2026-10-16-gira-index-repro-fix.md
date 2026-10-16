@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:aad83ab298c401fe0663d06265a12ec56f6798230576aa40c1e59b4a3190f451
 ---
 
 # Gira index reproducibility fix
@@ -41,8 +43,12 @@ offline mode; docs site. No contract change to CLI envelopes.
 
 ## Decisions
 
-Bundle-docs over vendoring now (network blocked here); repin rejected
-without owner call. Details after question round.
+Bootstrap script + docs over vendoring now (fetch network-blocked here;
+owner decided 2026-10-16). Governance note in CLI `--view` help plus
+docs site (owner decided 2026-10-16). Repin to other remotes deferred
+until network allows; additive, safe. Rejected: vendoring repos in this
+session (cannot fetch), new extractors for site sources (H3, out of
+scope).
 
 ## Risks and constraints
 
@@ -61,10 +67,9 @@ skip: docs-only plus additive bootstrap; revert the commits.
 
 ## Open questions
 
-- Bundle format/location (cache dir tarball vs checked-in bootstrap script)?
-- Governance note placement (CLI help vs docs site)?
-- Defer repin decision until network allows (safe: additive)?
+None — bundle strategy, governance placement and repin deferral decided
+(see parent `decided:` entries, 2026-10-16).
 
 ## Revisions
 
-- v1: initial.
+- v1: initial; question-round answers folded pre-approval.
