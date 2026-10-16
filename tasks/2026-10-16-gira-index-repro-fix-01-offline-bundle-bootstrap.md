@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "59b8a5f"
 parent: 2026-10-16-gira-index-repro-fix
 spec: 2026-10-16-gira-index-repro-fix@1
 ---
@@ -30,7 +31,13 @@ Out of scope: vendored repo contents, repinning.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | parent B1 (`go test -race`, pre-children) | not run | | cited from parent; rerun in 04 |
-| AC1 | `bash -n` + `--help` | not run | | |
-| AC2 | index.md section present + `mise run docs:build` | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | parent B1 (`go test -race`, pre-children) | not run | a82e44b | cited from parent; rerun in 04 |
+| AC1 | `bash -n` + `--help` | pass | 59b8a5f | `bash -n` ok; `--help` prints usage + options |
+| AC2 | index.md section present + `mise run docs:build` | pass | 59b8a5f | Offline bundle section live; build SUCCESS (index.html + .nojekyll) |
+| V1 | diff read against AC1–AC2 | pass | 59b8a5f | 2 files, 71 insertions, no other touches |
+
+## Outcome
+
+Bootstrap script executable (`tools/index-bundle/bootstrap.sh`) with
+`--manifest/--cache-dir/--output/--skip-index/--help`; index.md gains
+the Offline bundle flow. No follow-ups.
