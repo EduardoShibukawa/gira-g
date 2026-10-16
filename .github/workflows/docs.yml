@@ -27,7 +27,7 @@ jobs:
 
       - name: Quarantine compliance check
         run: |
-          if grep -rE "(graphify|understand-anything)" website/docs website/src website/docusaurus.config.ts website/sidebars.ts; then
+          if grep -rEi "(^|[^a-z0-9_-])\.?/?bench([^a-z0-9_-]|$)|gira-bench|graphify|understand[-_ ]?anything|egonex-ai" website/ --exclude-dir=build --exclude-dir=node_modules --exclude-dir=.docusaurus; then
             echo "Quarantined comparative module reference found in docs site" >&2
             exit 1
           fi
