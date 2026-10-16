@@ -18,8 +18,8 @@ const IntraServiceMetadataKey = "go_intra_service"
 // field change so future caches and goldens can tell records apart.
 const IntraServiceSchema = "go-intra/1"
 
-// Discrete origins for intra-service facts (no continuous confidence,
-// unlike Graphify's confidence_score):
+// Discrete origins for intra-service facts (no continuous confidence
+// score, unlike symbol-graph prior art):
 //   - declared: identity a file declares (package clause, module path).
 //   - extracted: symbol, import or call site parsed deterministically
 //     from a Go AST.
