@@ -496,7 +496,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; tier defaults 500/1500/3500)")
 
 	fs.StringVar(&tier, "tier", "summary", "Context slice tier (summary|contracts|deep)")
-	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance)")
+	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance; governance keeps only Policy/Task/Skill neighbors)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")

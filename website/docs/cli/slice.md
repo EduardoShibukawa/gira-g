@@ -39,7 +39,12 @@ gira slice service:checkout --tier contracts --view architecture --index .gira/i
 
 - `--tier deep` renders the widest context; `summary` is the Change-maker
   default for a quick scan.
-- `--view governance` keeps only security/owner-relevant items.
+- `--view governance` keeps only `Policy`, `Task` and `Skill` neighbors
+  (see `isNodeAllowedInView` in `internal/slices/engine.go`). A focal
+  `Service`/`Contract` with no such neighbors renders with an empty
+  neighborhood — that is the filter working, not missing data. `full`
+  shows everything; `architecture` keeps Service/Contract/Infrastructure/
+  Library.
 
 ## See also
 
