@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "d6e6324"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 ---
@@ -34,12 +35,12 @@ CI pipeline (06), licenses (07).
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | repo clean before child |
-| AC1 | bun install && bun run build in website/ | not run | | |
-| AC2 | package.json scripts present | not run | | |
-| AC3 | docusaurus.config.ts valid | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC3 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | repo clean before child |
+| AC1 | bun install && bun run build in website/ | pass | d6e6324 | build/index.html exists, no external asset refs |
+| AC2 | package.json scripts present | pass | d6e6324 | build/start/serve present |
+| AC3 | docusaurus.config.ts valid | pass | d6e6324 | build passes with onBrokenLinks throw |
+| R1 | go test -race ./... (no Go change) | pass | d6e6324 | no Go touched |
+| V1 | diff read against AC1–AC3 | pass | d6e6324 | only website/ + .gitignore changed |
 
 ## Plan
 
@@ -51,4 +52,8 @@ CI pipeline (06), licenses (07).
 
 ## Outcome
 
-pending
+Scaffolded `website/` with Docusaurus v3 (package.json, docusaurus.config.ts,
+sidebars.ts, tsconfig.json, .css, intro.md). Built a clean static bundle
+(`build/index.html` exists, exit 0). Added `.gitignore` exclusions for
+`website/node_modules/`, `build/`, `.docusaurus/`. AC1–AC3, R1, V1 all pass
+at d6e6324. Search/config wiring deferred to child 05.
