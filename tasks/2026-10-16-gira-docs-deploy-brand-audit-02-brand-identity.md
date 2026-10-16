@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 parent: 2026-10-16-gira-docs-deploy-brand-audit
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 depends_on:

@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "a5b15ef"
 parent: 2026-10-16-gira-docs-deploy-brand-audit
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 ---
@@ -48,10 +49,10 @@ Out of scope: SVG brand assets, `custom.css`, Go code.
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
-| AC1 | docusaurus.config.ts url/baseUrl + README link check | not run | - | pending implementation |
-| AC2 | .github/workflows/docs.yml build + deploy-pages check | not run | - | pending implementation |
-| R1 | mise run docs:build + quarantine grep + validator | not run | - | pending implementation |
-| V1 | diff + gira impact --from-diff review against AC1–AC2 | not run | - | pending implementation |
+| AC1 | docusaurus.config.ts url/baseUrl + README link check | pass | a5b15ef | url=https://eduardoshibukawa.github.io, baseUrl=/gira-g/, README linked |
+| AC2 | .github/workflows/docs.yml build + deploy-pages check | pass | a5b15ef | docs-build (upload-pages-artifact@v3) + docs-deploy (deploy-pages@v4) configured |
+| R1 | mise run docs:build + quarantine grep + validator | pass | a5b15ef | docs:build exit 0; quarantine grep exit 1 (empty); go test -race exit 0; validate.js exit 0 |
+| V1 | diff + gira impact --from-diff review against AC1–AC2 | pass | a5b15ef | gira impact --from-diff targets service:job:docs-build, library:actions/upload-artifact, policy:readme |
 
 ## Plan
 
@@ -59,3 +60,12 @@ Out of scope: SVG brand assets, `custom.css`, Go code.
 2. Update `.github/workflows/docs.yml` with `workflow_dispatch`, `actions/upload-pages-artifact@v3`, and `docs-deploy` job (`actions/deploy-pages@v4`).
 3. Add the published Docs Site link to `README.md` under `## Documentação`.
 4. Verify with `mise run docs:build`, canonical quarantine grep, `bin/gira impact --from-diff`, and `node tools/validate/validate.js`.
+
+## Outcome
+
+Delivered at commit `a5b15ef`:
+- Configured `url: 'https://eduardoshibukawa.github.io'` and `baseUrl: '/gira-g/'` in `website/docusaurus.config.ts` with `onBrokenLinks: 'throw'` intact.
+- Upgraded `.github/workflows/docs.yml` with `workflow_dispatch`, `actions/upload-pages-artifact@v3` (`path: website/build/`) in `docs-build`, and a dedicated `docs-deploy` job (`needs: docs-build`, `pages: write`, `id-token: write`, `concurrency: pages`, `environment: github-pages`, `actions/deploy-pages@v4` on `main` push / `workflow_dispatch`).
+- Added the published Docs Site link (`https://eduardoshibukawa.github.io/gira-g/`) at the top of `## Documentação` in `README.md`.
+- Verified via `mise run docs:build`, canonical quarantine grep, `mise exec -- go test -race ./...`, `bin/gira impact --from-diff`, and `node tools/validate/validate.js`.
+
