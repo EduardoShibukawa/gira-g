@@ -1,0 +1,118 @@
+{
+  "schema_version": "1.0.0",
+  "target_system": "opentelemetry-demo",
+  "nodes": [
+    {
+      "id": "contract:CartService",
+      "kind": "Contract",
+      "name": "CartService",
+      "evidence": []
+    },
+    {
+      "id": "service:cart",
+      "kind": "Service",
+      "name": "cart",
+      "evidence": []
+    },
+    {
+      "id": "service:checkout",
+      "kind": "Service",
+      "name": "checkout",
+      "evidence": []
+    },
+    {
+      "id": "service:frontend",
+      "kind": "Service",
+      "name": "frontend",
+      "evidence": []
+    },
+    {
+      "id": "service:valkey-cart",
+      "kind": "Service",
+      "name": "valkey-cart",
+      "evidence": []
+    }
+  ],
+  "relationships": [
+    {
+      "id": "rel-cart-accesses-valkey-cart",
+      "source_id": "service:cart",
+      "target_id": "service:valkey-cart",
+      "verb": "accesses",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "c0ffee0000000000000000000000000000000000",
+            "path": "compose.yaml",
+            "start_line": 80,
+            "end_line": 80
+          },
+          "origin": "extracted",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "rel-cart-provides-cartservice",
+      "source_id": "service:cart",
+      "target_id": "contract:CartService",
+      "verb": "provides",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "c0ffee0000000000000000000000000000000000",
+            "path": "src/cart/src/Program.cs",
+            "start_line": 12,
+            "end_line": 12
+          },
+          "origin": "extracted",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "rel-checkout-consumes-cartservice",
+      "source_id": "service:checkout",
+      "target_id": "contract:CartService",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "c0ffee0000000000000000000000000000000000",
+            "path": "src/checkout/main.go",
+            "start_line": 157,
+            "end_line": 157
+          },
+          "origin": "extracted",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "rel-frontend-consumes-checkout",
+      "source_id": "service:frontend",
+      "target_id": "service:checkout",
+      "verb": "consumes",
+      "evidence": [
+        {
+          "locator": {
+            "repo": "opentelemetry-demo",
+            "commit_sha": "c0ffee0000000000000000000000000000000000",
+            "path": "compose.yaml",
+            "start_line": 253,
+            "end_line": 253
+          },
+          "origin": "extracted",
+          "status": "current",
+          "discovered_at": "2026-01-01T00:00:00Z"
+        }
+      ]
+    }
+  ]
+}
