@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: sha256:fa9d4cfee08da2dd9a56a37ff3cfb5a564e754603474eed88b2d9e4e5240bbb5
 ---
 
 # GIRA single-service docs (single-repo first-class + doc humano/agente)

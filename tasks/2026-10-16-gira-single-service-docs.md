@@ -11,6 +11,7 @@ spec: 2026-10-16-gira-single-service-docs@1
 
 - tier: heavy (H1: product calls em granularidade/formato/zero-config; H3: manifest/indexer→slices→CLI/MCP; H5: quatro frentes)
 - confirmed: heavy by owner (2026-10-16, "sim")
+- approved: spec v1 by owner (2026-10-16, "ok")
 
 ## Objective
 
