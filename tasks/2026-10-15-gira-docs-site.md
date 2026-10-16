@@ -45,14 +45,13 @@ Build a static documentation website for the `gira` CLI using Docusaurus, coveri
 
 ## Plan
 
-Decompose into ordered children:
-1. Scaffold Docusaurus project (website/)
-2. Content: Concepts
-3. Content: CLI Reference
-4. Content: Guides
-5. Navigation and search
-6. Build pipeline (mise task + CI)
-7. Licenses and quarantine compliance
+1. 2026-10-15-gira-docs-site-01-scaffold (no deps)
+2. 2026-10-15-gira-docs-site-02-concepts (deps: 01)
+3. 2026-10-15-gira-docs-site-03-cli-reference (deps: 01)
+4. 2026-10-15-gira-docs-site-04-guides (deps: 02, 03)
+5. 2026-10-15-gira-docs-site-05-navigation-search (deps: 02, 03, 04)
+6. 2026-10-15-gira-docs-site-06-build-pipeline (deps: 01)
+7. 2026-10-15-gira-docs-site-07-licenses-quarantine (deps: 05, 06)
 
 ## Review
 
