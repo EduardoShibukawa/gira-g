@@ -3,7 +3,7 @@ schema: task/1
 tier: heavy
 status: accepted
 spec: gira-evidence-gate@2
-verified_at: "02bf776"
+verified_at: "11645f9"
 ---
 
 # Evidence & gate hardening (Gallon L1/L2/L3 + token honesty)
@@ -19,6 +19,7 @@ verified_at: "02bf776"
 - approved: spec v2 by owner (2026-10-16, promotion point + retention/GC policy closure anchored to skills-release 04)
 - spec-version: v1 → v2; unaffected: no AC/SC criteria changed
 - accepted: by owner (2026-10-14, "fix all aproe tudo de o accepted e continue fazendo tudo que pode" + "Acima + implementar E2")
+- accepted: by owner (2026-10-16, "verificar heavy hygiene em 11645f9")
 
 ## Objective
 
@@ -46,17 +47,17 @@ Out of scope:
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + bench + validator before children | pass | 0a35b64 | root 15 pkgs ok, bench ok, validator pass (recorded in 01/B1) |
-| SC1 | `go test ./internal/eval -run SCL1ArtifactVerified` + CLI/MCP wiring | pass | 02bf776 | canonical 6-field preimage + N3 verify-default shares eval frozen-input rule; --artifact-verified flag, fingerprint printed, stdout re-derives |
-| SC2 | `go test ./internal/eval -run SCL2ControlSample` + honesty + CLI/MCP wiring | pass | 02bf776 | plug both sides, ControlTotal.Validate, CLI blind round, MCP rejects inconsistent + N5 format-validator doc-line |
-| SC3 | `go test ./internal/eval -run SCL3TaxonomyRegister` + honesty + CLI/MCP wiring | pass | 02bf776 | repro exists + N1 exact header match (---/ID survive) + N2 truncated/empty/dup fail closed; --expect-content reads path |
-| SC4 | `go test ./internal/tokens -run SCTokenHonesty` + MCP wiring | pass | 02bf776 | net math, quarantine, no len/4; MCP mixed unmeasured (unchanged since a389d21) |
-| SC5 | `go test ./internal/gate -run SCGateLint` + strictness + CLI/MCP wiring | pass | 02bf776 | sealed/drift/ABANDON hold; CI warn-only + N4 status preserved; strict fails closed locally |
-| SC6 | I1/I2 + race root+bench + validator + E0 guard | pass | 02bf776 | race/bench/validator green, EndToEnd pass, R82.4/P90.3/S100/D100 unchanged, FullCorpus R83.8/P89.1 reported; taxonomy in digest, unknown→silent |
-| AC1 | SC1–SC6 integrated | pass | 02bf776 | all SC rows pass at the integrated head |
-| R1 | `go test -race ./...` (root, integrated head) | pass | 02bf776 | 16 pkgs ok, incl. EndToEnd published+perturbed |
-| R2 | `go test -race ./...` (bench/) | pass | 02bf776 | layer0/1/2/quarantine ok |
-| R3 | `node tools/validate/validate.js` | pass | 02bf776 | manifest-integrity + artifact-records pass |
-| V1 | integrated diff 0a35b64..HEAD read + fresh-context reviews + residual re-lint | pass | 02bf776 | additive only (own epic + 18b9af4 CI slash-fix, not ours); no GT/model/paid/push issues; F1–F11 + N1–N5 fixed below |
+| SC1 | `go test ./internal/eval -run SCL1ArtifactVerified` + CLI/MCP wiring | pass | 11645f9 | canonical 6-field preimage + N3 verify-default shares eval frozen-input rule; --artifact-verified flag, fingerprint printed, stdout re-derives |
+| SC2 | `go test ./internal/eval -run SCL2ControlSample` + honesty + CLI/MCP wiring | pass | 11645f9 | plug both sides, ControlTotal.Validate, CLI blind round, MCP rejects inconsistent + N5 format-validator doc-line |
+| SC3 | `go test ./internal/eval -run SCL3TaxonomyRegister` + honesty + CLI/MCP wiring | pass | 11645f9 | repro exists + N1 exact header match (---/ID survive) + N2 truncated/empty/dup fail closed; --expect-content reads path |
+| SC4 | `go test ./internal/tokens -run SCTokenHonesty` + MCP wiring | pass | 11645f9 | net math, quarantine, no len/4; MCP mixed unmeasured (unchanged since a389d21) |
+| SC5 | `go test ./internal/gate -run SCGateLint` + strictness + CLI/MCP wiring | pass | 11645f9 | sealed/drift/ABANDON hold; CI warn-only + N4 status preserved; strict fails closed locally |
+| SC6 | I1/I2 + race root+bench + validator + E0 guard | pass | 11645f9 | race/bench/validator green, EndToEnd pass, R82.4/P90.3/S100/D100 unchanged, FullCorpus R83.8/P89.1 reported; taxonomy in digest, unknown→silent |
+| AC1 | SC1–SC6 integrated | pass | 11645f9 | all SC rows pass at the integrated head |
+| R1 | `go test -race ./...` (root, integrated head) | pass | 11645f9 | 16 pkgs ok, incl. EndToEnd published+perturbed |
+| R2 | `go test -race ./...` (bench/) | pass | 11645f9 | layer0/1/2/quarantine ok |
+| R3 | `node tools/validate/validate.js` | pass | 11645f9 | manifest-integrity + artifact-records pass |
+| V1 | integrated diff 0a35b64..HEAD read + fresh-context reviews + residual re-lint | pass | 11645f9 | additive only (own epic + 18b9af4 CI slash-fix, not ours); no GT/model/paid/push issues; F1–F11 + N1–N5 fixed below |
 
 ## Plan
 
@@ -86,6 +87,8 @@ Children are created at `@1` after approval, in dependency order. Each one is te
 - [N3] (minor, SC1) `verify` default fingerprint disagrees with `eval` when `gira.yaml` present → fixed in 3e5f7f4 (shared frozen-input rule; TestCLI_VerifyDefaultRederivesEval)
 - [N4] (minor, SC5) CI warn-only drops status (`Status: ""`) → fixed in 3e5f7f4 (status threaded through fail(); strictness test asserts preserved status)
 - [N5] (minor, SC2) MCP `get_control_total` mints format-validated reports without derivation → fixed in be772bf (tool description: format validation only; derivation lives in `gira eval --control-total`)
+
+- Review at 11645f9 against spec v2: no additional findings; SC1–SC6, R1–R3 and V1 rerun pass at 11645f9. Strict-mode promotion and register GC remain future work gated per Decision (Q8/Q9, skills-release 04) and are not executed in this commit.
 
 ## Checkpoint
 

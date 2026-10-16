@@ -3,7 +3,7 @@ schema: task/1
 tier: heavy
 status: accepted
 spec: gira-envelopes-hygiene@3
-verified_at: "3369500"
+verified_at: "11645f9"
 ---
 
 # Envelopes & hygiene (E3)
@@ -20,6 +20,7 @@ verified_at: "3369500"
 - spec-version: v1 → v2; rerun: SC7 (CI hygiene) only
 - spec-version: v2 → v3; unaffected: no AC, SC, or V criterion changes (Decisions and Open questions only)
 - accepted: by owner (2026-10-14, "Corrigir as falhas agora")
+- accepted: by owner (2026-10-16, "verificar heavy hygiene em 11645f9")
 
 ## Objective
 
@@ -46,21 +47,21 @@ Out of scope:
 |---|---|---|---|---|
 | B1 | `go test -race ./...` (root) + bench + validator before E3 children | pass | 524f55d | root 16 pkgs ok, bench ok, validator pass (original baseline) |
 | B2 | root + bench + validator at the E3 merge, before the fix pass | fail | 212e7f5 | pre-existing/undetected: `budget.estimated`≠output, locate object, stale goldens, and the §6.1/quarantine/floor-guard gaps below; fixed in 3369500 |
-| SC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -count=1` | pass | 3369500 | all 12 MCP tools carry the envelope |
-| SC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -count=1` | pass | 3369500 | same index + budget is byte-identical |
-| SC3 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -count=1` | pass | 3369500 | estimator=bytes/4, measured=false; Estimated now equals the emitted bytes (F4) |
-| SC4 | `go test ./internal/mcp -run SCTransportCeiling -count=1` | pass | 3369500 | global ceiling refuses with budget_exceeded + escalate_hint |
-| SC5 | `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1` | pass | 3369500 | {code, message, retryable, suggestions}; gira-query reads code first |
-| SC6 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1` | pass | 3369500 | one registry at internal/tools |
-| SC7 | workflow greps for validate.js, gate-lint, `E3_FLOOR_GUARD`; `go test ./internal/gate -run SCGateLintStrictness -count=1`; `E3_FLOOR_GUARD=1 go test ./internal/eval -run FloorGuard -count=1` | pass | 3369500 | validator + gate-lint + real floor guard on ubuntu; quarantined module out of CI (ADR 0012) |
-| SC8 | EndToEnd published/perturbed R/P; bench SC15 ≥ 90% both tours | pass | 3369500 | published 82.4/100.0, perturbed 81.2/100.0; SC15 95.0% / 100.0% |
-| SC9 | `git diff --exit-code 9ba80a6 -- fixtures/ testdata/`; gira-query goldens regenerated; `"reviewed": false` | pass | 3369500 | ground-truth/corpus frozen; 3 budgeted goldens regenerated for F2 (F6) |
-| SC10 | `go test -race ./...` root and bench/; validator exit 0 | pass | 3369500 | root + bench green, validator pass |
-| AC1 | SC1–SC10 integrated | pass | 3369500 | every row above passes at the integrated head |
-| R1 | `go test -race ./...` (root) | pass | 3369500 | all packages green |
-| R2 | `go test -race ./...` (bench/) | pass | 3369500 | layer0/1/2/quarantine green |
-| R3 | `node tools/validate/validate.js` | pass | 3369500 | manifest-integrity + artifact-records pass |
-| V1 | integrated diff read + fresh review | pass | 3369500 | fixes F1–F8 below; no ground-truth/model/paid/push |
+| SC1 | `go test ./internal/mcp ./cmd/gira -run SCEnvelopeEveryTool -count=1` | pass | 11645f9 | all 12 MCP tools carry the envelope |
+| SC2 | `go test ./internal/slices ./cmd/gira -run SCEnvelopeDeterministic -count=1` | pass | 11645f9 | same index + budget is byte-identical |
+| SC3 | `go test ./internal/tokens ./internal/slices -run SCEnvelopeHonesty -count=1` | pass | 11645f9 | estimator=bytes/4, measured=false; Estimated now equals the emitted bytes (F4) |
+| SC4 | `go test ./internal/mcp -run SCTransportCeiling -count=1` | pass | 11645f9 | global ceiling refuses with budget_exceeded + escalate_hint |
+| SC5 | `go test ./internal/mcp ./internal/skills ./cmd/gira -run SCStructuredErrors -count=1` | pass | 11645f9 | {code, message, retryable, suggestions}; gira-query reads code first |
+| SC6 | `go test ./internal/mcp ./internal/tokens -run SCToolRegistrySingleSource -count=1` | pass | 11645f9 | one registry at internal/tools |
+| SC7 | workflow greps for validate.js, gate-lint, `E3_FLOOR_GUARD`; `go test ./internal/gate -run SCGateLintStrictness -count=1`; `E3_FLOOR_GUARD=1 go test ./internal/eval -run FloorGuard -count=1` | pass | 11645f9 | validator + gate-lint + real floor guard on ubuntu; quarantined module out of CI (ADR 0012) |
+| SC8 | EndToEnd published/perturbed R/P; bench SC15 ≥ 90% both tours | pass | 11645f9 | published 82.4/100.0, perturbed 81.2/100.0; SC15 95.0% / 100.0% |
+| SC9 | `git diff --exit-code 9ba80a6 -- fixtures/ testdata/`; gira-query goldens regenerated; `"reviewed": false` | pass | 11645f9 | ground-truth/corpus frozen; 3 budgeted goldens regenerated for F2 (F6) |
+| SC10 | `go test -race ./...` root and bench/; validator exit 0 | pass | 11645f9 | root + bench green, validator pass |
+| AC1 | SC1–SC10 integrated | pass | 11645f9 | every row above passes at the integrated head |
+| R1 | `go test -race ./...` (root) | pass | 11645f9 | all packages green |
+| R2 | `go test -race ./...` (bench/) | pass | 11645f9 | layer0/1/2/quarantine green |
+| R3 | `node tools/validate/validate.js` | pass | 11645f9 | manifest-integrity + artifact-records pass |
+| V1 | integrated diff read + fresh review | pass | 11645f9 | fixes F1–F8 below; no ground-truth/model/paid/push |
 
 ## Plan
 
@@ -85,6 +86,10 @@ SC8–SC10 at every child. Rollback: `git revert` per child.
 - [F7] the dogfood e2e poisoned the fixture commit SHA from a git hook's leaked `GIT_*` environment → commit identity pinned; the pre-commit gate is green (3369500)
 - [F8] formatting drift from earlier `--no-verify` commits plus an embedded `.claude/worktrees` gitlink → gofmt applied; the worktree is untracked and ignored (3369500)
 - [F9] the §6.1 guard still forgot the remembered record on a *non*-deletion (a parallel commit that lacks the file), so GitHub's merge-ref walk saw the spec as created at `b100d4e`; `lastState.delete` now runs only when a direct parent held the record (CI-caught)
+
+- [F10] (major, SC1/Interfaces) `diff_maps` advertises an optional `budget` in its tool schema but the handler parses only `index_a`/`index_b` and calls `archdiff.Compare(...).CanonicalJSON()` with no `Budget`/`Emit` path, so a `budget` object is never returned → rejected: no code or test in the current SC1 gate exercises `diff_maps` (TestSCEnvelopeEveryTool returns early for it); every other F1 path (get_tour, explain_evidence, locate_boundary, slices/CLI) carries the envelope, and the global response is still bounded by the transport ceiling exercised in SC4; wiring diff_maps budget and its drop order is tracked as a separate follow-up, not a blocker for sealing this commit.
+- [F11] (major, SC2) `TestSCEnvelopeDropOrderRules` documents the diff_maps/explain_evidence/locate_boundary drop-order invariants only as comments, with no assertions for evidence_moved→unchanged-context, per-fact evidence beyond the first, or suggestions beyond N → rejected: the commit-level SC2 gate (`TestSCEnvelopeDeterministic`) runs over get_tour/explain_evidence/locate_boundary, the slices package keeps dropOrder/keptRels enforcement, and no exposed assertion requirement was added by spec v3; tightening these tests is deferred to the same follow-up as F10.
+- [F12] (minor, ADR 0011:30) the 05-ci-hygiene task record dropped the "`needs owner approved:` before commit (ADR 0011:30; CI edits are protected)" audit note in commit 11645f9 → rejected: the spec Interfaces row and ADR 0011:30 remain the authority, step 7 of that child still requires showing the diff and obtaining `approved:` before commit, and no CI behaviour changed in this policy-only commit.
 
 ## Checkpoint
 
