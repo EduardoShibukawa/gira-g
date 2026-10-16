@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: active
+status: verified
+verified_at: "56c1212"
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 ---
 
@@ -52,17 +53,25 @@ SC1–SC6 as defined in `specs/2026-10-16-gira-docs-deploy-brand-audit.md`.
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
-| B3 | mise exec -- go test -race ./... (baseline) | not run | 41781d9 | pending child/parent execution |
-| SC1 | hosting-config (docusaurus.config.ts url/baseUrl + README link) | not run | - | pending child 01 |
-| SC2 | pages-workflow (.github/workflows/docs.yml build + deploy-pages) | not run | - | pending child 01 |
-| SC3 | brand-assets (logo.svg, favicon.svg, gira-social-card.svg Helio-Graph) | not run | - | pending child 02 |
-| SC4 | theme-palette (custom.css Solar Graph light/dark) | not run | - | pending child 02 |
-| SC5 | gira-dogfood-audit (index, locate, slice, explain, impact, diff, skills) | not run | - | pending child 03 |
-| SC6 | nfr-gates (docs:build, go test -race, quarantine grep, validator) | not run | - | pending child 03 |
-| R1 | integrated regression suite (go test -race + docs:build + validator) | not run | - | pending parent verification |
-| V1 | self-review + adversarial review against SC1–SC6 | not run | - | pending parent verification |
+| B3 | mise exec -- go test -race ./... (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
+| SC1 | hosting-config (docusaurus.config.ts url/baseUrl + README link) | pass | 56c1212 | url=https://eduardoshibukawa.github.io, baseUrl=/gira-g/, README linked |
+| SC2 | pages-workflow (.github/workflows/docs.yml build + deploy-pages) | pass | 56c1212 | docs.yml has docs-build + docs-deploy with deploy-pages@v4 |
+| SC3 | brand-assets (logo.svg, favicon.svg, gira-social-card.svg Helio-Graph) | pass | 56c1212 | logo.svg (4.4KB), favicon.svg (1.4KB), gira-social-card.svg (7.6KB), 0 <text> in logo/favicon |
+| SC4 | theme-palette (custom.css Solar Graph light/dark) | pass | 56c1212 | custom.css Solar Graph palette (#b45309 light / #f59e0b dark) |
+| SC5 | gira-dogfood-audit (index, locate, slice, explain, impact, diff, skills) | pass | 56c1212 | skills check (3 hosts), index, locate, slice, explain, impact, diff pass |
+| SC6 | nfr-gates (docs:build, go test -race, quarantine grep, validator) | pass | 56c1212 | docs:build exit 0, go test -race exit 0, quarantine grep exit 1 (0 matches), validator exit 0 |
+| R1 | integrated regression suite (go test -race + docs:build + validator) | pass | 56c1212 | full regression suite, docs:build, go test -race, and validator pass cleanly |
+| V1 | self-review + adversarial review against SC1–SC6 | pass | 56c1212 | adversarial review passed against SC1–SC6, zero findings |
 
 ## Review
 
-Pending child implementation and fresh-context adversarial review per `.agents/skills/work/review.md`.
+- Fresh-context adversarial review against spec v1: PASS, zero findings. All SC1–SC6 verified directly against implementation and git diff `41781d9..HEAD`. No Go behavior touched, no protected skills touched, clean quarantine scan, validator exit 0.
+
+## Outcome
+
+Delivered all three production-readiness frentes (b, c, d) across 3 standard child tasks, verified at commit `56c1212`:
+- **Frente (b) Hosting & Deploy:** Configured `website/docusaurus.config.ts` (`url: 'https://eduardoshibukawa.github.io'`, `baseUrl: '/gira-g/'`), upgraded `.github/workflows/docs.yml` with `workflow_dispatch`, `actions/upload-pages-artifact@v3` and `docs-deploy` job (`actions/deploy-pages@v4`), and linked the published Docs Site in `README.md`.
+- **Frente (c) Brand & Visual Identity:** Replaced placeholder SVGs with definitive **Helio-Graph** pure-vector assets (`logo.svg`, 16x16-optimized `favicon.svg`, `gira-social-card.svg`, each `< 8 KB`, zero external font dependencies) and aligned `website/src/css/custom.css` with the **Solar Graph** theme palette (`#b45309` light / `#f59e0b` dark).
+- **Frente (d) Dogfooding Audit & NFRs:** Audited `gira skills manifest` and `skills check` across all 3 hosts (`agents`, `claude`, `cursor`); indexed baseline and HEAD with `bin/gira index`; verified `locate`, `slice --tier summary`, `explain`, `impact --from-diff`, and `diff` (7 added nodes, 30 added edges, 0 contract regressions); passed `mise run docs:build`, canonical quarantine grep (0 matches), `mise exec -- go test -race ./...`, and `node tools/validate/validate.js`.
+
 
