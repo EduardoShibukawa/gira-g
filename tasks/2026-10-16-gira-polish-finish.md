@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: active
+status: verified
+verified_at: "5b0962b"
 spec: 2026-10-16-gira-polish-finish@1
 ---
 
@@ -45,17 +46,27 @@ SC1–SC6 from the spec.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | not run | | before any child |
-| B2 | mise run docs:build (baseline) | not run | | before any child |
-| SC1 | docs-correctness greps + flag review | not run | | |
-| SC2 | full-surface pages + exit codes | not run | | |
-| SC3 | sidebar single Export + build + search tuning | not run | | |
-| SC4 | identity + versions.json + build/.nojekyll | not run | | |
-| SC5 | CI grep + frozen-lockfile + THIRD_PARTY | not run | | |
-| SC6 | go test -race + validator + quarantine grep | not run | | |
-| R1 | integrated build + go test + validator | not run | | |
-| V1 | integrated diff read against SC1–SC6 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 8419f77 | pre-child, exit 0 |
+| B2 | mise run docs:build (baseline) | pass | 8419f77 | pre-child, same website tree, exit 0 |
+| SC1 | docs-correctness greps + flag review | pass | 5b0962b | --service/--contract/ADR refs empty |
+| SC2 | full-surface pages + exit codes | pass | 5b0962b | 6 new pages, 12/12 with exit codes |
+| SC3 | sidebar single Export + build + search tuning | pass | 5b0962b | build exit 0, indexBlog false |
+| SC4 | identity + versions.json + build/.nojekyll | pass | 5b0962b | real org/project, 0.1.0, .nojekyll ships |
+| SC5 | CI grep + frozen-lockfile + THIRD_PARTY | pass | 5b0962b | canonical pattern, empty run, six entries |
+| SC6 | go test -race + validator + quarantine grep | pass | 5b0962b | suite pass under mise exec, validator 0 |
+| R1 | integrated build + go test + validator | pass | 5b0962b | bare go-test failure was mise-shim env only, pass under mise exec |
+| V1 | integrated diff read against SC1–SC6 | pass | 5b0962b | review completed, no findings |
 
 ## Review
 
-skip: runs after child 03 is verified
+- Fresh-context adversarial review (prompt per review.md): PASS, no
+  findings. All SC1–SC6 verified against `cmd/gira/main.go` flags and
+  canonical quarantine regex; zero Go files touched; validator exit 0.
+
+## Outcome
+
+All 3 children verified at `@1`. Integrated head `5b0962b`: docs
+examples use real flags, full CLI surface documented with exit codes,
+single Export nav, real org/project identity, `0.1.0` snapshot,
+canonical quarantine grep, frozen docs install, complete notices.
+Awaiting owner acceptance.
