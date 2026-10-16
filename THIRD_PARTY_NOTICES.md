@@ -37,3 +37,18 @@ pinned versions):
 
 Full license texts for each module are available in the Go module cache and
 in each module's source repository.
+
+## Documentation website (build-time only)
+
+The `website/` Docusaurus site uses the following JavaScript packages at
+build time only (they are not shipped with the `gira` binary):
+
+- `@docusaurus/core` (MIT)
+- `@docusaurus/preset-classic` (MIT)
+- `@easyops-cn/docusaurus-search-local` (MIT)
+- `@mdx-js/react` (MIT)
+- `prism-react-renderer` (MIT)
+- React (MIT)
+
+Docusaurus upstream: https://github.com/facebook/docusaurus (MIT, with CC-BY
+documentation). Full license texts ship under `website/node_modules/`.
