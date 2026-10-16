@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "b01ef62"
 parent: 2026-10-16-gira-polish-finish
 spec: 2026-10-16-gira-polish-finish@1
 ---
@@ -39,11 +40,11 @@ Out of scope: org/project identity, versioning, CI files, notices.
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 8419f77 | pre-edit, exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 8419f77 | pre-edit, same website tree as badf4db build |
-| AC1 | flag greps + serve.md link check | not run | | |
-| AC2 | six new pages + exit-code grep | not run | | |
-| AC3 | sidebar read + docs:build + search config | not run | | |
-| R1 | mise run docs:build + validator | not run | | |
-| V1 | diff read against AC1–AC3 | not run | | |
+| AC1 | flag greps + serve.md link check | pass | b01ef62 | --service/--contract empty, ADR ref removed |
+| AC2 | six new pages + exit-code grep | pass | b01ef62 | 12/12 cli pages with Exit codes |
+| AC3 | sidebar read + docs:build + search config | pass | b01ef62 | single Export, build exit 0, indexBlog false |
+| R1 | mise run docs:build + validator | pass | b01ef62 | both exit 0 |
+| V1 | diff read against AC1–AC3 | pass | b01ef62 | 15 files, no Go/CI touched |
 
 ## Plan
 
@@ -51,3 +52,9 @@ Out of scope: org/project identity, versioning, CI files, notices.
 2. Write six new `cli/*.md` pages with exit codes; add exit codes
    to existing pages.
 3. Dedup Export in `sidebars.ts`; set `indexBlog: false`; build.
+
+## Outcome
+
+Delivered at `b01ef62`: real flag examples, six new CLI pages with
+exit codes, exit codes on all 12 CLI pages, dead ADR ref removed,
+single Export nav, search tuning. No Go/CI changes.
