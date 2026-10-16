@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "46821c1"
 spec: 2026-10-16-gira-index-repro-fix@1
 ---
@@ -15,6 +15,7 @@ spec: 2026-10-16-gira-index-repro-fix@1
 - decided: bundle strategy → bootstrap script + docs, no vendored binaries, by owner (2026-10-16, "Bootstrap script")
 - decided: governance note → CLI `--view` help plus docs site, by owner (2026-10-16, "Help + docs")
 - approved: spec v1 by owner (2026-10-16, question-round answers folded pre-approval)
+- accepted: by owner (2026-10-16, "aceito")
 
 ## Objective
 
