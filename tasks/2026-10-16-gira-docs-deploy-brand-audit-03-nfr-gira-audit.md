@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: verified
+verified_at: "4aef216"
 parent: 2026-10-16-gira-docs-deploy-brand-audit
 spec: 2026-10-16-gira-docs-deploy-brand-audit@1
 depends_on:
@@ -52,10 +53,10 @@ Out of scope: Modifying protected `.agents/skills/work` or
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 41781d9 | pre-edit baseline exit 0 |
-| AC1 | gira dogfooding audit (index/locate/slice/explain/impact/diff/skills) | not run | - | pending execution |
-| AC2 | NFR gates (docs:build, go test -race, quarantine grep, validator) | not run | - | pending execution |
-| R1 | full regression suite + golangci-lint --new-from-rev=origin/main | not run | - | pending execution |
-| V1 | audit output and git diff review against AC1–AC2 | not run | - | pending execution |
+| AC1 | gira dogfooding audit (index/locate/slice/explain/impact/diff/skills) | pass | 4aef216 | skills manifest & check pass across agents/claude/cursor; index/locate/slice/explain/impact/diff verified |
+| AC2 | NFR gates (docs:build, go test -race, quarantine grep, validator) | pass | 4aef216 | docs:build exit 0 (index.html + .nojekyll); quarantine grep exit 1 (0 matches); go test -race exit 0; validator exit 0 |
+| R1 | full regression suite + golangci-lint --new-from-rev=origin/main | pass | 4aef216 | go test -race exit 0 across all pkgs; golangci-lint zero new issues |
+| V1 | audit output and git diff review against AC1–AC2 | pass | 4aef216 | diff confirms 7 added nodes, 30 added edges, 0 contract breaks |
 
 ## Plan
 
@@ -63,3 +64,18 @@ Out of scope: Modifying protected `.agents/skills/work` or
 2. Index baseline (`origin/main`) and current `HEAD` of `gira-g` via `bin/gira index`, then run `locate`, `slice --tier summary`, `explain`, `impact --from-diff origin/main..HEAD`, and `diff`.
 3. Run `mise run docs:build`, `mise exec -- go test -race ./...`, canonical quarantine grep on `website/`, and `mise exec -- golangci-lint run --new-from-rev=origin/main`.
 4. Record all verification evidence in `tasks/2026-10-16-gira-docs-deploy-brand-audit-03-nfr-gira-audit.md` and validate with `node tools/validate/validate.js`.
+
+## Outcome
+
+- Executed full dogfooding audit of `gira-g` at commit `4aef216`:
+  - `bin/gira skills manifest --format json` exited `0`, validating the 6-skill embedded catalog (`gira-arch-diff`, `gira-context`, `gira-explain-component`, `gira-impact-briefing`, `gira-query`, `gira-tour`).
+  - `bin/gira skills install` and `bin/gira skills check` executed cleanly in an isolated test host directory for `--host agents`, `--host claude`, and `--host cursor`, confirming `in_sync: true` and `ok: true` on all 3 hosts.
+  - Indexed baseline (`origin/main` at `41781d9`) and current HEAD (`4aef216`): baseline indexed 300 nodes and 703 relationships; HEAD indexed 307 nodes and 733 relationships.
+  - Tested `locate docs-deploy`, `slice "policy:2026-10-16-gira-docs-deploy-brand-audit" --tier summary`, `explain --node "service:job:docs-deploy"`, `impact --from-diff origin/main..HEAD`, and `diff` between base and head indexes: confirmed 7 added nodes, 30 added edges, 0 removed edges, 0 changed contracts, 0 newly unsupported boundaries, and zero broken envelopes.
+- Verified all integrated NFR gates:
+  - `mise run docs:build` exited `0` with `baseUrl: '/gira-g/'` and produced `website/build/index.html` and `website/build/.nojekyll`.
+  - Canonical case-insensitive quarantine grep on `website/` returned exit `1` (zero matches).
+  - `mise exec -- go test -race ./...` exited `0` across all Go packages.
+  - `mise exec -- golangci-lint run --new-from-rev=origin/main` exited `0` with zero new issues.
+  - `node tools/validate/validate.js` exited `0`.
+
