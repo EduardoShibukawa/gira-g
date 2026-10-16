@@ -1,0 +1,37 @@
+---
+sidebar_position: 5
+---
+
+# `gira export` and `gira view`
+
+## `gira export`
+
+Export a standalone architecture document (single-file Markdown or HTML).
+
+```text
+gira export [--format md|html] [--output <path>] [--index <path>]
+```
+
+| Flag | Description |
+|---|---|
+| `--format` | `md` (default) or `html` |
+| `--output` | Path to write the export |
+| `--index` | Path to `macro-map.json` |
+
+## `gira view`
+
+Export HTML and open it in the default browser.
+
+```text
+gira view [--output <dir>] [--index <path>] [--no-open]
+```
+
+| Flag | Description |
+|---|---|
+| `--output` | Directory for the generated HTML |
+| `--index` | Path to `macro-map.json` |
+| `--no-open` | Generate without launching the browser |
+
+## See also
+
+- [Export guide](../guides/export.md)
