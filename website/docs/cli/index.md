@@ -43,6 +43,27 @@ gira index
 gira index --output .gira/index.json --offline
 ```
 
+## Offline bundle
+
+`--offline` needs the pinned commits already cached (default
+`$XDG_CACHE_HOME/gira/repos` or `~/.cache/gira/repos`, override with
+`--cache-dir`). Where network allows, bootstrap once, then copy the
+cache directory plus the emitted `macro-map.json` to blocked machines:
+
+```bash
+# Needs network once: populates cache, then re-indexes offline
+tools/index-bundle/bootstrap.sh --output /tmp/dogfood-bundle/macro-map.json
+
+# On the blocked machine (bundle copied over)
+gira index --offline --cache-dir /tmp/dogfood-bundle/cache \
+  --output .gira/index.json
+```
+
+Without a warm cache, offline fails with `commit <sha> missing from
+... cache`; online without access fails fetching the manifest remotes
+(e.g. the `gira.yaml` dogfood pins). Pass `--skip-index` to only warm
+the cache without re-indexing.
+
 ## Notes
 
 - Run before any other command that needs `--index`.
