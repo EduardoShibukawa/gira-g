@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: completed
+status: verified
+verified_at: "d5f774e"
 spec: 2026-10-15-gira-docs-site@1
 ---
 
@@ -39,16 +40,16 @@ Build a static documentation website for the `gira` CLI using Docusaurus, coveri
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | before any E6 edit |
-| SC1 | scaffold + build/index.html | pass | 2a3e753 | clean build, exit 0 |
-| SC2 | every CLI cmd + CONTEXT term has a page | pass | 2a3e753 | 6 cli pages (map alias) + 14 concepts |
-| SC3 | sidebar ordered + no broken links | pass | 2a3e753 | build onBrokenLinks throw, passes |
-| SC4 | local search plugin | pass | 2a3e753 | @easyops configured |
-| SC5 | mise run docs:build + CI workflow valid | pass | 2a3e753 | YAML parses, exit 0 |
-| SC6 | quarantine grep | pass | 2a3e753 | exit 1 (empty) |
-| SC7 | go test -race + validator | pass | ecfd6e1 | exit 0 |
-| SC8 | Docusaurus in THIRD_PARTY_NOTICES | pass | 2a3e753 | entry present |
-| R1 | integrated build + go test | pass | ecfd6e1 | |
-| V1 | parent diff read vs spec | pass | 2a3e753 | review completed, 5 findings resolved |
+| SC1 | scaffold + build/index.html | pass | d5f774e | clean build, exit 0 |
+| SC2 | every CLI cmd + CONTEXT term has a page | pass | d5f774e | 6 cli pages (map alias) + 14 concepts |
+| SC3 | sidebar ordered + no broken links | pass | d5f774e | build onBrokenLinks throw, passes |
+| SC4 | local search plugin | pass | d5f774e | @easyops configured |
+| SC5 | mise run docs:build + CI workflow valid | pass | d5f774e | YAML parses, exit 0 |
+| SC6 | quarantine grep | pass | d5f774e | exit 1 (empty) |
+| SC7 | go test -race + validator | pass | d5f774e | exit 0 |
+| SC8 | Docusaurus in THIRD_PARTY_NOTICES | pass | d5f774e | entry present |
+| R1 | integrated build + go test | pass | d5f774e | |
+| V1 | parent diff read vs spec | pass | d5f774e | review completed, 5 findings resolved |
 
 ## Plan
 
