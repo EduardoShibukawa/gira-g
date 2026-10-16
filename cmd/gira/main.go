@@ -177,6 +177,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "tour":
 		return runTour(rest, stdout, stderr)
 
+	case "doc":
+		return runDoc(rest, stdout, stderr)
+
 	case "diff":
 		return runDiff(rest, stdout, stderr)
 
@@ -230,6 +233,7 @@ Commands:
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
+  doc <service-id> --format md|json [--index <path>] [--checkout <dir>] [--budget <tokens>] Single-service onboarding doc (md human, json agent; same facts)
   diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
   skills install --host claude|cursor|agents [--dir <project>] [--index <path>] Generate GIRA skills and MCP registration for a host
   skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
@@ -1016,6 +1020,66 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	_, err = stdout.Write(data)
 	return err
+}
+
+// runDoc renders the F3 single-service onboarding document: Markdown for
+// humans, a budget-envelope JSON for agents, both from the same engine doc
+// so they cover the same facts. The MVP requires an explicit --format
+// (spec open question); `html` is a follow-up and errors honestly.
+func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("doc", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var indexPath, format, checkout string
+	var budget int
+
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&format, "format", "", "Output format (md|json; explicit in the MVP)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	all := append(positionals, fs.Args()...)
+	if len(all) == 0 {
+		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> --format md|json [--index <path>]")
+	}
+
+	var docFormat slices.Format
+	switch strings.ToLower(format) {
+	case "md", "markdown":
+		docFormat = slices.FormatMarkdown
+	case "json":
+		docFormat = slices.FormatJSON
+	case "html":
+		return fmt.Errorf("unsupported doc format %q: html is a follow-up (md + json cover the MVP)", format)
+	case "":
+		return fmt.Errorf("missing --format: the MVP requires an explicit --format md|json. Usage: gira doc <service-id> --format md|json [--index <path>]")
+	default:
+		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json", format)
+	}
+
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+
+	engine := slices.NewEngine(mm)
+	doc, err := engine.GetDoc(all[0])
+	if err != nil {
+		return err
+	}
+
+	data, err := doc.Emit(docFormat, budget)
+	if err != nil {
+		return err
+	}
+	humanBanner(stderr, mm, checkout, docFormat)
+	return emitHuman(stdout, data, docFormat)
 }
 
 func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
