@@ -48,6 +48,7 @@ gira serve                          # Servidor MCP stdio para agentes
 
 ## Documentação
 
+- [Docs Site](https://eduardoshibukawa.github.io/gira-g/) — documentação completa, guias e referência da CLI
 - [**CONTEXT.md**](CONTEXT.md): Glossário e definições de domínio do projeto.
 - [**docs/adr/**](docs/adr/): Architectural Decision Records (ADRs).
 - [**docs/prior-art/**](docs/prior-art/): Análises de referências técnicas (Graphify, Understand Anything).
