@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "7d46ad9"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 depends_on: [2026-10-15-gira-docs-site-01-scaffold]
@@ -32,11 +33,11 @@ Out of scope: hosting/deploy (artifact only in v1), content (02–05).
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | |
-| AC1 | mise run docs:build (clean checkout) | not run | | |
-| AC2 | yamllint/actionlint on workflow file | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | |
+| AC1 | mise run docs:build (clean checkout) | pass | 7d46ad9 | build success |
+| AC2 | YAML parse of docs.yml | pass | 7d46ad9 | valid YAML |
+| R1 | go test -race ./... (no Go change) | pass | 7d46ad9 | no Go touched |
+| V1 | diff read against AC1–AC2 | pass | 7d46ad9 | only mise.toml + workflow |
 
 ## Plan
 
@@ -47,4 +48,6 @@ Out of scope: hosting/deploy (artifact only in v1), content (02–05).
 
 ## Outcome
 
-pending
+Added `docs:build` mise task (`cd website && bun install && bun run build`) and
+`.github/workflows/docs.yml` with quarantine grep step and artifact upload.
+mise task runs green; workflow YAML parses. AC1–AC2, R1, V1 pass at 7d46ad9.
