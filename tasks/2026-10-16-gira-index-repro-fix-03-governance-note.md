@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "267388d"
 parent: 2026-10-16-gira-index-repro-fix
 spec: 2026-10-16-gira-index-repro-fix@1
 ---
@@ -30,7 +31,11 @@ Out of scope: engine behavior change, MCP surface.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | parent B1 (`go test -race`, pre-children) | not run | | cited from parent; rerun in 04 |
-| AC1 | help text + package tests | not run | | |
-| AC2 | slice.md note + docs build | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | parent B1 (`go test -race`, pre-children) | not run | a82e44b | cited from parent; rerun in 04 |
+| AC1 | help text + package tests | pass | 267388d | `--view` help states filter; slices + cmd/gira pkgs ok; lint clean |
+| AC2 | slice.md note + docs build | pass | 267388d | note matches help; build SUCCESS |
+| V1 | diff read against AC1–AC2 | pass | 267388d | 2 files, 7 insertions, 2 deletions |
+
+## Outcome
+
+Governance filter documented in help and site. No follow-ups.
