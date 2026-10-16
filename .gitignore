@@ -31,3 +31,8 @@ run.log
 # GoReleaser snapshot outputs and generated release manifest
 dist/
 skills-manifest.json
+
+# Docs website
+website/node_modules/
+website/build/
+website/.docusaurus/
