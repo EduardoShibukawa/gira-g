@@ -1,0 +1,25 @@
+{
+  "_note": "service:internal is fallback minting noise; see follow-up on minting discipline",
+  "nodes": [
+    {
+      "id": "library:example.com/acme/internal/slices",
+      "kind": "Library",
+      "origin_detail": "intra-module"
+    },
+    {
+      "id": "service:acme",
+      "kind": "Service"
+    },
+    {
+      "id": "service:internal",
+      "kind": "Service"
+    }
+  ],
+  "rels": [
+    {
+      "source": "service:acme",
+      "target": "library:example.com/acme/internal/slices",
+      "verb": "imports"
+    }
+  ]
+}

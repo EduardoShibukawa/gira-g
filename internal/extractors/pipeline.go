@@ -185,6 +185,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	// Cross-file resolution step (ADR 0013).
 	resolve(&resolution{nodes: nodeMap, rels: relMap, hints: hints})
 	annotateUnknownJoins(unsupportedMap, unsupportedContent, nodeMap)
+	markIntraModuleLibraries(nodeMap, files)
 
 	// Transfer nodes to MacroMap
 	for _, n := range nodeMap {
@@ -236,6 +237,68 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	sort.Strings(macroMap.UnsupportedConstructs)
 
 	return macroMap, nil
+}
+
+// markIntraModuleLibraries tags Library nodes whose import path lives inside
+// one of the Go modules declared by go.mod files in the same file batch.
+// Single-repo fidelity: own packages keep the Library kind (CONTEXT.md) but
+// become distinguishable from external dependencies via
+// metadata["origin_detail"] = "intra-module". Matching is scoped to the
+// repositories cited in each node's own evidence.
+func markIntraModuleLibraries(nodeMap map[string]*domain.Node, files []TargetFile) {
+	modulesByRepo := make(map[string]map[string]bool)
+	for _, f := range files {
+		if !strings.HasSuffix(f.Path, "go.mod") {
+			continue
+		}
+		for _, line := range strings.Split(string(f.Content), "\n") {
+			trimmed := strings.TrimSpace(line)
+			if !strings.HasPrefix(trimmed, "module ") {
+				continue
+			}
+			fields := strings.Fields(trimmed)
+			if len(fields) < 2 {
+				continue
+			}
+			if modulesByRepo[f.Repo] == nil {
+				modulesByRepo[f.Repo] = make(map[string]bool)
+			}
+			modulesByRepo[f.Repo][strings.Trim(fields[1], `"`)] = true
+			break
+		}
+	}
+	if len(modulesByRepo) == 0 {
+		return
+	}
+	for _, n := range nodeMap {
+		if n.Kind != domain.NodeLibrary {
+			continue
+		}
+		importPath, _ := n.Metadata["import_path"].(string)
+		if importPath == "" {
+			continue
+		}
+		repos := make(map[string]bool)
+		for _, ev := range n.Evidence {
+			if ev.Locator.Repo != "" {
+				repos[ev.Locator.Repo] = true
+			}
+		}
+		for repo := range repos {
+			for module := range modulesByRepo[repo] {
+				if importPath == module || strings.HasPrefix(importPath, module+"/") {
+					if n.Metadata == nil {
+						n.Metadata = make(map[string]any)
+					}
+					n.Metadata["origin_detail"] = "intra-module"
+					break
+				}
+			}
+			if n.Metadata["origin_detail"] == "intra-module" {
+				break
+			}
+		}
+	}
 }
 
 // OriginDeclaredOverride identifies provenance from declarative YAML overlays.
