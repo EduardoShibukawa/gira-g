@@ -18,6 +18,13 @@ gira export [--format md|html] [--output <path>] [--index <path>]
 | `--output` | Path to write the export |
 | `--index` | Path to `macro-map.json` |
 
+## Output
+
+- `gira export`: a single self-contained file (Markdown or HTML) written to
+  `--output` (or stdout). HTML has no external asset reference.
+- `gira view`: an HTML file in `--output` (default temp dir), then launched in
+  the default browser unless `--no-open`.
+
 ## `gira view`
 
 Export HTML and open it in the default browser.

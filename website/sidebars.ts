@@ -31,11 +31,11 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'CLI Reference',
       items: [
-        'cli/index',
+        'cli/map',
         'cli/impact',
         'cli/slice',
+        'cli/index',
         'cli/serve',
-        'cli/export',
       ],
     },
     {
@@ -47,6 +47,11 @@ const sidebars: SidebarsConfig = {
         'guides/evidence-inspection',
         'guides/export',
       ],
+    },
+    {
+      type: 'doc',
+      id: 'cli/export',
+      label: 'Export',
     },
   ],
 };

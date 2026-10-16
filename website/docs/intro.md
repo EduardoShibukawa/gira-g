@@ -30,4 +30,4 @@ gira impact --service <service-id>
 gira slice --contract <contract-id>
 ```
 
-See the Guides section for a complete walkthrough (coming soon).
+See the [Guides](./guides/quickstart) for a complete walkthrough.

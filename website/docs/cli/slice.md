@@ -23,6 +23,18 @@ gira slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--inde
 | `--format` | string | `json` | `json` \| `md` |
 | `--index` | string | — | Path to `macro-map.json` |
 
+## Output (JSON)
+
+A bounded context slice containing the selected Components, Contracts, and
+relationships at the requested tier and view, with evidence locators and
+derived token estimate.
+
+## Example
+
+```bash
+gira slice service:checkout --tier contracts --view architecture --index .gira/index.json
+```
+
 ## Notes
 
 - `--tier deep` renders the widest context; `summary` is the Change-maker

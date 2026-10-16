@@ -24,6 +24,18 @@ gira serve mcp [--index <path>]
 |---|---|
 | `--index` | Path to `macro-map.json` |
 
+## Output
+
+The adapter speaks MCP over stdio. On stdout it emits protocol frames; logs go
+to stderr. It exposes `impact`, `slice`, `locate`, and `explain`-style tools
+derived from the index.
+
+## Example
+
+```bash
+gira serve mcp --index .gira/index.json
+```
+
 ## Notes
 
 - `gira` never runs a persistent web server daemon (ADR 0008). The only

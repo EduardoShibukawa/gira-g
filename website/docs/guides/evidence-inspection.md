@@ -13,11 +13,14 @@ derivation tier.
 - **extracted** — from deterministic code parsers (Extractors)
 - **inferred** — from naming or env-wiring heuristics, surfaced honestly
 
-## Staleness
+## Freshness
 
-Nodes/edges cite the commit they were extracted from. If that commit differs
-from the indexing commit, the item is flagged `stale`. When a local checkout is
-provided, the local HEAD is also compared.
+Nodes/edges cite the commit they were extracted from. Freshness is one of:
+
+- `current` — locator matches the indexing commit
+- `stale` — locator commit differs from the indexing commit (or the local
+  HEAD, when a checkout is provided)
+- `unverified` — the commit could not be resolved
 
 ## `gira explain`
 
