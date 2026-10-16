@@ -1,9 +1,10 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 parent: 2026-10-16-gira-single-service-docs
 spec: 2026-10-16-gira-single-service-docs@1
+verified_at: "8994ece"
 ---
 
 # Single-service docs 01: `init` gera manifest + indexa (F1/SC1)
@@ -27,7 +28,11 @@ Out of scope: F2–F4.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | `go test ./cmd/gira/` antes da mudança | not run | | |
-| AC1 | `go test ./cmd/gira -run SCSingleInit` | not run | | |
-| R1 | `go test -race ./...` (root) | not run | | |
-| V1 | diff lido contra AC1 | not run | | |
+| B1 | `go test ./cmd/gira/` antes da mudança | fail | 03f12f9 | pré-existente: TestSC11GiraQueryFallbackGolden (impact-checkout golden difere); sem relação com 01, nenhuma edição feita ainda |
+| AC1 | `go test ./cmd/gira -run SCSingleInit` | pass | 8994ece | gera manifest pinando HEAD + indexa; reuso sem --force; repin com --force; erro honesto fora de git |
+| R1 | `go test -race` nos pacotes afetados (`cmd/gira manifest indexer gitcache`) | fail | 8994ece | baseline: B1; única falha é TestSC11, a mesma de B1. manifest/indexer/gitcache passam. Full-root tem ainda 2 falhas fora do escopo deste child (build de internal/extractors quebrado pelo worktree sujo do outro task + cosign ausente no env) — ficam para o R1 integrado do parent (SC5) |
+| V1 | diff lido contra AC1 | pass | 8994ece | `init` novo + refactor puro de `runIndex` para `indexManifest`; `runServe` intacto; build OK |
+
+## Outcome
+
+`gira init [dir] [--force]` gera `gira.yaml` (repo `local`, HEAD pinado) e indexa pelo mesmo caminho de `index`. Sem regressão nos pacotes afetados além da falha pré-existente B1.
