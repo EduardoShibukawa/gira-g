@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "d5f774e"
 spec: 2026-10-15-gira-docs-site@1
 ---
@@ -19,6 +19,7 @@ spec: 2026-10-15-gira-docs-site@1
 - approved: spec v1 by owner (2026-10-15, "ok")
 - divergence: SC2/F2: spec listed "gira map", "gira serve", "gira index" as CLI commands; the CLI exposes `gira index`, `gira serve mcp`, `gira export/view`. Docs document real commands and add `website/docs/cli/map.md` (alias page) so SC2's per-command page holds without claiming a non-existent flag set.
 - approved: exception accept real CLI command names + cli/map.md placeholder by owner (2026-10-15, "1")
+- accepted: by owner (2026-10-15, "sim")
 
 ## Objective
 
