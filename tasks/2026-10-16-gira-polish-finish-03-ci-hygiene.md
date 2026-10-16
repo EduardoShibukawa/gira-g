@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "8742187"
 parent: 2026-10-16-gira-polish-finish
 spec: 2026-10-16-gira-polish-finish@1
 depends_on: [2026-10-16-gira-polish-finish-02-identity-version]
@@ -37,11 +38,16 @@ Out of scope: docs prose, versioning, Go code.
 |----|-------|--------|-----|------|
 | B1 | node tools/validate/validate.js (baseline) | pass | 8419f77 | pre-edit, exit 0 |
 | B2 | mise run docs:build (baseline) | pass | 8419f77 | pre-edit |
-| AC1 | grep pattern review + empty run | not run | | |
-| AC2 | mise task read + notices entries | not run | | |
-| R1 | validator + quarantine grep empty | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| AC1 | grep pattern review + empty run | pass | 8742187 | canonical alternatives, exit 1 empty; sanity matches all tokens |
+| AC2 | mise task read + notices entries | pass | 8742187 | frozen-lockfile, six entries added |
+| R1 | validator + quarantine grep empty | pass | 8742187 | both pass |
+| V1 | diff read against AC1–AC2 | pass | 8742187 | 3 files, no Go/docs touched |
 
 ## Plan
 
 skip: two-file mechanical change, order fixed by AC1→AC2
+
+## Outcome
+
+Delivered at `8742187`: canonical quarantine grep, frozen docs
+install, six missing license entries. No Go/docs changes.
