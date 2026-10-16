@@ -1,8 +1,9 @@
 ---
 schema: task/1
 tier: heavy
-status: active
+status: accepted
 spec: 2026-10-16-gira-single-service-docs@1
+verified_at: "4d39e54"
 ---
 
 # GIRA single-service docs (INTENT: single-repo first-class + doc humano/agente)
@@ -12,6 +13,7 @@ spec: 2026-10-16-gira-single-service-docs@1
 - tier: heavy (H1: product calls em granularidade/formato/zero-config; H3: manifest/indexer→slices→CLI/MCP; H5: quatro frentes)
 - confirmed: heavy by owner (2026-10-16, "sim")
 - approved: spec v1 by owner (2026-10-16, "ok")
+- accepted: by owner (2026-10-16, "vamos de 1")
 
 ## Objective
 
@@ -29,15 +31,15 @@ SC1–SC5 do spec.
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
 | B1 | `go test -race ./...` (root) antes de qualquer child | pass | c31c69c | base limpa registrada pelo child 02: `go test ./...` root verde (17 pkgs, exit 0); falha TestSC11 vista pelo child 01 em 03f12f9 não reproduz (transiente; child 03 confirma) |
-| B2 | `go test -race ./...` (bench/) antes de qualquer child | fail | b959a04 | pré-existentes registrados pelo child 04, sem relação com o stack: layer0 `TestAdaptersGolden` (falta `testdata/gira/macro-map.json`); quarantine `TestNoReferencesFromGuardedFiles` (2 violações: docs.yml + `intra_service.go` Graphify) |
-| B3 | `go test ./internal/eval -run EndToEnd -v` antes (R/P published/perturbed) | not run | | nenhum child registrou eval na base; âncora é a tabela Problem de `specs/gira-recall-joins.md` (published hermetic 82.4/90.3) — head comparado direto contra ela em B3-equivalente |
-| SC1 | `go test ./cmd/gira -run SCSingleInit` | pass | dbdc40a | init gera manifest pinando HEAD + indexa; `--force` repina; erro honesto fora de git |
-| SC2 | `go test ./internal/slices -run SCDocIntraService` | pass | dbdc40a | entrypoints/símbolos/contratos/imports intra-vs-externos com locator `[repo@commit:path#Lstart-Lend]`; helper.py segue em Known Unknowns com unknown joins preservados |
-| SC3 | `go test ./cmd/gira -run SCDocParity` | pass | dbdc40a | md cobre todo ID/locator do json (`docFactTokens`); repeats byte-identical; golden plain `doc-acme.md`; banner só em stderr/md |
-| SC4 | `go test ./internal/slices -run SCDocBudget` + bench economy | pass | dbdc40a | envelope honesto (`bytes/4`, `measured:false`); `BenchmarkDocEconomy` mede raw/doc=0.10 (doc 9691B/2423tok vs raw cat 932B/233tok no fixture micro — medido, sem threshold; ver Review finding 2) |
-| SC5 | regressão integrada (B1+B2+B3 no head integrado, validator) | fail | dbdc40a | só pelo bench/: root `-race` verde, eval sem queda, validator pass; bench/ falha só nos pré-existentes de B2 (layer0 + quarantine docs.yml) — ver R1 |
-| R1 | `go test -race ./...` root+bench no head integrado | fail | dbdc40a | root: exit 0, 17 pkgs ok, NO-FAIL com `-race` (pass isolado). bench `-race`: layer1+layer2 ok; layer0 e quarantine falham identicamente a B2 (arquivos intocados pelo stack), MENOS 1 violação que o stack introduzia (`intra_service.go:22` Graphify, do child 02) — corrigida em dbdc40a; quarantine agora só acusa docs.yml |
-| V1 | diff integrado lido contra SC1–SC5 | pass | dbdc40a | lido c31c69c...dbdc40a: 02 (hints+resolve+engine intra) + 03 (runDoc+GetDoc/Emit/RenderMarkdown+golden) + 04 (get_doc MCP+budget/bench) + fix quarantine; `fixtures/ testdata/` intocados salvo 1 golden novo (`cmd/gira/testdata/human/doc-acme.md`); sem asserts enfraquecidos |
+| B2 | `go test ./...` (bench/) na base pré-children | fail | b959a04 | baseline real, registrada pelo child 04: layer0 `TestAdaptersGolden` (falta `testdata/gira/macro-map.json`) + quarantine `TestNoReferencesFromGuardedFiles` (docs.yml + `intra_service.go`). Ambas corrigidas em 04262da e re-verificadas verdes em SC5/R1 |
+| B3 | `go test ./internal/eval -run EndToEnd` na base 03f12f9 (worktree limpa pré-children) | pass | 03f12f9 | published hermetic recall 82.4 / precision 100.0 — âncora contra a qual o head foi comparado (sem queda) |
+| SC1 | `go test ./cmd/gira -run SCSingleInit` | pass | 4d39e54 | init gera manifest pinando HEAD + indexa; `--force` repina; erro honesto fora de git (re-rodado no head mergeado) |
+| SC2 | `go test ./internal/slices -run SCDocIntraService` | pass | 4d39e54 | entrypoints/símbolos/contratos/imports intra-vs-externos com locator `[repo@commit:path#Lstart-Lend]`; helper.py segue em Known Unknowns com unknown joins preservados (re-rodado no head mergeado) |
+| SC3 | `go test ./cmd/gira -run SCDocParity` | pass | 4d39e54 | md cobre todo ID/locator do json (`docFactTokens`); repeats byte-identical; golden plain `doc-acme.md`; banner só em stderr/md (re-rodado no head mergeado) |
+| SC4 | `go test ./internal/slices -run SCDocBudget` + bench economy | pass | 4d39e54 | envelope honesto (`bytes/4`, `measured:false`); `BenchmarkDocEconomy` mede raw/doc=0.10 (doc 9691B/2423tok vs raw cat 932B/233tok no fixture micro — medido, sem threshold; aceite do owner em 2026-10-16) |
+| SC5 | regressão integrada (B1+B2+B3 no head integrado, validator) | pass | 4d39e54 | root `-race` verde, bench/ verde (fix 04262da), eval sem queda (82.4/100.0 published, 81.2/100.0 perturbed vs 82.4/90.3 e 81.2/89.7), validator pass; `fixtures/ testdata/` intocados salvo goldens novos |
+| R1 | `go test -race ./...` root+bench no head integrado | pass | 4d39e54 | root exit 0 (17 pkgs; `TestSCSBOMAndCosign` precisou de cosign no env local via `mise use -g cosign@3.1.3`, verde em seguida); bench exit 0; CI da PR verde nos 3 OSes + validator |
+| V1 | diff integrado lido contra SC1–SC5 | pass | 4d39e54 | leitura integral c31c69c...dbdc40a no seal + delta 04262da relido (3 arquivos: fixture golden restaurada via `git add -f`, quarantine movido p/ `website/scripts/` sem enfraquecer o guard); `fixtures/ testdata/` intocados salvo goldens novos; sem asserts enfraquecidos |
 
 ## Plan
 
@@ -107,13 +109,4 @@ enfraquecidos, chutes). Lidos na íntegra: `internal/slices/doc.go`,
 
 ## Outcome
 
-Integrado em dbdc40a: SC1–SC4 passam no head; root `-race` verde (17 pkgs);
-eval sem queda vs a tabela ancorada; validator pass; `fixtures/ testdata/`
-intocados salvo o golden novo. Status segue `active` — só o owner aceita.
-Decisões do owner antes do merge: (a) bench/ segue vermelho nos 2
-pré-existentes de B2 (layer0 golden sem `testdata/gira/macro-map.json`;
-quarantine docs.yml) — mergear com bench vermelho ou corrigir fora deste
-stack; (b) Finding 2: aceitar a razão medida invertida como report honesto
-(Q5) ou pedir bench mais fundo (fixture própria) em follow-up; (c) ordem de
-merge: 01/spec/tasks estão na main local como commits não-pusheados
-f117473..c31c69c — o PR contra `origin/main` carrega o stack inteiro.
+Aceito pelo owner em 2026-10-16 ("vamos de 1"), mergeado em 4d39e54 (PR #16, CI verde nos 3 OSes + validator). Entregue: `gira init`, detalhe intra-serviço Go, `gira doc md|json`, MCP `get_doc`, budget honesto + bench economy (raw/doc=0.10 medido, aceite Q5). Follow-ups (fora deste epic): INTENT CLI-contracts (deferido "Depois"), polish do doc (`html`, `--format` default, snippet em `skills install`), dogfooding com corpus real para rever a economia.
