@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "5b5deab"
 parent: 2026-10-16-gira-index-repro-fix
 spec: 2026-10-16-gira-index-repro-fix@1
 ---
@@ -29,6 +30,10 @@ Out of scope: new extractors.
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | parent B1 (`go test -race`, pre-children) | not run | | cited from parent; rerun in 04 |
-| AC1 | section present + `mise run docs:build` | not run | | |
-| V1 | diff read against AC1 | not run | | |
+| B1 | parent B1 (`go test -race`, pre-children) | not run | a82e44b | cited from parent; rerun in 04 |
+| AC1 | section present + `mise run docs:build` | pass | 5b5deab | Unsupported-by-design section live; build SUCCESS |
+| V1 | diff read against AC1 | pass | 5b5deab | 1 file, 15 insertions |
+
+## Outcome
+
+Declaration shipped in extractor.md. No follow-ups.
