@@ -391,6 +391,25 @@ func (s *Server) getToolDefinitions() []ToolDefinition {
 			Enveloped: true,
 		},
 		{
+			Name:        "get_doc",
+			Description: "Single-service onboarding doc: entrypoints, symbols, provided/consumed contracts, imports, calls, run/test manifests, change dirs, tour, flows and known unknowns for a service. Same engine as `gira doc --format json`.",
+			InputSchema: InputSchema{
+				Type: "object",
+				Properties: map[string]PropertyDef{
+					"service_id": {
+						Type:        "string",
+						Description: "ID of the service to document (for example service:acme).",
+					},
+					"budget": {
+						Type:        "integer",
+						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+					},
+				},
+				Required: []string{"service_id"},
+			},
+			Enveloped: true,
+		},
+		{
 			Name:        "diff_maps",
 			Description: "Architecture diff between two index files: renamed, added and removed nodes, added and removed edges, changed contracts, newly unsupported paths, and (informational) moved evidence. Renames are detected from structure.",
 			InputSchema: InputSchema{
@@ -855,6 +874,32 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
 			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
+		}
+		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
+
+	case "get_doc":
+		var args struct {
+			ServiceID string `json:"service_id"`
+			Budget    int    `json:"budget"`
+		}
+		if len(params.Arguments) > 0 {
+			if err := json.Unmarshal(params.Arguments, &args); err != nil {
+				return errorResult(fmt.Sprintf("Invalid arguments for get_doc: %v", err))
+			}
+		}
+		if args.ServiceID == "" {
+			return errorResult("Missing required argument 'service_id'")
+		}
+		doc, err := s.Engine.GetDoc(args.ServiceID)
+		if err != nil {
+			return errorResult(fmt.Sprintf("Failed to get doc: %v", err))
+		}
+		out, err := doc.Emit(slices.FormatJSON, args.Budget)
+		if err != nil {
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
+			}
+			return errorResult(fmt.Sprintf("Failed to render doc: %v", err))
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 

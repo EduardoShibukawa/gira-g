@@ -13,6 +13,7 @@ var Registry = []Tool{
 	{Name: "get_impact_briefing", Description: "Get impact briefing for a target", Enveloped: true},
 	{Name: "get_pr_impact", Description: "Get PR impact analysis", Enveloped: true},
 	{Name: "get_tour", Description: "Deterministic guided reading tour", Enveloped: true},
+	{Name: "get_doc", Description: "Single-service onboarding doc, same engine as doc --format json", Enveloped: true},
 	{Name: "diff_maps", Description: "Architecture diff between two index files", Enveloped: true},
 	{Name: "get_context_slice", Description: "Retrieves a bounded context slice", Enveloped: true},
 	{Name: "explain_evidence", Description: "Inspects provenance and evidence", Enveloped: true},

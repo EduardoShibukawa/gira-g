@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/EduardoShibukawa/gira-g/internal/extractors"
+	"github.com/EduardoShibukawa/gira-g/internal/mcp"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/tokens"
 )
@@ -370,6 +371,87 @@ func TestSCDocUsageErrors(t *testing.T) {
 	}
 	if _, err := runCLI(t, "doc", "--format", "json", "--index", index); err == nil {
 		t.Errorf("expected error for missing service_id, got nil")
+	}
+}
+
+// SCDocMCPParity (F3 MCP): `get_doc` returns byte-identical bytes to
+// `doc --format json` — same engine, same facts/IDs — and carries the honest
+// budget envelope only when asked. Unknown services and a missing service_id
+// error honestly; a ceiling below the never-dropped parts refuses with
+// budget_exceeded instead of cutting mid-JSON.
+func TestSCDocMCPParity(t *testing.T) {
+	index := docFixtureIndex(t)
+	mm, err := loadIndex(index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := mcp.NewServer("gira", "test", slices.NewEngine(mm))
+
+	cliOut, err := runCLI(t, "doc", "service:acme", "--format", "json", "--index", index)
+	if err != nil {
+		t.Fatalf("doc json failed: %v", err)
+	}
+	text, isErr := mcpCall(t, server, "get_doc", map[string]any{"service_id": "service:acme"})
+	if isErr || text != string(cliOut) {
+		t.Fatalf("get_doc differs from the CLI doc json (isErr=%v)", isErr)
+	}
+
+	// Same facts: every fact ID the envelope carries parses, names the
+	// focal service, and shows up in the Markdown twin too.
+	var doc slices.Doc
+	if err := json.Unmarshal([]byte(text), &doc); err != nil {
+		t.Fatalf("get_doc output does not parse: %v", err)
+	}
+	if doc.ServiceID != "service:acme" {
+		t.Fatalf("get_doc service_id = %q, want service:acme", doc.ServiceID)
+	}
+	if len(doc.Intra.Entrypoints) == 0 || len(doc.Intra.Funcs) == 0 {
+		t.Fatalf("get_doc is missing the intra-service facts")
+	}
+	if doc.Budget != nil {
+		t.Fatalf("unbudgeted get_doc must carry no budget envelope, got %+v", doc.Budget)
+	}
+	mdOut, err := runCLI(t, "doc", "service:acme", "--format", "md", "--index", index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tok := range docFactTokens(&doc) {
+		if !strings.Contains(string(mdOut), tok) {
+			t.Errorf("md twin is missing the get_doc fact %q", tok)
+		}
+	}
+
+	// Budgeted call carries the honest envelope: limit echoed, estimated
+	// matching the emitted bytes under the bytes/4 convention.
+	limit := tokens.Estimate(cliOut) * 2
+	budgeted, isErr := mcpCall(t, server, "get_doc", map[string]any{"service_id": "service:acme", "budget": limit})
+	if isErr {
+		t.Fatalf("budgeted get_doc failed")
+	}
+	var bdoc struct {
+		ServiceID string         `json:"service_id"`
+		Budget    *slices.Budget `json:"budget"`
+	}
+	if err := json.Unmarshal([]byte(budgeted), &bdoc); err != nil {
+		t.Fatal(err)
+	}
+	if bdoc.Budget == nil {
+		t.Fatalf("budgeted get_doc carries no budget envelope")
+	}
+	if bdoc.Budget.Limit != limit || bdoc.Budget.Estimated != tokens.Estimate([]byte(budgeted)) {
+		t.Errorf("budget %+v, want limit %d estimated %d", *bdoc.Budget, limit, tokens.Estimate([]byte(budgeted)))
+	}
+
+	// Honest errors: unknown service, missing service_id, tight ceiling.
+	if _, isErr := mcpCall(t, server, "get_doc", map[string]any{"service_id": "service:nope"}); !isErr {
+		t.Errorf("expected error for unknown service, got success")
+	}
+	if _, isErr := mcpCall(t, server, "get_doc", map[string]any{}); !isErr {
+		t.Errorf("expected error for missing service_id, got success")
+	}
+	tight, isErr := mcpCall(t, server, "get_doc", map[string]any{"service_id": "service:acme", "budget": 5})
+	if !isErr || !strings.Contains(tight, "budget_exceeded") {
+		t.Errorf("expected budget_exceeded for a tight ceiling, got isErr=%v %q", isErr, tight)
 	}
 }
 
