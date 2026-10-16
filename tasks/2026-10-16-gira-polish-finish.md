@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: verified
+status: accepted
 verified_at: "5b0962b"
 spec: 2026-10-16-gira-polish-finish@1
 ---
@@ -19,6 +19,7 @@ spec: 2026-10-16-gira-polish-finish@1
 - decided: Q4 escopo CLI → full surface by owner (2026-10-16, "Full surface (Recomendado)")
 - decided: Q5 extras → .nojekyll agora, CNAME deferred by owner (2026-10-16, ".nojekyll agora (Recomendado)")
 - approved: spec v1 by owner (2026-10-16, "Spec aprovada")
+- accepted: by owner (2026-10-16, "Aceito")
 
 ## Objective
 
