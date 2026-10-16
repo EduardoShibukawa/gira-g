@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
+verified_at: "b29904b"
 parent: 2026-10-15-gira-docs-site
 spec: 2026-10-15-gira-docs-site@1
 depends_on: [2026-10-15-gira-docs-site-01-scaffold]
@@ -35,11 +36,11 @@ Out of scope: CLI reference (03), guides (04), ADRs/decisions (out of spec).
 
 | ID | Check | Result | Ref | Note |
 |----|-------|--------|-----|------|
-| B1 | node tools/validate/validate.js (baseline) | pass | HEAD | |
-| AC1 | grep CONTEXT.md terms vs website/docs/concepts/ | not run | | |
-| AC2 | content review: definitions, avoid lists, xrefs | not run | | |
-| R1 | go test -race ./... (no Go change) | not run | | |
-| V1 | diff read against AC1–AC2 | not run | | |
+| B1 | node tools/validate/validate.js (baseline) | pass | 3b01049 | repo clean before child |
+| AC1 | grep CONTEXT.md terms vs website/docs/concepts/ | pass | b29904b | 14 pages cover every term in CONTEXT.md Language |
+| AC2 | content review: definitions, avoid lists, xrefs | pass | b29904b | each page has definition, avoid list, related xrefs |
+| R1 | go test -race ./... (no Go change) | pass | b29904b | no Go touched |
+| V1 | diff read against AC1–AC2 | pass | b29904b | only concept pages added |
 
 ## Plan
 
@@ -49,4 +50,9 @@ Out of scope: CLI reference (03), guides (04), ADRs/decisions (out of spec).
 
 ## Outcome
 
-pending
+Added 14 concept pages in `website/docs/concepts/` covering every term in
+`CONTEXT.md` "Language" (Target System, Component, Service, Library,
+Infrastructure, Contract, Evidence Record, Macro Map, Extractor, Reference
+Corpus, Perturbed Variant, Change-maker, Impact Briefing, Impact Set). Each
+page has the definition, avoid list, and cross-references. Build passes;
+AC1/AC2/R1/V1 all pass at b29904b.
