@@ -23,6 +23,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/skills"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
+	"gopkg.in/yaml.v3"
 )
 
 // emitHuman writes a rendered human document. Markdown is styled only on a
@@ -158,6 +159,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "index":
 		return runIndex(rest, stdout, stderr)
 
+	case "init":
+		return runInit(rest, stdout, stderr)
+
 	case "serve":
 		return runServe(rest, stdin, stdout, stderr)
 
@@ -172,6 +176,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 
 	case "tour":
 		return runTour(rest, stdout, stderr)
+
+	case "doc":
+		return runDoc(rest, stdout, stderr)
 
 	case "diff":
 		return runDiff(rest, stdout, stderr)
@@ -219,12 +226,14 @@ Usage:
 
 Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
+  init [dir] [--force] [--output <path>] [--offline] [--cache-dir <dir>] Generate gira.yaml from a local repo (HEAD pinned) and index it
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--budget <tokens>] [--index <path>] Compute impact briefing for target component
   impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>] Impact briefing of the nodes a git diff touches
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
+  doc <service-id> --format md|json [--index <path>] [--checkout <dir>] [--budget <tokens>] Single-service onboarding doc (md human, json agent; same facts)
   diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
   skills install --host claude|cursor|agents [--dir <project>] [--index <path>] Generate GIRA skills and MCP registration for a host
   skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
@@ -340,6 +349,13 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
 	}
 
+	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, stdout)
+}
+
+// indexManifest builds the MacroMap from an already-parsed manifest and
+// persists it. It is the single indexing path shared by `index` (manifest
+// given) and `init` (manifest generated from a local checkout).
+func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offline bool, cacheDir string, stdout io.Writer) error {
 	// 2. Initialize CacheManager
 	cm, err := gitcache.NewCacheManager(cacheDir)
 	if err != nil {
@@ -382,6 +398,150 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, dest)
 	}
 
+	return nil
+}
+
+// runInit generates gira.yaml from a local git checkout (HEAD pinned) and
+// indexes it. It is the zero-config entry for a single service alone:
+// `gira init [dir]` writes the manifest only when absent (`--force` repins
+// the SHA), then runs the same indexing path as `gira index`. `index` itself
+// never writes manifests.
+func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("init", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var force bool
+	var outputPath string
+	var offline bool
+	var cacheDir string
+
+	fs.BoolVar(&force, "force", false, "Repin the manifest SHA to the local HEAD even when gira.yaml exists")
+	fs.StringVar(&outputPath, "output", "", "Path to write output macro-map.json")
+	fs.BoolVar(&offline, "offline", false, "Disable network egress and use local cache exclusively")
+	fs.StringVar(&cacheDir, "cache-dir", "", "Local repository cache directory")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	dir := "."
+	allPositionals := append(positionals, fs.Args()...)
+	if len(allPositionals) > 0 && strings.TrimSpace(allPositionals[0]) != "" {
+		dir = allPositionals[0]
+	}
+	absDir, err := filepath.Abs(dir)
+	if err != nil {
+		return fmt.Errorf("failed to resolve directory %q: %w", dir, err)
+	}
+
+	toplevel := gitToplevel(absDir)
+	if toplevel == "" {
+		return fmt.Errorf("not a git repository: %q (run 'git init' and commit first)", absDir)
+	}
+	head := gitHead(toplevel)
+	if head == "" {
+		return fmt.Errorf("failed to read HEAD of %q (no commits yet?)", toplevel)
+	}
+	if gitDirty(toplevel) {
+		fmt.Fprintf(stderr, "warning: worktree dirty; index reflects HEAD %s, not uncommitted changes\n", head)
+	}
+
+	manifestPath := filepath.Join(absDir, "gira.yaml")
+	if _, err := os.Stat(manifestPath); err == nil {
+		if force {
+			if err := repinLocalManifest(manifestPath, head); err != nil {
+				return err
+			}
+			fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
+		} else {
+			fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
+		}
+	} else {
+		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+			return err
+		}
+		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
+	}
+
+	m, err := manifest.ParseFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+	}
+
+	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, stdout)
+}
+
+func gitToplevel(dir string) string {
+	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func gitDirty(toplevel string) bool {
+	out, err := exec.Command("git", "-C", toplevel, "status", "--porcelain").Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) != ""
+}
+
+// writeLocalManifest generates a single-repository manifest pinning head.
+func writeLocalManifest(manifestPath, toplevel, head string) error {
+	name := filepath.Base(toplevel)
+	if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
+		name = "local-system"
+	}
+	m := &manifest.Manifest{
+		Version:      1,
+		TargetSystem: manifest.TargetSystemMeta{Name: name},
+		Repositories: []manifest.RepositoryDeclaration{
+			{
+				ID:        "local",
+				URL:       "file://" + filepath.ToSlash(toplevel),
+				SHA:       head,
+				PathScope: ".",
+			},
+		},
+	}
+	if err := m.Validate(); err != nil {
+		return fmt.Errorf("failed to build local manifest: %w", err)
+	}
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("failed to serialize local manifest: %w", err)
+	}
+	if err := os.WriteFile(manifestPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write manifest %s: %w", manifestPath, err)
+	}
+	return nil
+}
+
+// repinLocalManifest updates the SHA of a single-repository manifest to head,
+// keeping the target name, repo identity and overrides. Multi-repository
+// manifests are refused: init only manages manifests it can regenerate.
+func repinLocalManifest(manifestPath, head string) error {
+	m, err := manifest.ParseFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+	}
+	if len(m.Repositories) != 1 {
+		return fmt.Errorf("gira init --force only repins single-repository manifests (found %d repositories in %s)", len(m.Repositories), manifestPath)
+	}
+	m.Repositories[0].SHA = head
+	if err := m.Validate(); err != nil {
+		return fmt.Errorf("failed to validate repinned manifest: %w", err)
+	}
+	data, err := yaml.Marshal(m)
+	if err != nil {
+		return fmt.Errorf("failed to serialize repinned manifest: %w", err)
+	}
+	if err := os.WriteFile(manifestPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write manifest %s: %w", manifestPath, err)
+	}
 	return nil
 }
 
@@ -860,6 +1020,66 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	_, err = stdout.Write(data)
 	return err
+}
+
+// runDoc renders the F3 single-service onboarding document: Markdown for
+// humans, a budget-envelope JSON for agents, both from the same engine doc
+// so they cover the same facts. The MVP requires an explicit --format
+// (spec open question); `html` is a follow-up and errors honestly.
+func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("doc", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var indexPath, format, checkout string
+	var budget int
+
+	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
+	fs.StringVar(&format, "format", "", "Output format (md|json; explicit in the MVP)")
+	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	all := append(positionals, fs.Args()...)
+	if len(all) == 0 {
+		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> --format md|json [--index <path>]")
+	}
+
+	var docFormat slices.Format
+	switch strings.ToLower(format) {
+	case "md", "markdown":
+		docFormat = slices.FormatMarkdown
+	case "json":
+		docFormat = slices.FormatJSON
+	case "html":
+		return fmt.Errorf("unsupported doc format %q: html is a follow-up (md + json cover the MVP)", format)
+	case "":
+		return fmt.Errorf("missing --format: the MVP requires an explicit --format md|json. Usage: gira doc <service-id> --format md|json [--index <path>]")
+	default:
+		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json", format)
+	}
+
+	mm, err := loadIndex(indexPath)
+	if err != nil {
+		return fmt.Errorf("failed to load index: %w", err)
+	}
+
+	engine := slices.NewEngine(mm)
+	doc, err := engine.GetDoc(all[0])
+	if err != nil {
+		return err
+	}
+
+	data, err := doc.Emit(docFormat, budget)
+	if err != nil {
+		return err
+	}
+	humanBanner(stderr, mm, checkout, docFormat)
+	return emitHuman(stdout, data, docFormat)
 }
 
 func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {

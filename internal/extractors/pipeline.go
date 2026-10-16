@@ -183,7 +183,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	}
 
 	// Cross-file resolution step (ADR 0013).
-	resolve(&resolution{nodes: nodeMap, rels: relMap, hints: hints})
+	resolve(&resolution{nodes: nodeMap, rels: relMap, hints: hints, modules: goModulesByRepo(files), renamed: map[string]string{}})
 	annotateUnknownJoins(unsupportedMap, unsupportedContent, nodeMap)
 	markIntraModuleLibraries(nodeMap, files)
 

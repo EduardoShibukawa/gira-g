@@ -58,6 +58,25 @@ const (
 	// HintHTTPCall is a net/http request whose URL is field or variable Key plus
 	// the literal route Value ("" when the URL is the address alone).
 	HintHTTPCall HintKind = "http_call"
+	// HintGoPackage is one Go package clause: Key is the package name,
+	// Context the package directory.
+	HintGoPackage HintKind = "go_package"
+	// HintGoType is one top-level Go type declaration: Key is the type name,
+	// Value the shape (struct, interface, alias, other).
+	HintGoType HintKind = "go_type"
+	// HintGoFunc is one top-level Go func or method declaration: Key is the
+	// func name, Value the dereferenced receiver type ("" for a plain
+	// function), Mode "exported" or "unexported".
+	HintGoFunc HintKind = "go_func"
+	// HintGoImport is one Go import statement: Key the import path, Value
+	// the local name (explicit alias, or the derived base name).
+	HintGoImport HintKind = "go_import"
+	// HintGoCall is one Go call site: Key the enclosing func ("Recv.Name",
+	// "Name", or "" at file scope), Value the callee name as written, Ref
+	// the import path when the qualifier names an import ("" otherwise),
+	// Mode "pkg", "local", "bare" or "bare-dotimport" (a bare call in a
+	// file with dot-imports, never resolved across packages).
+	HintGoCall HintKind = "go_call"
 )
 
 // Hint is an internal resolution record an Extractor emits next to its facts.
@@ -90,6 +109,11 @@ type resolution struct {
 	nodes map[string]*domain.Node
 	rels  map[string]*domain.Relationship
 	hints []Hint
+	// modules is the go.mod module paths by repo, for import scope.
+	modules map[string][]string
+	// renamed maps a service ID to the compose service it was attributed
+	// to, so later steps attach facts to the surviving node.
+	renamed map[string]string
 }
 
 // resolve runs the cross-file resolution step. It is pure: it reads only the
@@ -120,6 +144,7 @@ func resolve(r *resolution) {
 	resolveHTTPCalls(r, w)
 	resolveEnvWiring(r, w)
 	pruneOrderingOnlyEdges(r)
+	resolveIntraService(r)
 }
 
 // pruneOrderingOnlyEdges drops service-consumes-service edges whose evidence
@@ -335,6 +360,9 @@ func attributeDockerfiles(r *resolution, env envScopes) {
 			continue
 		}
 		renameNode(r, from, h.Service)
+		if r.renamed != nil {
+			r.renamed[from] = h.Service
+		}
 		delete(produced, scopeKey(h.Locator.Repo, p))
 	}
 }

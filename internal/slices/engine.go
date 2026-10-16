@@ -961,6 +961,10 @@ func cloneNode(n domain.Node) domain.Node {
 		for k, v := range n.Metadata {
 			c.Metadata[k] = v
 		}
+		// The F2 intra-service detail is served only via GetIntraServiceDoc:
+		// it stays out of derived views so slices, briefings, budgets and
+		// query goldens keep their byte-stable envelopes.
+		delete(c.Metadata, domain.IntraServiceMetadataKey)
 	}
 	if n.Evidence != nil {
 		c.Evidence = make([]domain.EvidenceRecord, len(n.Evidence))

@@ -76,6 +76,7 @@ func (e *GoASTExtractor) Hints(ctx context.Context, file TargetFile) ([]Hint, er
 	}
 	g.packageVars(f)
 	g.clientFields(f)
+	g.fileSymbols(f)
 	for _, d := range f.Decls {
 		fd, ok := d.(*ast.FuncDecl)
 		if !ok || fd.Body == nil {
@@ -96,6 +97,10 @@ type goHints struct {
 	funcs   map[string]*ast.FuncDecl
 	fn      *ast.FuncDecl // enclosing function while visiting
 	out     []Hint
+	// hasDotImport reports whether the file dot-imports a package: bare
+	// calls then may come from another package, so the resolve step never
+	// resolves them across files.
+	hasDotImport bool
 }
 
 func (g *goHints) at(n ast.Node) domain.Locator {
@@ -306,6 +311,153 @@ func (g *goHints) clientFields(f *ast.File) {
 		}
 		return true
 	})
+}
+
+// goBuiltins is Go's universe scope: calls and conversions naming these are
+// language surface, never intra-service symbols, and are skipped outright.
+var goBuiltins = map[string]bool{
+	"append": true, "cap": true, "clear": true, "close": true,
+	"complex": true, "copy": true, "delete": true, "imag": true,
+	"len": true, "make": true, "max": true, "min": true, "new": true,
+	"panic": true, "print": true, "println": true, "real": true, "recover": true,
+	"any": true, "bool": true, "byte": true, "comparable": true,
+	"complex64": true, "complex128": true, "error": true,
+	"float32": true, "float64": true,
+	"int": true, "int8": true, "int16": true, "int32": true, "int64": true,
+	"rune": true, "string": true,
+	"uint": true, "uint8": true, "uint16": true, "uint32": true, "uint64": true,
+	"uintptr": true,
+}
+
+// fileSymbols records the intra-service inventory of one Go file (F2): the
+// package clause, every import statement, every top-level type and func, and
+// every call site with its enclosing func. Deterministic and model-free.
+func (g *goHints) fileSymbols(f *ast.File) {
+	g.add(Hint{Kind: HintGoPackage, Key: f.Name.Name}, f.Name)
+
+	for _, imp := range f.Imports {
+		name, p := importName(imp)
+		if name == "." {
+			g.hasDotImport = true
+		}
+		g.add(Hint{Kind: HintGoImport, Key: p, Value: name}, imp)
+	}
+
+	for _, d := range f.Decls {
+		switch t := d.(type) {
+		case *ast.FuncDecl:
+			mode := "unexported"
+			if t.Name.IsExported() {
+				mode = "exported"
+			}
+			g.add(Hint{Kind: HintGoFunc, Key: t.Name.Name, Value: recvTypeName(t.Recv), Mode: mode}, t.Name)
+			if t.Body != nil {
+				caller := callerName(t)
+				ast.Inspect(t.Body, func(n ast.Node) bool {
+					if call, ok := n.(*ast.CallExpr); ok {
+						g.symbolCall(call, caller)
+					}
+					return true
+				})
+			}
+		case *ast.GenDecl:
+			for _, spec := range t.Specs {
+				switch s := spec.(type) {
+				case *ast.TypeSpec:
+					g.add(Hint{Kind: HintGoType, Key: s.Name.Name, Value: string(goTypeKind(s))}, s.Name)
+				case *ast.ValueSpec:
+					if t.Tok != token.VAR {
+						continue
+					}
+					for _, v := range s.Values {
+						ast.Inspect(v, func(n ast.Node) bool {
+							if call, ok := n.(*ast.CallExpr); ok {
+								g.symbolCall(call, "")
+							}
+							return true
+						})
+					}
+				}
+			}
+		}
+	}
+}
+
+// callerName is the local reference of a func's enclosing scope:
+// "Recv.Name" for a method, "Name" for a plain function.
+func callerName(fd *ast.FuncDecl) string {
+	if recv := recvTypeName(fd.Recv); recv != "" {
+		return recv + "." + fd.Name.Name
+	}
+	return fd.Name.Name
+}
+
+// recvTypeName is the dereferenced receiver type name ("Server" for both
+// `s Server` and `s *Server[T]`), or "" for a plain function.
+func recvTypeName(recv *ast.FieldList) string {
+	if recv == nil || len(recv.List) == 0 {
+		return ""
+	}
+	return recvExprName(recv.List[0].Type)
+}
+
+func recvExprName(e ast.Expr) string {
+	switch t := e.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return recvExprName(t.X)
+	case *ast.SelectorExpr:
+		return t.Sel.Name
+	case *ast.IndexExpr:
+		return recvExprName(t.X)
+	case *ast.IndexListExpr:
+		return recvExprName(t.X)
+	}
+	return ""
+}
+
+// goTypeKind is the discrete shape of a type declaration: alias for
+// `type A = B`, else the underlying composite, else other.
+func goTypeKind(ts *ast.TypeSpec) domain.GoTypeKind {
+	if ts.Assign.IsValid() {
+		return domain.GoTypeAlias
+	}
+	switch ts.Type.(type) {
+	case *ast.StructType:
+		return domain.GoTypeStruct
+	case *ast.InterfaceType:
+		return domain.GoTypeInterface
+	}
+	return domain.GoTypeOther
+}
+
+// symbolCall records one call site: pkg-qualified (Ref carries the import
+// path), local-qualified, or bare. Builtins are language surface and
+// skipped; bare calls in dot-importing files are flagged so the resolve
+// step never resolves them across packages.
+func (g *goHints) symbolCall(call *ast.CallExpr, caller string) {
+	switch fn := call.Fun.(type) {
+	case *ast.SelectorExpr:
+		if id, ok := fn.X.(*ast.Ident); ok {
+			if p, isImport := g.imports[id.Name]; isImport {
+				g.add(Hint{Kind: HintGoCall, Key: caller, Value: fn.Sel.Name, Ref: p, Mode: "pkg"}, call)
+			} else {
+				g.add(Hint{Kind: HintGoCall, Key: caller, Value: fn.Sel.Name, Mode: "local"}, call)
+			}
+			return
+		}
+		g.add(Hint{Kind: HintGoCall, Key: caller, Value: fn.Sel.Name, Mode: "local"}, call)
+	case *ast.Ident:
+		if goBuiltins[fn.Name] {
+			return
+		}
+		mode := "bare"
+		if g.hasDotImport {
+			mode = "bare-dotimport"
+		}
+		g.add(Hint{Kind: HintGoCall, Key: caller, Value: fn.Name, Mode: mode}, call)
+	}
 }
 
 func (g *goHints) call(call *ast.CallExpr) {
