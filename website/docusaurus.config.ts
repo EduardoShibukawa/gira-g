@@ -35,6 +35,15 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  plugins: [
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      {
+        hashed: true,
+        language: ['en'],
+      },
+    ],
+  ],
   themeConfig: {
     image: 'img/gira-social-card.jpg',
     navbar: {
