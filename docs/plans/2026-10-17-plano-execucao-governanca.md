@@ -2,10 +2,11 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.1 |
+| Versão | 1.2 |
 | Verificação | 2026-10-17 (-03) |
-| Estado verificado | `origin/main` = `61b58c281f5a7fae4092f0cbff2ecfd8794dea77` |
-| Status | **[PROPOSTA]**. N1 e N2 **decididas** pelo dono (2026-10-17); O6 **aprovada e aplicada**. N3, N4, D1–D9, D9b e D9c continuam abertas |
+| Código-base verificado | `61b58c281f5a7fae4092f0cbff2ecfd8794dea77` |
+| Status | **[PROPOSTA]**. N1–N4 e D1–D9c têm direções decididas pelo dono; O6 aplicada. Spec continua `draft` e implementação não autorizada até resolver os gates de compatibilidade e plataforma. |
+| Registro de decisões | [decisão arquitetural da publicação versionada](2026-10-17-decisao-arquitetural-publicacao-versionada.md) |
 | Nota de rótulo | Nesses documentos, "Etapa 2" (e 2a–2i) denota a publicação versionada, agora posicionada como continuação do item 1 do plano aprovado (rótulo exemplo "Etapa 1.2"), conforme N1 (a). O item 2 aprovado (atualidade end-to-end e sync multi-repo) permanece reservado. A troca de rótulo nos documentos é um follow-up separado |
 | Artefatos ligados | spec [`2026-10-17-gira-versioned-publication`](../../specs/2026-10-17-gira-versioned-publication.md) (`draft` v1), parent [`2026-10-17-gira-versioned-publication`](../../tasks/2026-10-17-gira-versioned-publication.md) (`todo`), propostas originais [v2](2026-10-17-gira-spec-v2-proposta-original.md) e [v1](2026-10-17-gira-spec-v1-proposta-original.md) |
 | Requer revisão | §6 (decisões), §8 (critérios por etapa), §14 (lista final) |
@@ -31,7 +32,7 @@ Este documento é a parte Gira-G de um plano de governança que cobria dois proj
 
 - `main` (`61b58c2`) está com o CI verde nos três sistemas operacionais [CI].
 - A Etapa 2.0 (PR #17) está **[CONCLUÍDA]**.
-- As quatro pendências de endurecimento da Etapa 1.1 aparecem resolvidas no código [CÓDIGO], mas o aceite formal da Etapa 1/1.1 não está registrado. As Sources exigem esse aceite antes da Etapa 2 (N2).
+- As quatro pendências de endurecimento da Etapa 1.1 aparecem resolvidas no código [CÓDIGO]. A revisão adversarial de Etapa 1/1.1 não encontrou bloqueios materiais, e o aceite formal foi registrado na tarefa retroativa após PR #19.
 - A spec v2 foi localizada e é idêntica à mensagem em que o agente a apresentou (§2.1). Ela continua sendo **[PROPOSTA]**.
 
 Problemas que motivam a etapa, confirmados no código (§3.5):
@@ -46,7 +47,7 @@ Achados de governança:
 - "Etapa 2" diverge do item 2 do plano de evolução aprovado (N1).
 - D1 pode contrariar a decisão aprovada sobre identidade de snapshots (N3).
 
-**Próximo passo:** N1 e N2 estão decididas (N2 em execução: revisão adversarial). O dono responde D1–D9c, N3 e N4, na ordem do §14, para autorizar a Etapa 2a (ADR 0014). A 2b pode ser autorizada à parte.
+**Próximo passo:** N1/N2 e as direções N3/N4/D1–D9c estão registradas. A publicação versionada permanece bloqueada até os gates no registro arquitetural serem evidenciados; nenhuma etapa de implementação foi autorizada.
 
 ---
 
@@ -156,8 +157,8 @@ As propostas (spec v1/v2 e este plano) ficam abaixo de todas essas fontes até s
 
 | Etapa | Estado | Evidência |
 |---|---|---|
-| Etapa 1 (`4c2204c`) | implementada; revisão adversarial sem bloqueios materiais; aceite formal **não registrado** (aguarda o dono) | [CÓDIGO]; [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
-| Etapa 1.1 (`0d5f248`) | as 4 pendências resolvidas; revisão adversarial sem bloqueios materiais; aceite **não registrado** (aguarda o dono) | [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
+| Etapa 1 (`4c2204c`) | implementada; revisão adversarial sem bloqueios materiais; aceite formal **registrado** | [CÓDIGO]; [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
+| Etapa 1.1 (`0d5f248`) | as 4 pendências resolvidas; revisão adversarial sem bloqueios materiais; aceite formal **registrado** | [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
 | Etapa 2.0 (PR #17, `7054031`, merge `61b58c2`) | **[CONCLUÍDA]** | CI nos 3 SO no branch e no merge [CI]; teste local sem escrita no cache [TESTE EXECUTADO]. Não fiz revisão linha a linha do diff para o critério "casos 1–3 afirmam o mesmo comportamento" [DESC] |
 | Etapa 2a–2i | não iniciadas, não autorizadas | — |
 
@@ -267,7 +268,7 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
 - **Risco:** basear a Etapa 2 em código que nunca passou por PR.
 - **Pergunta:** "Aceita a Etapa 1/1.1 agora com a evidência do §3.3, ou exige revisão adversarial do diff antes?"
 - **decidido:** (b) por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`), depois aceite (a) se não houver bloqueios materiais. `aa4e6fe` (M0–M6) **não** entra nesta revisão e vira frente separada (V6; `tasks/2026-10-17-m0-m6-retro-review.md`).
-- **resultado da revisão (2026-10-17):** veredito **sem bloqueios materiais**; critérios (a)–(e) valem em `61b58c2`. Nove achados não bloqueantes (N1–N9 da revisão; P2: ordem de leitura vs escrita, depende de D2; caminho absoluto em `Locator.Path`, depende de D3) estão como follow-ups no [registro retroativo](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) (`verified`, `verified_at: 61b58c2`). O **aceite aguarda o dono**; não está registrado.
+- **resultado da revisão (2026-10-17):** veredito **sem bloqueios materiais**; critérios (a)–(e) valem em `61b58c2`. Nove achados não bloqueantes estão como follow-ups no [registro retroativo](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) (`accepted`, `verified_at: 61b58c2`). O aceite formal está registrado; esses achados não foram silenciosamente corrigidos nesta frente.
 
 **N3. Identidade do snapshot destacado**
 - **Contexto:** V2.
@@ -286,6 +287,8 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
 - **Pergunta:** "Confirma essa delimitação para o ADR 0014?"
 
 ### 6.2 Decisões da spec v2 (D1–D9) e do prompt (D9b, D9c)
+
+**Atualização de precedência (2026-10-17):** as alternativas e recomendações abaixo preservam o histórico da deliberação. As direções do dono e os bloqueios antes da aprovação final estão no [registro arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md), que prevalece em caso de divergência. Nenhum item desta seção autoriza implementação.
 
 **D1. Semântica de `--output`**
 - **Contexto:** hoje `--output` substitui o store (§3.5). Consumidores: `gira-arch-diff`, `bench/phases.json:20`, `benchtest.go:76`, `tools/index-bundle/bootstrap.sh:42,49`, cerca de 15 páginas de documentação e cerca de 15 testes (Apêndice A.3).
@@ -675,8 +678,8 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 
 | Próxima ação | Quem |
 |---|---|
-| ~~Responder N1 e N2~~ N1 (a) e N2 (b) respondidas em 2026-10-17; revisão da 1/1.1 concluída sem bloqueios: o dono aceita ou não a Etapa 1/1.1 | dono |
-| Responder D1–D9c, N3 e N4; autorizar a 2a; opcionalmente, autorizar a 2b à parte | dono, depois agente |
+| N1/N2 respondidas; aceite da Etapa 1/1.1 registrado; direções de N3/N4/D1–D9c documentadas no registro arquitetural | feito |
+| Resolver os gates técnicos do registro arquitetural; depois decidir separadamente se e quando autorizar a implementação heavy | dono, depois agente |
 
 ---
 
@@ -687,20 +690,22 @@ Ordem pelas dependências. As decisões técnicas e as autorizações operaciona
 
 ### 14.1 Técnicas: Gira-G
 1. ~~**N1:**~~ **respondida: (a)**, 2026-10-17.
-2. **N2:** **respondida: (b)**, 2026-10-17; revisão concluída sem bloqueios materiais; **aceite da Etapa 1/1.1 pendente do dono** (ver §6.1 N2).
-3. **N4:** o ADR 0014 declara o store como cache derivado local, e o versionamento de conhecimento continua com o Git?
-4. **D1:** A′ (`index --output` destacado, `init` sempre canônico com cópia, ordem versão → snapshot → manifesto)?
-5. **N3:** o snapshot destacado carrega identidade (sidecar `P.meta.json`), como exige a decisão aprovada §4?
-6. **D2:** XDG → `~/.cache` → `.gira/indexes`, numa função única, sem `UserCacheDir`, com a base do gate procurada no caminho legado `~/.cache` mesmo com XDG?
-7. **D3:** `Path = basename` (slash), documentado como "relativo à pasta do manifesto", em vez de relativo à raiz Git?
-8. **D4:** `source_key` sobre os bytes crus, aceitando reindexar por causa de comentário, BOM ou EOL?
-9. **D5:** fail-closed sem flag? `main.date` entra no `tool_id`?
-10. **D6:** tabela da v2 §3 (Windows: exit 0 com aviso), sem `--require-durable`?
-11. **D7:** sem GC, com o procedimento manual documentado?
-12. **D8:** travas M→S→P, 60 s, `index_locked` e `lock_unavailable`, sem `--no-lock`?
-13. **D9:** legado nunca lido com `gira.yaml`; base do gate na primeira publicação?
-14. **D9b:** descoberta exige o `tool_id` atual? Introduz o código `index_ambiguous`?
-15. **D9c:** aviso para caminho legado em `skills install --index`? Converter para absoluto?
+2. **N2:** **respondida: (b)**, 2026-10-17; revisão concluída sem bloqueios materiais; aceite formal registrado em `tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md`.
+3. **N4:** **decidida:** store local, derivado e regenerável; Git continua sendo a fonte de versionamento.
+4. **D1:** **decidida:** A′, condicionada a snapshot destacado autocontido com metadados embutidos e semântica explícita de publicação parcial.
+5. **N3:** **decidida:** metadados de proveniência embutidos; schema/consumidores ainda exigem auditoria.
+6. **D2:** **decidida:** XDG → `~/.cache` → `.gira/indexes`, resolver único e busca de gate no caminho legado.
+7. **D3:** **direção decidida:** relativo à raiz Git normalizado com `/`; política fora da raiz continua bloqueadora.
+8. **D4:** **decidida:** `source_key` sobre bytes crus do manifesto.
+9. **D5:** **decidida em parte:** mismatch fail-closed; `main.date` continua aberto até auditoria semântica.
+10. **D6:** **decidida:** tabela de durabilidade da v2, sem `--require-durable`, com testes por plataforma.
+11. **D7:** **decidida:** sem GC; quarentena explícita e limpeza manual documentada.
+12. **D8:** **decidida:** travas M→S→P, timeout de 60 s, falha fechada e sem bypass.
+13. **D9:** **decidida:** legado não é carregado automaticamente com `gira.yaml`; pode servir de base estrita para o primeiro gate.
+14. **D9b:** **decidida:** exigir `tool_id` atual e erro estável `index_ambiguous`.
+15. **D9c:** **decidida:** avisar para caminho legado e normalizar o caminho para absoluto.
+
+**Bloqueio comum:** não aprovar a spec nem autorizar implementação até completar as auditorias e verificações descritas no [registro arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md).
 
 ### 14.2 Técnicas: G-Ingá
 
@@ -716,4 +721,5 @@ No repositório G-Ingá.
 
 ### Changelog
 - 1.0 (2026-10-17): versão inicial, versionada a partir do plano do workspace de Work. Parte G-Ingá e estado de máquina removidos.
-- 1.1 (2026-10-17): N1 (a), N2 (b) e O6 registradas como decididas/aplicadas; intervalo da revisão do §10 corrigido de `4c2204c..0d5f248` para `aa4e6fe..0d5f248` (exclui `aa4e6fe`); nota de rótulo "Etapa 2"; M0–M6 aberta como frente separada.
+- 1.1 (2026-10-17): N1 (a), N2 (b) e O6 registradas como decididas/aplicadas; intervalo da revisão do §10 corrigido; M0–M6 aberta como frente separada.
+- 1.2 (2026-10-17): corrige status de aceite formal da Etapa 1/1.1; registra direções arquiteturais e aponta para os gates de aprovação final.

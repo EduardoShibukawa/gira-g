@@ -9,7 +9,7 @@ spec: 2026-10-17-gira-versioned-publication@1
 
 ## Routing and approvals
 
-- tier: heavy (H1: D1–D9c e N1–N4 são escolhas de produto pendentes; H3: muda o contrato de `--output`, o layout do store e os erros do resolvedor consumidos por skills, bench, tools e docs; H5: nove etapas em várias sessões)
+- tier: heavy (H1: contrato de `MacroMap`/proveniência, compatibilidade e algumas políticas de fallback ainda exigem decisão evidenciada; H3: muda o contrato de `--output`, schema, layout do store e erros do resolvedor consumidos por skills, bench, tools e docs; H5: várias etapas em várias sessões). Direções N3, N4 e D1–D9c registradas em `docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md`; D5 sobre `main.date` e a política de manifestos fora da raiz Git continuam abertas até auditoria.
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 
@@ -55,8 +55,8 @@ Proposta. Este parent só fica `active` depois de `confirmed: heavy by owner`. O
 
 Pré-condições, todas decisões do dono:
 1. ~~N1 (nome e sequência)~~: decidida (a), 2026-10-17;
-2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b), 2026-10-17; revisão adversarial concluída sem bloqueios materiais, evidência em `2026-10-17-etapa-1-1-1-retro-acceptance` (`verified`); aceite do dono pendente;
-3. N3, N4, D1–D9c (tabela de decisões do spec): abertas.
+2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b); revisão adversarial concluída sem bloqueios materiais; aceite formal registrado em `2026-10-17-etapa-1-1-1-retro-acceptance` (`accepted`), merge da PR #19;
+3. N3, N4, D1–D9c: direções escolhidas pelo dono e registradas no [registro arquitetural](../docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md); não autoriza implementação. Bloqueios finais: auditoria dos consumidores/schema, regra para manifesto fora da raiz Git, evidência semântica de `main.date` e testes do runner Windows.
 
 Children previstos, em ordem de dependência:
 1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a).
@@ -78,8 +78,9 @@ skip: roda depois que os children estiverem verificados
 
 ## Checkpoint
 
-- as of: 2026-10-17, branch `work/2026-10-17-gira-n1-n2-o6-decisions`, base `186427e`
-- done: N1 (a) e N2 (b) registradas; O6 aplicada (proteção de `main`); spec v1 segue `draft`
-- next: o dono vê o resultado da revisão e aceita (ou não) a Etapa 1/1.1 (`tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md`); depois, revisão de D1 contra a decisão aprovada §4 (N3); o dono responde N3, N4, D1–D9c; com `confirmed: heavy`, o parent fica `active`
-- open: N3, N4, D1–D9c e as perguntas do spec (`## Open questions`); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
+- as of: 2026-10-17, branch `work/2026-10-17-gira-versioned-architecture-decisions`, base `db5a3cfa`
+- done: N1 (a), N2 (b) com aceite formal registrado, O6 aplicada, direções N3/N4/D1–D9c registradas em decisão arquitetural
+- status da spec: `draft`; implementação não autorizada e nenhuma tarefa-filha de implementação criada
+- next: concluir e evidenciar os gates da spec; solicitar autorização heavy explícita só depois dessa evidência
+- open: regra de D3 para manifesto fora da raiz Git; subdecisão D5 `main.date`; auditoria dos consumidores e schema; compatibilidade Windows para symlink e `os.DevNull`; M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: B1 e B2 rodaram em `61b58c2`; rodar de novo se `main` andar
