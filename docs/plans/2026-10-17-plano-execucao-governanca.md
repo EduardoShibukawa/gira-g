@@ -2,10 +2,11 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.0 |
+| Versão | 1.1 |
 | Verificação | 2026-10-17 (-03) |
 | Estado verificado | `origin/main` = `61b58c281f5a7fae4092f0cbff2ecfd8794dea77` |
-| Status | **[PROPOSTA]**. Nenhuma decisão N1–N4, D1–D9, D9b ou D9c está aprovada |
+| Status | **[PROPOSTA]**. N1 e N2 **decididas** pelo dono (2026-10-17); O6 **aprovada e aplicada**. N3, N4, D1–D9, D9b e D9c continuam abertas |
+| Nota de rótulo | Nesses documentos, "Etapa 2" (e 2a–2i) denota a publicação versionada, agora posicionada como continuação do item 1 do plano aprovado (rótulo exemplo "Etapa 1.2"), conforme N1 (a). O item 2 aprovado (atualidade end-to-end e sync multi-repo) permanece reservado. A troca de rótulo nos documentos é um follow-up separado |
 | Artefatos ligados | spec [`2026-10-17-gira-versioned-publication`](../../specs/2026-10-17-gira-versioned-publication.md) (`draft` v1), parent [`2026-10-17-gira-versioned-publication`](../../tasks/2026-10-17-gira-versioned-publication.md) (`todo`), propostas originais [v2](2026-10-17-gira-spec-v2-proposta-original.md) e [v1](2026-10-17-gira-spec-v1-proposta-original.md) |
 | Requer revisão | §6 (decisões), §8 (critérios por etapa), §14 (lista final) |
 
@@ -45,7 +46,7 @@ Achados de governança:
 - "Etapa 2" diverge do item 2 do plano de evolução aprovado (N1).
 - D1 pode contrariar a decisão aprovada sobre identidade de snapshots (N3).
 
-**Próximo passo:** o dono responde N1 e N2 e depois D1–D9c, N3 e N4, na ordem do §14, para autorizar a Etapa 2a (ADR 0014). A 2b pode ser autorizada à parte.
+**Próximo passo:** N1 e N2 estão decididas (N2 em execução: revisão adversarial). O dono responde D1–D9c, N3 e N4, na ordem do §14, para autorizar a Etapa 2a (ADR 0014). A 2b pode ser autorizada à parte.
 
 ---
 
@@ -155,8 +156,8 @@ As propostas (spec v1/v2 e este plano) ficam abaixo de todas essas fontes até s
 
 | Etapa | Estado | Evidência |
 |---|---|---|
-| Etapa 1 (`4c2204c`) | implementada; aceite formal **não registrado** | [CÓDIGO]; Sources a dão como "substancialmente implementada" |
-| Etapa 1.1 (`0d5f248`) | as 4 pendências da Revisão aparecem resolvidas; aceite **não registrado** | ver a tabela abaixo |
+| Etapa 1 (`4c2204c`) | implementada; revisão adversarial sem bloqueios materiais; aceite formal **não registrado** (aguarda o dono) | [CÓDIGO]; [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
+| Etapa 1.1 (`0d5f248`) | as 4 pendências resolvidas; revisão adversarial sem bloqueios materiais; aceite **não registrado** (aguarda o dono) | [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
 | Etapa 2.0 (PR #17, `7054031`, merge `61b58c2`) | **[CONCLUÍDA]** | CI nos 3 SO no branch e no merge [CI]; teste local sem escrita no cache [TESTE EXECUTADO]. Não fiz revisão linha a linha do diff para o critério "casos 1–3 afirmam o mesmo comportamento" [DESC] |
 | Etapa 2a–2i | não iniciadas, não autorizadas | — |
 
@@ -253,6 +254,7 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
 - **Custo:** renomear nos documentos.
 - **Risco:** com (b), dois planos usariam o mesmo número.
 - **Pergunta:** "A publicação versionada entra como continuação do item 1 (rótulo novo) ou substitui o item 2 do plano aprovado?"
+- **decidido:** (a) por dono, 2026-10-17 (mensagem de decisão da sessão). A publicação versionada é planejada como continuação do item 1, com rótulo próprio (exemplo: "Etapa 1.2"; rótulo dado como exemplo). O item 2 aprovado segue reservado a atualidade end-to-end e sync multi-repo. Não renomear "Etapa 2"/"2a–2i" em massa nesta mudança: o relabel é follow-up separado (ver nota no cabeçalho).
 
 **N2. Aceite formal da Etapa 1 e 1.1 em `61b58c2`**
 - **Contexto:** §3.3. Não há registro de tarefa nem PR para `4c2204c`/`0d5f248`, e o CI ficou vermelho no Windows até #17.
@@ -260,10 +262,12 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
   - (a) aceitar com base no §3.3, registrando o aceite nas Sources e opcionalmente num registro de tarefa retroativo;
   - (b) pedir antes uma revisão adversarial do diff `aa4e6fe..0d5f248`;
   - (c) não aceitar.
-- **Recomendação:** (b) restrita a `aa4e6fe..0d5f248` (Etapa 1 e 1.1: `4c2204c` +1142/−233 e `0d5f248` +212/−33, cerca de 1,6 mil linhas alteradas), seguida de (a).
+- **Recomendação:** (b) restrita ao intervalo git `aa4e6fe..0d5f248`, que cobre os commits `4c2204c` (Etapa 1, +1142/−233) e `0d5f248` (Etapa 1.1, +212/−33), cerca de 1,6 mil linhas alteradas, e **exclui** `aa4e6fe` (M0–M6), seguida de (a).
 - **Custo:** uma sessão de revisão.
 - **Risco:** basear a Etapa 2 em código que nunca passou por PR.
 - **Pergunta:** "Aceita a Etapa 1/1.1 agora com a evidência do §3.3, ou exige revisão adversarial do diff antes?"
+- **decidido:** (b) por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`), depois aceite (a) se não houver bloqueios materiais. `aa4e6fe` (M0–M6) **não** entra nesta revisão e vira frente separada (V6; `tasks/2026-10-17-m0-m6-retro-review.md`).
+- **resultado da revisão (2026-10-17):** veredito **sem bloqueios materiais**; critérios (a)–(e) valem em `61b58c2`. Nove achados não bloqueantes (N1–N9 da revisão; P2: ordem de leitura vs escrita, depende de D2; caminho absoluto em `Locator.Path`, depende de D3) estão como follow-ups no [registro retroativo](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) (`verified`, `verified_at: 61b58c2`). O **aceite aguarda o dono**; não está registrado.
 
 **N3. Identidade do snapshot destacado**
 - **Contexto:** V2.
@@ -560,7 +564,7 @@ Todas estas operações exigem autorização explícita. Não são decisões té
 | ID | Operação | Procedimento seguro proposto |
 |---|---|---|
 | O-local | Higiene da máquina local (checkout desatualizado, índice residual de teste, worktrees auxiliares e WIP não integrado) | mantida fora deste repositório público, no workspace de Work do dono; nenhuma ação destrutiva sem autorização |
-| O6 | Governança dos commits diretos (`aa4e6fe`, `4c2204c`, `0d5f248`) | Decidir se haverá registro retroativo (N2). Para o futuro: proteção de branch exigindo PR e CI em `main` [PROPOSTA; é configuração do GitHub e requer sua ação] |
+| O6 | Governança dos commits diretos (`aa4e6fe`, `4c2204c`, `0d5f248`) | Retroativo: N2 decidida (b), M0–M6 em frente separada. Futuro: **aprovada e aplicada** pelo orquestrador em 2026-10-17 via API do GitHub: proteção clássica de branch em `main`, PR obrigatória (0 aprovações), checks obrigatórios `test (ubuntu-latest)`, `test (macos-latest)`, `test (windows-latest)`, `validator`, `floor guard` (app GitHub Actions id 15368, strict=false), `enforce_admins=true`, force-push e exclusão proibidos. `gate-lint (warn-only)` **não** é obrigatório enquanto for warn-only. Pré-checagem: os 5 nomes observados como check-runs no head da PR #18; `ci.yml` dispara em `pull_request` para main sem filtro de caminho, e os jobs `validator`/`floor guard` rodam se `pull_request` ou ref main |
 | O7 | Atualizar as Sources (`Decisoes_E_Estado.md`) | Depois de N1, N2 e D*, conforme o §11 |
 
 ---
@@ -580,7 +584,7 @@ Todas estas operações exigem autorização explícita. Não são decisões té
 | `serve mcp` com mapa em memória | média | médio | documentar; reinício | — | futuro |
 | `nudge` engole erros | média | baixo | registrar | — | 2g |
 | Linhagem nova sem base de gate | média | médio | mensagem "baseline: none" | 2f | 2f |
-| Commits sem PR em `main` | ocorreu | médio | N2 e O6 | você | agora |
+| Commits sem PR em `main` | ocorreu | médio | O6 aplicada (proteção de branch, 2026-10-17); N2 (b) em curso; M0–M6 em frente separada | você | feito / em curso |
 | Documentação diverge do código hoje | ocorreu | médio: usuários seguem o README errado | 2i, ou correção antecipada se você quiser | — | 2i |
 
 ---
@@ -590,7 +594,7 @@ Todas estas operações exigem autorização explícita. Não são decisões té
 | Pode começar agora (sem decisão) | Agente | Observação |
 |---|---|---|
 | Investigar a falha `TestBaselineIsMeasuredOnCorpus` (run 38890630283) | scout | só leitura; baixa prioridade |
-| Revisão adversarial de `4c2204c..0d5f248` (N2 b) | reviewer (Opus) | só leitura; **só se você escolher N2 b** |
+| Revisão adversarial de `aa4e6fe..0d5f248` (commits `4c2204c` e `0d5f248`; exclui `aa4e6fe`) (N2 b) | reviewer (Opus) | só leitura; N2 (b) escolhida |
 | Inventário de `website/versioned_docs` e decisão sobre editá-los | scout | só leitura |
 
 | Depende de autorização (operacional) | Agente |
@@ -671,7 +675,7 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 
 | Próxima ação | Quem |
 |---|---|
-| Responder N1 e N2 | dono |
+| ~~Responder N1 e N2~~ N1 (a) e N2 (b) respondidas em 2026-10-17; revisão da 1/1.1 concluída sem bloqueios: o dono aceita ou não a Etapa 1/1.1 | dono |
 | Responder D1–D9c, N3 e N4; autorizar a 2a; opcionalmente, autorizar a 2b à parte | dono, depois agente |
 
 ---
@@ -682,8 +686,8 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 Ordem pelas dependências. As decisões técnicas e as autorizações operacionais estão separadas.
 
 ### 14.1 Técnicas: Gira-G
-1. **N1:** a publicação versionada continua o item 1 (rótulo novo) ou substitui o item 2 do plano aprovado?
-2. **N2:** aceita a Etapa 1/1.1 em `61b58c2` com a evidência do §3.3, ou exige antes uma revisão adversarial de `aa4e6fe..0d5f248`?
+1. ~~**N1:**~~ **respondida: (a)**, 2026-10-17.
+2. **N2:** **respondida: (b)**, 2026-10-17; revisão concluída sem bloqueios materiais; **aceite da Etapa 1/1.1 pendente do dono** (ver §6.1 N2).
 3. **N4:** o ADR 0014 declara o store como cache derivado local, e o versionamento de conhecimento continua com o Git?
 4. **D1:** A′ (`index --output` destacado, `init` sempre canônico com cópia, ordem versão → snapshot → manifesto)?
 5. **N3:** o snapshot destacado carrega identidade (sidecar `P.meta.json`), como exige a decisão aprovada §4?
@@ -704,7 +708,7 @@ No repositório G-Ingá.
 
 ### 14.3 Operacionais (autorizações)
 16. **2b:** autorizar a etapa de `gitcache` antes do ADR 0014?
-17. **O6:** ativar proteção de branch exigindo PR e CI em `main` do Gira-G?
+17. ~~**O6:**~~ **aprovada e aplicada** em 2026-10-17 (ver §8, O6).
 
 ---
 
@@ -712,3 +716,4 @@ No repositório G-Ingá.
 
 ### Changelog
 - 1.0 (2026-10-17): versão inicial, versionada a partir do plano do workspace de Work. Parte G-Ingá e estado de máquina removidos.
+- 1.1 (2026-10-17): N1 (a), N2 (b) e O6 registradas como decididas/aplicadas; intervalo da revisão do §10 corrigido de `4c2204c..0d5f248` para `aa4e6fe..0d5f248` (exclui `aa4e6fe`); nota de rótulo "Etapa 2"; M0–M6 aberta como frente separada.
