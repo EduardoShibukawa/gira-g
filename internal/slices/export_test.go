@@ -27,6 +27,21 @@ func createSampleMacroMapForExport() *domain.MacroMap {
 				Origin: domain.OriginExtracted,
 				Status: domain.StatusCurrent,
 			},
+			{
+				Locator: domain.Locator{
+					Repo:      "checkout-repo",
+					CommitSHA: "1234567890abcdef",
+					Path:      "Dockerfile",
+					StartLine: 10,
+					EndLine:   12,
+				},
+				Origin:            domain.OriginDeclared,
+				DeploymentProfile: "production",
+				Status:            domain.StatusCurrent,
+			},
+		},
+		Metadata: map[string]any{
+			"ports": []string{"5050"},
 		},
 	})
 
@@ -209,14 +224,39 @@ func TestExportHTML(t *testing.T) {
 		t.Errorf("HTML export contains external network references")
 	}
 
-	// Discrete derivation tags
+	// Discrete derivation tags and multiple evidence records (including DeploymentProfile and stale warning)
 	if !strings.Contains(htmlDoc, `badge-declared`) || !strings.Contains(htmlDoc, `badge-extracted`) {
 		t.Errorf("expected discrete origin badges in HTML")
 	}
+	if !strings.Contains(htmlDoc, "Dockerfile#L10-L12") || !strings.Contains(htmlDoc, "production") {
+		t.Errorf("expected all EvidenceRecord entries and DeploymentProfile in HTML")
+	}
+	if !strings.Contains(htmlDoc, "⚠️ NOTICE: Stale evidence detected for") {
+		t.Errorf("expected stale evidence warning in HTML")
+	}
 
-	// Embedded SVG topological visualization
+	// Embedded SVG topological visualization with tooltips, data-node-id, and edge verbs
 	if !strings.Contains(htmlDoc, `<svg viewBox=`) || !strings.Contains(htmlDoc, `marker-end="url(#arrow)"`) {
 		t.Errorf("expected embedded topological SVG in HTML")
+	}
+	if !strings.Contains(htmlDoc, `<title>checkoutservice (service:checkout)</title>`) || !strings.Contains(htmlDoc, `data-node-id="service:checkout"`) {
+		t.Errorf("expected SVG node tooltip and data-node-id in HTML")
+	}
+
+	// Interactive task-oriented controls and Guided Tour & Flows
+	for _, needle := range []string{
+		`id="gira-search"`,
+		`id="gira-filter-kind"`,
+		`id="gira-filter-origin"`,
+		`id="gira-filter-status"`,
+		"O que é isto?",
+		"Quem consome?",
+		"O que muda?",
+		"Guided Tour &amp; Flows",
+	} {
+		if !strings.Contains(htmlDoc, needle) {
+			t.Errorf("expected %q in interactive HTML viewer", needle)
+		}
 	}
 
 	// Unsupported boundaries section

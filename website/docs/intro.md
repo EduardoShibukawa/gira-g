@@ -13,21 +13,25 @@ slices of it to humans and AI coding agents.
 
 This documentation covers:
 
-- **Concepts** — the vocabulary and mental model behind Gira
-- **CLI Reference** — every command, flag, and output
+- **Concepts** — the vocabulary, mental model, and [Evaluation Scorecard](./concepts/scorecard) behind Gira
+- **CLI Reference** — every command, flag, and output (`init`, `index`, `impact`, `slice`, `explain`, `tour`, `flows`, `doc`, `diff`, `locate`, `export`, `view`, `skills`, `serve mcp`, and governance tools)
 - **Guides** — quickstart, workflows, and evidence inspection
 
 ## Quick start
 
 ```bash
-# Index a target system
-gira index
+# Option A: Zero-config single repository (generates gira.yaml pinned to HEAD and indexes)
+gira init . --output .gira/macro-map.json
 
-# Ask what breaks if you change a target
-gira impact <target_id> --index .gira/index.json
+# Option B: Multi-repository manifest (reads gira.yaml; defaults to ~/.cache/gira/indexes/<system>/macro-map.json)
+gira index --output .gira/macro-map.json
 
-# Explore a slice
+# Ask what breaks if you change a target (auto-resolves .gira/macro-map.json, macro-map.json, or user cache when --index is omitted)
+gira impact <target_id> --index .gira/macro-map.json
+
+# Explore a bounded context slice or guided reading tour
 gira slice <node_id> --tier contracts --view architecture
+gira tour --format md
 ```
 
-See the [Guides](./guides/quickstart) for a complete walkthrough.
+See the [Quickstart guide](./guides/quickstart) for a complete runnable walkthrough.

@@ -59,14 +59,19 @@ type Format string
 const (
 	FormatJSON     Format = "json"
 	FormatMarkdown Format = "md"
+	FormatHTML     Format = "html"
 )
 
 // ParseFormat maps a CLI format flag to a Format.
 func ParseFormat(s string) Format {
-	if s == "md" || s == "markdown" {
+	switch s {
+	case "md", "markdown":
 		return FormatMarkdown
+	case "html":
+		return FormatHTML
+	default:
+		return FormatJSON
 	}
-	return FormatJSON
 }
 
 // Emit renders a slice in format exactly as the CLI writes it. A limit > 0 fits it

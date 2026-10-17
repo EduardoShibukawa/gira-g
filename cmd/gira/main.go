@@ -277,10 +277,12 @@ func loadIndex(indexPath string) (*domain.MacroMap, error) {
 	if strings.TrimSpace(indexPath) != "" {
 		candidates = append(candidates, indexPath)
 	} else {
-		// Look in current working directory .gira/macro-map.json
+		// Look in current working directory .gira/macro-map.json and .gira/index.json
 		candidates = append(candidates, filepath.Join(".gira", "macro-map.json"))
-		// Look in current working directory macro-map.json
+		candidates = append(candidates, filepath.Join(".gira", "index.json"))
+		// Look in current working directory macro-map.json and index.json
 		candidates = append(candidates, "macro-map.json")
+		candidates = append(candidates, "index.json")
 		// Look in user cache directory default index
 		if home, err := os.UserHomeDir(); err == nil && home != "" {
 			candidates = append(candidates, filepath.Join(home, ".cache", "gira", "indexes", "default", "macro-map.json"))
@@ -703,6 +705,7 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	var format string
 	var repo, checkout string
 	var source, noSource bool
+	var budget int
 
 	fs.StringVar(&nodeID, "node", "", "Node ID")
 	fs.StringVar(&edgeID, "edge", "", "Edge ID")
@@ -712,6 +715,7 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	fs.BoolVar(&source, "source", true, "Fetch source excerpts from --repo (default true)")
 	fs.BoolVar(&noSource, "no-source", false, "Do not fetch source excerpts (locators only)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -737,7 +741,16 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	humanBanner(stderr, mm, checkout, slices.ParseFormat(strings.ToLower(format)))
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	humanBanner(stderr, mm, checkout, emitFormat)
+
+	if budget > 0 {
+		data, err := report.Emit(emitFormat, budget)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, emitFormat)
+	}
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
@@ -768,10 +781,12 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 	var indexPath string
 	var format string
 	var checkout string
+	var budget int
 
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -794,7 +809,17 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	humanBanner(stderr, mm, checkout, slices.ParseFormat(strings.ToLower(format)))
+	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	humanBanner(stderr, mm, checkout, emitFormat)
+
+	if budget > 0 {
+		br := &slices.BoundaryResult{Matches: matches}
+		data, err := br.Emit(emitFormat, budget)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, emitFormat)
+	}
 
 	switch strings.ToLower(format) {
 	case "md", "markdown":
@@ -956,12 +981,13 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs := flag.NewFlagSet("tour", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var focus, indexPath, format, checkout string
-	var maxSteps int
+	var maxSteps, budget int
 	fs.StringVar(&focus, "focus", "", "Start the tour at this node instead of the entry points")
 	fs.IntVar(&maxSteps, "max-steps", slices.DefaultTourSteps, "Maximum number of tour steps")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -975,6 +1001,13 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	tourFormat := slices.ParseFormat(strings.ToLower(format))
 	humanBanner(stderr, mm, checkout, tourFormat)
+	if budget > 0 {
+		data, err := tour.Emit(tourFormat, budget)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, tourFormat)
+	}
 	if tourFormat == slices.FormatMarkdown {
 		return emitMarkdownLine(stdout, tour.RenderMarkdown())
 	}
@@ -991,9 +1024,11 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs := flag.NewFlagSet("flows", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var indexPath, format, checkout string
+	var budget int
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
@@ -1011,6 +1046,13 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	flowsFormat := slices.ParseFormat(strings.ToLower(format))
 	humanBanner(stderr, mm, checkout, flowsFormat)
+	if budget > 0 {
+		data, err := flows.Emit(flowsFormat, budget)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, flowsFormat)
+	}
 	if flowsFormat == slices.FormatMarkdown {
 		return emitMarkdownLine(stdout, flows.RenderMarkdown())
 	}
@@ -1022,10 +1064,9 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	return err
 }
 
-// runDoc renders the F3 single-service onboarding document: Markdown for
-// humans, a budget-envelope JSON for agents, both from the same engine doc
-// so they cover the same facts. The MVP requires an explicit --format
-// (spec open question); `html` is a follow-up and errors honestly.
+// runDoc renders the F3 single-service onboarding document: Markdown or HTML
+// for humans, a budget-envelope JSON for agents, all from the same engine doc
+// so they cover the same facts.
 func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 	positionals, flagArgs := splitArgs(args)
 
@@ -1036,7 +1077,7 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 	var budget int
 
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
-	fs.StringVar(&format, "format", "", "Output format (md|json; explicit in the MVP)")
+	fs.StringVar(&format, "format", "", "Output format (md|json|html; explicit)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 
@@ -1046,7 +1087,7 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	all := append(positionals, fs.Args()...)
 	if len(all) == 0 {
-		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> --format md|json [--index <path>]")
+		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> --format md|json|html [--index <path>]")
 	}
 
 	var docFormat slices.Format
@@ -1056,11 +1097,11 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 	case "json":
 		docFormat = slices.FormatJSON
 	case "html":
-		return fmt.Errorf("unsupported doc format %q: html is a follow-up (md + json cover the MVP)", format)
+		docFormat = slices.FormatHTML
 	case "":
-		return fmt.Errorf("missing --format: the MVP requires an explicit --format md|json. Usage: gira doc <service-id> --format md|json [--index <path>]")
+		return fmt.Errorf("missing --format: requires an explicit --format md|json|html. Usage: gira doc <service-id> --format md|json|html [--index <path>]")
 	default:
-		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json", format)
+		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json, html", format)
 	}
 
 	mm, err := loadIndex(indexPath)
@@ -1087,8 +1128,10 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs := flag.NewFlagSet("diff", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var format, checkout string
+	var budget int
 	fs.StringVar(&format, "format", "json", "Output format (json|md)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
+	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
 	}
@@ -1105,9 +1148,17 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to load %s: %w", all[1], err)
 	}
-	humanBanner(stderr, a, checkout, slices.ParseFormat(strings.ToLower(format)))
+	diffFormat := slices.ParseFormat(strings.ToLower(format))
+	humanBanner(stderr, a, checkout, diffFormat)
 	d := archdiff.Compare(a, b)
-	if slices.ParseFormat(strings.ToLower(format)) == slices.FormatMarkdown {
+	if budget > 0 {
+		data, err := d.Emit(strings.ToLower(format), budget)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, diffFormat)
+	}
+	if diffFormat == slices.FormatMarkdown {
 		return emitMarkdownLine(stdout, d.RenderMarkdown())
 	}
 	data, err := d.CanonicalJSON()

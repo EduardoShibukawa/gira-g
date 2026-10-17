@@ -1,0 +1,504 @@
+{
+  "schema": "gira-scorecard/1",
+  "corpus_name": "opentelemetry-demo",
+  "upstream_url": "https://github.com/open-telemetry/opentelemetry-demo.git",
+  "upstream_release": "3.1.0",
+  "upstream_sha": "dedc0178918e260823323b8d95005a8cb924b007",
+  "variants": {
+    "perturbed": {
+      "output_sha256": "0aa377efa0e928779104fb2ea2641e949754c1a10818294c08341f2b891954ff",
+      "node_count": 88,
+      "relationship_count": 144,
+      "unsupported_file_count": 14,
+      "unsupported_construct_count": 1,
+      "metrics": {
+        "impact_precision": 100,
+        "impact_recall": 81.3,
+        "impact_f1": 89.7,
+        "determinism_stability": 100,
+        "unsupported_safety": 100,
+        "dangling_edges": 0,
+        "provenance_resolvable_pct": 100,
+        "token_reduction_pct": 80,
+        "avg_query_latency_ms": 0.2
+      },
+      "relation_matrix": {
+        "accesses": {
+          "declared": 43,
+          "extracted": 31,
+          "inferred": 0
+        },
+        "consumes": {
+          "declared": 29,
+          "extracted": 26,
+          "inferred": 2
+        },
+        "imports": {
+          "declared": 0,
+          "extracted": 61,
+          "inferred": 0
+        },
+        "provides": {
+          "declared": 2,
+          "extracted": 3,
+          "inferred": 0
+        }
+      },
+      "task_results": [
+        {
+          "task_id": "task-01-checkout-placeorder",
+          "scenario": "Scenario 6: Endpoint Change Pre-Context",
+          "passed": false,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:BasketService",
+            "contract:BillingService",
+            "contract:InventoryService",
+            "contract:OrderingService",
+            "contract:kafka:order-events",
+            "service:basket",
+            "service:billing",
+            "service:dispatch",
+            "service:fraud-detection",
+            "service:inventory",
+            "service:kafka",
+            "service:ledger",
+            "service:notify",
+            "service:storefront"
+          ]
+        },
+        {
+          "task_id": "task-02-frontend-cart-http",
+          "scenario": "Scenario 6: Endpoint Change Pre-Context",
+          "passed": false,
+          "precision": 100,
+          "recall": 62.5,
+          "f1": 76.9,
+          "matched_ids": [
+            "service:ad",
+            "service:agent",
+            "service:basket",
+            "service:dispatch",
+            "service:exchange",
+            "service:inventory",
+            "service:mcp",
+            "service:ordering",
+            "service:recommendation",
+            "service:storefront-proxy"
+          ],
+          "missing_ids": [
+            "contract:AdService",
+            "contract:BasketService",
+            "contract:ExchangeService",
+            "contract:InventoryService",
+            "contract:OrderingService",
+            "contract:RecommendationService"
+          ]
+        },
+        {
+          "task_id": "task-03-proto-paymentservice",
+          "scenario": "Scenario 3: Contract Change Impact",
+          "passed": false,
+          "precision": 100,
+          "recall": 66.7,
+          "f1": 80,
+          "matched_ids": [
+            "contract:BillingService",
+            "service:ordering"
+          ],
+          "missing_ids": [
+            "service:billing"
+          ]
+        },
+        {
+          "task_id": "task-04-proto-currencyservice",
+          "scenario": "Scenario 3: Contract Change Impact",
+          "passed": false,
+          "precision": 100,
+          "recall": 33.3,
+          "f1": 50,
+          "matched_ids": [
+            "contract:ExchangeService"
+          ],
+          "missing_ids": [
+            "service:exchange",
+            "service:storefront"
+          ]
+        },
+        {
+          "task_id": "task-05-kafka-orders-schema",
+          "scenario": "Scenario 4: Event Streaming & Freshness",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:kafka:order-events",
+            "service:fraud-detection",
+            "service:kafka",
+            "service:ledger",
+            "service:ordering"
+          ]
+        },
+        {
+          "task_id": "task-06-kafka-orders-freshness",
+          "scenario": "Scenario 4: Event Streaming & Freshness",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:kafka:order-events",
+            "service:fraud-detection",
+            "service:kafka",
+            "service:ledger",
+            "service:ordering"
+          ]
+        },
+        {
+          "task_id": "task-07-product-catalog-ownership",
+          "scenario": "Scenario 1: API, Event, and File Ownership",
+          "passed": false,
+          "precision": 100,
+          "recall": 83.3,
+          "f1": 90.9,
+          "matched_ids": [
+            "contract:InventoryService",
+            "service:astronomy-db",
+            "service:ordering",
+            "service:recommendation",
+            "service:storefront"
+          ],
+          "missing_ids": [
+            "service:opamp-server"
+          ]
+        },
+        {
+          "task_id": "task-08-checkoutservice-ownership",
+          "scenario": "Scenario 1: API, Event, and File Ownership",
+          "passed": false,
+          "precision": 100,
+          "recall": 66.7,
+          "f1": 80,
+          "matched_ids": [
+            "contract:OrderingService",
+            "service:ordering"
+          ],
+          "missing_ids": [
+            "service:storefront"
+          ]
+        },
+        {
+          "task_id": "task-09-email-trap",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:ordering"
+          ]
+        },
+        {
+          "task_id": "task-10-shipping-trap",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:ordering",
+            "service:quote",
+            "service:storefront"
+          ]
+        },
+        {
+          "task_id": "task-11-agent-profile-divergence",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:chatbot",
+            "service:mcp",
+            "service:storefront"
+          ]
+        },
+        {
+          "task_id": "task-12-currency-language-boundary",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": false,
+          "precision": 100,
+          "recall": 50,
+          "f1": 66.7,
+          "matched_ids": [
+            "service:storefront"
+          ],
+          "missing_ids": [
+            "contract:ExchangeService"
+          ]
+        }
+      ]
+    },
+    "published": {
+      "output_sha256": "01268d72d0a73e62b408acec6cd273629ed0ebbd8a766458feab85f79c406c2a",
+      "node_count": 88,
+      "relationship_count": 146,
+      "unsupported_file_count": 14,
+      "unsupported_construct_count": 1,
+      "metrics": {
+        "impact_precision": 100,
+        "impact_recall": 82.4,
+        "impact_f1": 90.3,
+        "determinism_stability": 100,
+        "unsupported_safety": 100,
+        "dangling_edges": 0,
+        "provenance_resolvable_pct": 100,
+        "token_reduction_pct": 78.2,
+        "avg_query_latency_ms": 0.2
+      },
+      "relation_matrix": {
+        "accesses": {
+          "declared": 43,
+          "extracted": 31,
+          "inferred": 0
+        },
+        "consumes": {
+          "declared": 30,
+          "extracted": 28,
+          "inferred": 2
+        },
+        "imports": {
+          "declared": 0,
+          "extracted": 61,
+          "inferred": 0
+        },
+        "provides": {
+          "declared": 2,
+          "extracted": 3,
+          "inferred": 0
+        }
+      },
+      "task_results": [
+        {
+          "task_id": "task-01-checkout-placeorder",
+          "scenario": "Scenario 6: Endpoint Change Pre-Context",
+          "passed": false,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:CartService",
+            "contract:CheckoutService",
+            "contract:CurrencyService",
+            "contract:PaymentService",
+            "contract:ProductCatalogService",
+            "contract:kafka:orders",
+            "service:accounting",
+            "service:cart",
+            "service:currency",
+            "service:email",
+            "service:fraud-detection",
+            "service:frontend",
+            "service:kafka",
+            "service:payment",
+            "service:product-catalog",
+            "service:shipping"
+          ]
+        },
+        {
+          "task_id": "task-02-frontend-cart-http",
+          "scenario": "Scenario 6: Endpoint Change Pre-Context",
+          "passed": false,
+          "precision": 100,
+          "recall": 62.5,
+          "f1": 76.9,
+          "matched_ids": [
+            "service:ad",
+            "service:agent",
+            "service:cart",
+            "service:checkout",
+            "service:currency",
+            "service:frontend-proxy",
+            "service:mcp",
+            "service:product-catalog",
+            "service:recommendation",
+            "service:shipping"
+          ],
+          "missing_ids": [
+            "contract:AdService",
+            "contract:CartService",
+            "contract:CheckoutService",
+            "contract:CurrencyService",
+            "contract:ProductCatalogService",
+            "contract:RecommendationService"
+          ]
+        },
+        {
+          "task_id": "task-03-proto-paymentservice",
+          "scenario": "Scenario 3: Contract Change Impact",
+          "passed": false,
+          "precision": 100,
+          "recall": 66.7,
+          "f1": 80,
+          "matched_ids": [
+            "contract:PaymentService",
+            "service:checkout"
+          ],
+          "missing_ids": [
+            "service:payment"
+          ]
+        },
+        {
+          "task_id": "task-04-proto-currencyservice",
+          "scenario": "Scenario 3: Contract Change Impact",
+          "passed": false,
+          "precision": 100,
+          "recall": 50,
+          "f1": 66.7,
+          "matched_ids": [
+            "contract:CurrencyService",
+            "service:checkout"
+          ],
+          "missing_ids": [
+            "service:currency",
+            "service:frontend"
+          ]
+        },
+        {
+          "task_id": "task-05-kafka-orders-schema",
+          "scenario": "Scenario 4: Event Streaming & Freshness",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:kafka:orders",
+            "service:accounting",
+            "service:checkout",
+            "service:fraud-detection",
+            "service:kafka"
+          ]
+        },
+        {
+          "task_id": "task-06-kafka-orders-freshness",
+          "scenario": "Scenario 4: Event Streaming & Freshness",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "contract:kafka:orders",
+            "service:accounting",
+            "service:checkout",
+            "service:fraud-detection",
+            "service:kafka"
+          ]
+        },
+        {
+          "task_id": "task-07-product-catalog-ownership",
+          "scenario": "Scenario 1: API, Event, and File Ownership",
+          "passed": false,
+          "precision": 100,
+          "recall": 83.3,
+          "f1": 90.9,
+          "matched_ids": [
+            "contract:ProductCatalogService",
+            "service:astronomy-db",
+            "service:checkout",
+            "service:frontend",
+            "service:recommendation"
+          ],
+          "missing_ids": [
+            "service:opamp-server"
+          ]
+        },
+        {
+          "task_id": "task-08-checkoutservice-ownership",
+          "scenario": "Scenario 1: API, Event, and File Ownership",
+          "passed": false,
+          "precision": 100,
+          "recall": 66.7,
+          "f1": 80,
+          "matched_ids": [
+            "contract:CheckoutService",
+            "service:checkout"
+          ],
+          "missing_ids": [
+            "service:frontend"
+          ]
+        },
+        {
+          "task_id": "task-09-email-trap",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:checkout"
+          ]
+        },
+        {
+          "task_id": "task-10-shipping-trap",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:checkout",
+            "service:frontend",
+            "service:quote"
+          ]
+        },
+        {
+          "task_id": "task-11-agent-profile-divergence",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": true,
+          "precision": 100,
+          "recall": 100,
+          "f1": 100,
+          "matched_ids": [
+            "service:chatbot",
+            "service:frontend",
+            "service:mcp"
+          ]
+        },
+        {
+          "task_id": "task-12-currency-language-boundary",
+          "scenario": "Scenario 8: Traps, Conflicts & Unsupported Boundaries",
+          "passed": false,
+          "precision": 100,
+          "recall": 66.7,
+          "f1": 80,
+          "matched_ids": [
+            "service:checkout",
+            "service:frontend"
+          ],
+          "missing_ids": [
+            "contract:CurrencyService"
+          ]
+        }
+      ]
+    }
+  },
+  "perturbation_robustness": {
+    "published_nodes": 88,
+    "perturbed_nodes": 88,
+    "node_delta": 0,
+    "node_parity": true,
+    "published_edges": 146,
+    "perturbed_edges": 144,
+    "edge_delta": -2,
+    "published_recall": 82.4,
+    "perturbed_recall": 81.3,
+    "recall_delta": -1.1,
+    "published_precision": 100,
+    "perturbed_precision": 100,
+    "precision_delta": 0
+  }
+}

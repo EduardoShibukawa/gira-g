@@ -24,6 +24,8 @@ type Options struct {
 	ManifestPath string
 	// Pipeline overrides the default extractor pipeline (used by mutation tests).
 	Pipeline *extractors.Pipeline
+	// AllowShrink permits intentional architectural node or contract removal without file deletion.
+	AllowShrink bool
 }
 
 // Build ensures every declared repository is cached at its pinned commit, runs the

@@ -14,21 +14,23 @@ import (
 // Question is one gira-query request. Op selects the operation; the other fields
 // are its arguments, named as in the MCP tools.
 type Question struct {
-	Op       string `json:"op"` // impact, slice, explain, locate, tour, pr_impact, diff
-	TargetID string `json:"target_id,omitempty"`
-	NodeID   string `json:"node_id,omitempty"`
-	EdgeID   string `json:"edge_id,omitempty"`
-	Tier     string `json:"tier,omitempty"`
-	View     string `json:"view,omitempty"`
-	Query    string `json:"query,omitempty"`
-	Focus    string `json:"focus,omitempty"`
-	Range    string `json:"range,omitempty"`
-	RepoPath string `json:"repo_path,omitempty"`
-	IndexA   string `json:"index_a,omitempty"`
-	IndexB   string `json:"index_b,omitempty"`
-	Depth    int    `json:"depth,omitempty"`
-	Budget   int    `json:"budget,omitempty"`
-	MaxSteps int    `json:"max_steps,omitempty"`
+	Op        string `json:"op"` // impact, slice, explain, locate, tour, pr_impact, diff, doc, flows
+	TargetID  string `json:"target_id,omitempty"`
+	NodeID    string `json:"node_id,omitempty"`
+	EdgeID    string `json:"edge_id,omitempty"`
+	ServiceID string `json:"service_id,omitempty"`
+	Entry     string `json:"entry,omitempty"`
+	Tier      string `json:"tier,omitempty"`
+	View      string `json:"view,omitempty"`
+	Query     string `json:"query,omitempty"`
+	Focus     string `json:"focus,omitempty"`
+	Range     string `json:"range,omitempty"`
+	RepoPath  string `json:"repo_path,omitempty"`
+	IndexA    string `json:"index_a,omitempty"`
+	IndexB    string `json:"index_b,omitempty"`
+	Depth     int    `json:"depth,omitempty"`
+	Budget    int    `json:"budget,omitempty"`
+	MaxSteps  int    `json:"max_steps,omitempty"`
 }
 
 // Error codes agents branch on (spec A.1, gira-query).
@@ -147,13 +149,38 @@ func (q Question) route(index string) (string, map[string]any, []string, error) 
 		tool, cli = "explain_evidence", []string{"explain"}
 		put("node_id", q.NodeID, "--node")
 		put("edge_id", q.EdgeID, "--edge")
+		put("budget", q.Budget, "--budget")
 	case "locate":
 		tool, cli = "locate_boundary", []string{"locate", q.Query}
 		args["query"] = q.Query
+		put("budget", q.Budget, "--budget")
 	case "tour":
 		tool, cli = "get_tour", []string{"tour"}
 		put("focus", q.Focus, "--focus")
 		put("max_steps", q.MaxSteps, "--max-steps")
+		put("budget", q.Budget, "--budget")
+	case "doc":
+		svc := q.ServiceID
+		if svc == "" {
+			svc = q.NodeID
+		}
+		if svc == "" {
+			svc = q.TargetID
+		}
+		tool, cli = "get_doc", []string{"doc", svc}
+		args["service_id"] = svc
+		put("budget", q.Budget, "--budget")
+	case "flows":
+		entry := q.Entry
+		if entry == "" {
+			entry = q.NodeID
+		}
+		if entry == "" {
+			entry = q.TargetID
+		}
+		tool, cli = "get_flows", []string{"flows", entry}
+		args["entry"] = entry
+		put("budget", q.Budget, "--budget")
 	case "pr_impact":
 		tool, cli = "get_pr_impact", []string{"impact", "--from-diff", q.Range}
 		args["range"] = q.Range
@@ -161,8 +188,10 @@ func (q Question) route(index string) (string, map[string]any, []string, error) 
 		put("depth", q.Depth, "--depth")
 		put("budget", q.Budget, "--budget")
 	case "diff":
-		tool, cli = "diff_maps", []string{"diff", q.IndexA, q.IndexB, "--format", "json"}
+		tool, cli = "diff_maps", []string{"diff", q.IndexA, q.IndexB}
 		args["index_a"], args["index_b"] = q.IndexA, q.IndexB
+		put("budget", q.Budget, "--budget")
+		cli = append(cli, "--format", "json")
 		return tool, args, cli, nil
 	default:
 		return "", nil, nil, fmt.Errorf("unknown gira-query op %q", q.Op)
@@ -176,16 +205,20 @@ func (q Question) route(index string) (string, map[string]any, []string, error) 
 
 // classify maps a failure message from either path to the shared vocabulary.
 func (qr Querier) classify(q Question, msg string) ([]byte, error) {
+	var parsed struct {
+		Code string `json:"code"`
+	}
+	_ = json.Unmarshal([]byte(msg), &parsed)
 	low := strings.ToLower(msg)
 	e := QueryError{Code: CodeInternal, Message: strings.TrimSpace(msg), Suggestions: []string{}}
 	switch {
-	case strings.Contains(low, "budget_exceeded"):
+	case parsed.Code == CodeBudgetExceeded, strings.Contains(low, "budget_exceeded"):
 		e.Code = CodeBudgetExceeded
-	case strings.Contains(low, "index file not found"), strings.Contains(low, "failed to load index"):
+	case parsed.Code == CodeIndexMissing, strings.Contains(low, "index file not found"), strings.Contains(low, "failed to load index"):
 		e.Code = CodeIndexMissing
-	case strings.Contains(low, "not found"):
+	case parsed.Code == CodeNodeNotFound, strings.Contains(low, "not found"):
 		e.Code = CodeNodeNotFound
-		id := q.TargetID + q.NodeID + q.Focus
+		id := q.TargetID + q.NodeID + q.Focus + q.ServiceID + q.Entry
 		if id != "" {
 			e.Suggestions = qr.suggest(id)
 		}

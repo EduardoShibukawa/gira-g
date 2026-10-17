@@ -8,6 +8,7 @@
 package tokens
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -21,22 +22,8 @@ const (
 )
 
 // ToolDefinitions is the single source for counting: every counting path
-// derives from this list, so budget checks and eval scores cannot disagree.
-// Kept for backward compatibility; use tools.Registry for new code.
-var ToolDefinitions = []string{
-	"get_impact_briefing",
-	"get_pr_impact",
-	"get_tour",
-	"diff_maps",
-	"get_context_slice",
-	"explain_evidence",
-	"locate_boundary",
-	"verify_artifact",
-	"get_control_total",
-	"get_findings_register",
-	"get_token_accounting",
-	"gate_status",
-}
+// derives from tools.Registry, so budget checks and eval scores cannot disagree.
+var ToolDefinitions = tools.Names()
 
 // ListTools returns all tool definitions from the single registry.
 func ListTools() []tools.Tool {
@@ -121,17 +108,19 @@ func ValidateMeasured(r TokenReport, raw []byte) error {
 }
 
 // CountTokensForTools counts tool-definition bytes from the single source.
-// Unknown names contribute nothing; known names contribute their definition
-// length through the shared estimator, so all callers agree.
+// Unknown names contribute nothing; known names contribute their canonical JSON
+// definition length through the shared estimator, so all callers agree.
 func CountTokensForTools(names []string) int {
-	known := map[string]bool{}
-	for _, d := range ToolDefinitions {
-		known[d] = true
-	}
 	total := 0
 	for _, n := range names {
-		if known[n] {
-			total += Estimate([]byte(n))
+		t := tools.ByName(n)
+		if t == nil {
+			continue
+		}
+		if data, err := json.Marshal(t); err == nil {
+			total += Estimate(data)
+		} else {
+			total += Estimate([]byte(t.Name))
 		}
 	}
 	return total

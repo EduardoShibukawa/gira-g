@@ -478,6 +478,7 @@ func (t *Tour) RenderMarkdown() string {
 	if t.Truncated {
 		sb.WriteString(fmt.Sprintf("\n> Tour stopped at %d steps; raise --max-steps to continue.\n", len(t.Steps)))
 	}
+	renderBudgetMarkdown(&sb, t.Budget)
 	return sb.String()
 }
 
@@ -498,9 +499,10 @@ type FlowHop struct {
 
 // Flows is the result of `gira flows <entry>`.
 type Flows struct {
-	Entry     string `json:"entry"`
-	Flows     []Flow `json:"flows"`
-	Truncated bool   `json:"truncated,omitempty"`
+	Entry     string  `json:"entry"`
+	Flows     []Flow  `json:"flows"`
+	Truncated bool    `json:"truncated,omitempty"`
+	Budget    *Budget `json:"budget,omitempty"`
 }
 
 const (
@@ -606,6 +608,43 @@ func (f *Flows) CanonicalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Emit renders flows in format exactly as the CLI writes it, fitted to limit
+// when limit > 0. Trailing flows are dropped from the end first; the entry
+// point and first flow (when present) are never dropped.
+func (f *Flows) Emit(format Format, limit int) ([]byte, error) {
+	render := func(fl *Flows) ([]byte, error) {
+		if format == FormatMarkdown {
+			return []byte(fl.RenderMarkdown() + "\n"), nil
+		}
+		return fl.CanonicalJSON()
+	}
+	if limit <= 0 {
+		return render(f)
+	}
+	var drops []string
+	for i := len(f.Flows) - 1; i >= 1; i-- {
+		drops = append(drops, fmt.Sprintf("flow:%d", i))
+	}
+	return fit(limit, drops, func(trimEvidence bool, drop map[string]bool) (func(*Budget) ([]byte, error), Dropped) {
+		var d Dropped
+		fl := *f
+		fl.Flows = make([]Flow, 0, len(f.Flows))
+		for i, item := range f.Flows {
+			if drop[fmt.Sprintf("flow:%d", i)] {
+				d.Nodes++
+				continue
+			}
+			fl.Flows = append(fl.Flows, item)
+		}
+		return func(b *Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
+			fl.Budget = b
+			return render(&fl)
+		}, d
+	})
+}
+
 // RenderMarkdown renders each flow as one chain line with its locators.
 func (f *Flows) RenderMarkdown() string {
 	var sb strings.Builder
@@ -627,5 +666,6 @@ func (f *Flows) RenderMarkdown() string {
 	if f.Truncated {
 		sb.WriteString(fmt.Sprintf("\n> Stopped at %d flows.\n", maxFlows))
 	}
+	renderBudgetMarkdown(&sb, f.Budget)
 	return sb.String()
 }

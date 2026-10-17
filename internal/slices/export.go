@@ -191,7 +191,8 @@ func renderNodeMarkdownItem(sb *strings.Builder, n domain.Node) {
 }
 
 // ExportHTML produces a standalone, zero-dependency static HTML document with embedded SVG
-// for the topological graph, discrete derivation tags, and no external CSS/JS/fonts.
+// for the topological graph, discrete derivation tags, task-oriented exploration controls,
+// guided tours/flows, and no external CSS/JS/fonts.
 func ExportHTML(mm *domain.MacroMap) string {
 	if mm == nil {
 		mm = domain.NewMacroMap("empty")
@@ -228,6 +229,9 @@ func ExportHTML(mm *domain.MacroMap) string {
 
 	sortedUnsupported := mm.UnsupportedFiles()
 	sort.Slice(sortedUnsupported, func(i, j int) bool { return sortedUnsupported[i].Path < sortedUnsupported[j].Path })
+
+	eng := NewEngine(mm)
+	tour, _ := eng.GetTour("", 0)
 
 	sb.WriteString(`<!DOCTYPE html>
 <html lang="en">
@@ -297,6 +301,53 @@ h2 {
 .badge-inferred { background: rgba(245, 158, 11, 0.2); color: var(--tag-inferred); border: 1px solid var(--tag-inferred); }
 .badge-current { background: rgba(16, 185, 129, 0.15); color: var(--tag-current); }
 .badge-stale { background: rgba(239, 68, 68, 0.2); color: var(--tag-stale); border: 1px solid var(--tag-stale); }
+.badge-unverified { background: rgba(245, 158, 11, 0.2); color: var(--tag-inferred); border: 1px solid var(--tag-inferred); }
+.badge-profile { background: rgba(148, 163, 184, 0.15); color: var(--text-dim); border: 1px solid var(--surface-border); }
+
+.controls-bar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1.5rem;
+}
+.controls-bar input, .controls-bar select, .controls-bar button {
+  background: var(--code-bg);
+  color: var(--text);
+  border: 1px solid var(--surface-border);
+  border-radius: 4px;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.85rem;
+}
+.controls-bar input { flex: 1; min-width: 220px; }
+.controls-bar button { cursor: pointer; }
+.controls-bar button:hover { border-color: var(--accent); }
+
+.inspector-panel {
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+.inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.inspector-col {
+  background: var(--code-bg);
+  border: 1px solid var(--surface-border);
+  border-radius: 4px;
+  padding: 0.85rem;
+}
+.inspector-col h4 { color: var(--accent); font-size: 0.85rem; text-transform: uppercase; margin-bottom: 0.5rem; }
+.inspector-col ul { padding-left: 1.2rem; font-size: 0.85rem; }
 
 .summary-cards {
   display: grid;
@@ -324,11 +375,17 @@ h2 {
   border: 1px solid var(--surface-border);
   border-radius: 6px;
   padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
 }
+.node-card:hover, .node-card.selected { border-color: var(--accent); }
+.node-card.dimmed, tr.dimmed, g.svg-node.dimmed, g.svg-edge.dimmed { opacity: 0.25; }
 .node-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
   margin-bottom: 0.5rem;
 }
 .node-title { font-size: 1.1rem; font-weight: bold; color: #fff; }
@@ -339,9 +396,21 @@ h2 {
   background: var(--code-bg);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
   color: #38bdf8;
   word-break: break-all;
+  cursor: pointer;
+  display: inline-block;
+}
+.evidence-list { margin-top: 0.5rem; font-size: 0.8rem; }
+.evidence-item { margin-top: 0.3rem; padding: 0.3rem 0.45rem; background: rgba(0,0,0,0.2); border-radius: 4px; }
+.stale-warning {
+  margin-top: 0.45rem;
+  padding: 0.35rem 0.5rem;
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 3px solid var(--tag-stale);
+  color: #fca5a5;
+  font-size: 0.8rem;
 }
 .methods-list {
   margin-top: 0.5rem;
@@ -367,6 +436,7 @@ table {
 th, td {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--surface-border);
+  vertical-align: top;
 }
 th {
   background: rgba(0,0,0,0.2);
@@ -386,6 +456,17 @@ tr:last-child td { border-bottom: none; }
   margin-bottom: 2rem;
   overflow-x: auto;
 }
+.svg-node { cursor: pointer; }
+
+.tour-panel {
+  background: var(--surface);
+  border: 1px solid var(--surface-border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+.tour-panel ol { padding-left: 1.4rem; }
+.tour-panel li { margin-bottom: 0.65rem; }
 
 .unsupported-banner {
   background: rgba(239, 68, 68, 0.1);
@@ -409,6 +490,48 @@ tr:last-child td { border-bottom: none; }
     <div class="meta-item">Unsupported Boundaries: <strong>` + fmt.Sprintf("%d", len(sortedUnsupported)) + `</strong></div>
   </div>
 </header>
+
+<div class="controls-bar" role="region" aria-label="Task-oriented architecture filters">
+  <input id="gira-search" type="search" placeholder="Search nodes, contracts, methods, or locators..." oninput="giraApplyFilters()">
+  <select id="gira-filter-kind" onchange="giraApplyFilters()">
+    <option value="">All Kinds</option>
+    <option value="service">Services</option>
+    <option value="infrastructure">Infrastructure</option>
+    <option value="contract">Contracts</option>
+    <option value="library">Libraries</option>
+  </select>
+  <select id="gira-filter-origin" onchange="giraApplyFilters()">
+    <option value="">All Origins</option>
+    <option value="declared">Declared</option>
+    <option value="extracted">Extracted</option>
+    <option value="inferred">Inferred</option>
+  </select>
+  <select id="gira-filter-status" onchange="giraApplyFilters()">
+    <option value="">All Freshness</option>
+    <option value="current">Current</option>
+    <option value="stale">Stale (⚠️)</option>
+    <option value="unverified">Unverified (⚠️)</option>
+  </select>
+  <button type="button" onclick="giraResetSelection()">Reset Selection</button>
+</div>
+
+<div id="gira-inspector" class="inspector-panel">
+  <h3 id="gira-inspector-title">Interactive Component Inspector (click any node in graph or cards)</h3>
+  <div class="inspector-grid">
+    <div class="inspector-col">
+      <h4>O que é isto? (Identity &amp; Evidence)</h4>
+      <div id="gira-inspector-what">Select a node to inspect its kind, contracts, and discrete evidence locators.</div>
+    </div>
+    <div class="inspector-col">
+      <h4>Quem consome? (Downstream Consumers)</h4>
+      <div id="gira-inspector-who">Select a node to highlight downstream consumers and mediating contracts.</div>
+    </div>
+    <div class="inspector-col">
+      <h4>O que muda? (Upstream &amp; Impact)</h4>
+      <div id="gira-inspector-change">Select a node to inspect upstream dependencies and blast radius.</div>
+    </div>
+  </div>
+</div>
 
 <div class="summary-cards">
   <div class="card">
@@ -436,32 +559,108 @@ tr:last-child td { border-bottom: none; }
 	renderSVGGraph(&sb, mm)
 	sb.WriteString("</div>\n")
 
+	// Guided Tour & Flows Section
+	sb.WriteString("<h2>Guided Tour &amp; Flows</h2>\n")
+	sb.WriteString("<div class=\"tour-panel\" id=\"gira-tour-flows\">\n")
+	if tour == nil || len(tour.Steps) == 0 {
+		sb.WriteString("<p style=\"color: var(--text-dim);\">(no guided tour entry points declared)</p>\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("<h3>Guided Reading Tour (%d steps)</h3>\n<ol>\n", len(tour.Steps)))
+		for _, step := range tour.Steps {
+			nodeFocus := ""
+			if len(step.NodeIDs) > 0 {
+				nodeFocus = step.NodeIDs[0]
+			}
+			sb.WriteString(fmt.Sprintf("<li><strong onclick=\"giraSelectNode('%s')\" style=\"cursor:pointer;color:var(--accent);\">%d. %s</strong> (<code>%s</code>)<br><span>%s</span>",
+				html.EscapeString(nodeFocus), step.Order, html.EscapeString(step.Title),
+				html.EscapeString(strings.Join(step.NodeIDs, ", ")), html.EscapeString(step.Why)))
+			if step.WhyLocator != "" {
+				sb.WriteString(fmt.Sprintf(" <span class=\"locator\" onclick=\"giraCopyLocator(this)\" title=\"Click to copy locator\">[%s]</span>", html.EscapeString(step.WhyLocator)))
+			}
+			if len(step.Read) > 0 {
+				reads := make([]string, len(step.Read))
+				for i, r := range step.Read {
+					reads[i] = fmt.Sprintf("<span class=\"locator\" onclick=\"giraCopyLocator(this)\">%s</span>", html.EscapeString(r))
+				}
+				sb.WriteString("<br><small>Read: " + strings.Join(reads, " ") + "</small>")
+			}
+			sb.WriteString("</li>\n")
+		}
+		sb.WriteString("</ol>\n")
+	}
+	if len(services) > 0 {
+		hasAnyFlow := false
+		for _, svc := range services {
+			fls, err := eng.GetFlows(svc.ID)
+			if err != nil || fls == nil || len(fls.Flows) == 0 {
+				continue
+			}
+			if !hasAnyFlow {
+				sb.WriteString("<h3 style=\"margin-top:1rem;\">Deterministic Flows</h3>\n<ul>\n")
+				hasAnyFlow = true
+			}
+			for _, fl := range fls.Flows {
+				hops := make([]string, len(fl.Steps))
+				for i, h := range fl.Steps {
+					if h.Locator != "" {
+						hops[i] = fmt.Sprintf("<code>%s</code> <span class=\"locator\">[%s]</span>", html.EscapeString(h.NodeID), html.EscapeString(h.Locator))
+					} else {
+						hops[i] = fmt.Sprintf("<code>%s</code>", html.EscapeString(h.NodeID))
+					}
+				}
+				sb.WriteString("<li>" + strings.Join(hops, " &rarr; ") + "</li>\n")
+			}
+		}
+		if hasAnyFlow {
+			sb.WriteString("</ul>\n")
+		}
+	}
+	sb.WriteString("</div>\n")
+
 	// Mediated Relationships Table
 	sb.WriteString(fmt.Sprintf("<h2>Mediated Relationships (%d)</h2>\n", len(sortedRels)))
-	sb.WriteString("<div class=\"table-wrap\">\n<table>\n<thead>\n<tr>\n")
+	sb.WriteString("<div class=\"table-wrap\">\n<table id=\"gira-rel-table\">\n<thead>\n<tr>\n")
 	sb.WriteString("<th>Source</th><th>Verb</th><th>Target</th><th>Derivation</th><th>Freshness</th><th>Locator Citation</th>\n")
 	sb.WriteString("</tr>\n</thead>\n<tbody>\n")
 	if len(sortedRels) == 0 {
 		sb.WriteString("<tr><td colspan=\"6\" style=\"text-align: center; color: var(--text-dim);\">No relationships defined.</td></tr>\n")
 	} else {
 		for _, r := range sortedRels {
-			originBadge := "-"
-			statusBadge := "-"
-			locStr := "-"
+			originsAttr, statusesAttr := collectEvidenceAttrs(r.Evidence)
+			originCell := "-"
+			statusCell := "-"
+			locCell := "-"
 			if len(r.Evidence) > 0 {
-				originBadge = renderBadgeHTML(string(r.Evidence[0].Origin))
-				statusBadge = renderBadgeHTML(string(r.Evidence[0].Status))
-				if r.Evidence[0].Locator.Path != "" {
-					locStr = html.EscapeString(r.Evidence[0].Locator.String())
+				var oBadges, sBadges, lItems []string
+				for _, ev := range r.Evidence {
+					oBadge := renderBadgeHTML(string(ev.Origin))
+					if ev.DeploymentProfile != "" {
+						oBadge += " " + fmt.Sprintf(`<span class="badge badge-profile">%s</span>`, html.EscapeString(ev.DeploymentProfile))
+					}
+					oBadges = append(oBadges, oBadge)
+					sBadges = append(sBadges, renderBadgeHTML(string(ev.Status)))
+					if ev.Locator.Path != "" {
+						lItems = append(lItems, fmt.Sprintf(`<code class="locator" onclick="giraCopyLocator(this)" title="Click to copy locator">%s</code>`, html.EscapeString(ev.Locator.String())))
+					}
+				}
+				originCell = strings.Join(oBadges, "<br>")
+				statusCell = strings.Join(sBadges, "<br>")
+				if len(lItems) > 0 {
+					locCell = strings.Join(lItems, "<br>")
 				}
 			}
-			sb.WriteString(fmt.Sprintf("<tr><td><code>%s</code></td><td class=\"verb\">%s</td><td><code>%s</code></td><td>%s</td><td>%s</td><td><code>%s</code></td></tr>\n",
+			sb.WriteString(fmt.Sprintf("<tr class=\"rel-row\" data-source=\"%s\" data-target=\"%s\" data-verb=\"%s\" data-origins=\"%s\" data-statuses=\"%s\"><td><code>%s</code></td><td class=\"verb\">%s</td><td><code>%s</code></td><td>%s</td><td>%s</td><td>%s</td></tr>\n",
+				html.EscapeString(r.SourceID),
+				html.EscapeString(r.TargetID),
+				html.EscapeString(string(r.Verb)),
+				html.EscapeString(originsAttr),
+				html.EscapeString(statusesAttr),
 				html.EscapeString(r.SourceID),
 				html.EscapeString(string(r.Verb)),
 				html.EscapeString(r.TargetID),
-				originBadge,
-				statusBadge,
-				locStr,
+				originCell,
+				statusCell,
+				locCell,
 			))
 		}
 	}
@@ -483,7 +682,7 @@ tr:last-child td { border-bottom: none; }
 			if ub.Locator.Path != "" {
 				loc = fmt.Sprintf(" [%s]", ub.Locator.String())
 			}
-			sb.WriteString(fmt.Sprintf("<div class=\"unsupported-banner\"><span class=\"unsupported-path\">%s</span>: %s%s</div>\n",
+			sb.WriteString(fmt.Sprintf("<div class=\"unsupported-banner\">⚠️ <span class=\"unsupported-path\">%s</span>: %s%s</div>\n",
 				html.EscapeString(ub.Path),
 				html.EscapeString(ub.Reason),
 				html.EscapeString(loc),
@@ -500,7 +699,7 @@ tr:last-child td { border-bottom: none; }
 			if ub.Locator.Path != "" {
 				loc = fmt.Sprintf(" [%s]", ub.Locator.String())
 			}
-			sb.WriteString(fmt.Sprintf("<div class=\"unsupported-banner\"><span class=\"unsupported-path\">%s</span>: %s%s</div>\n",
+			sb.WriteString(fmt.Sprintf("<div class=\"unsupported-banner\">⚠️ <span class=\"unsupported-path\">%s</span>: %s%s</div>\n",
 				html.EscapeString(ub.Path),
 				html.EscapeString(ub.Reason),
 				html.EscapeString(loc),
@@ -508,11 +707,114 @@ tr:last-child td { border-bottom: none; }
 		}
 	}
 
-	sb.WriteString(`</div>
+	sb.WriteString(`<script>
+function giraCopyLocator(el) {
+  if (!el) return;
+  var txt = el.textContent.replace(/^\[|\]$/g, '');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt);
+  }
+}
+function giraApplyFilters() {
+  var q = (document.getElementById('gira-search').value || '').toLowerCase();
+  var kind = document.getElementById('gira-filter-kind').value;
+  var origin = document.getElementById('gira-filter-origin').value;
+  var status = document.getElementById('gira-filter-status').value;
+  document.querySelectorAll('.node-card').forEach(function(card) {
+    var matchQ = !q || card.textContent.toLowerCase().indexOf(q) !== -1;
+    var matchK = !kind || card.getAttribute('data-kind') === kind;
+    var matchO = !origin || (card.getAttribute('data-origins') || '').indexOf(origin) !== -1;
+    var matchS = !status || (card.getAttribute('data-statuses') || '').indexOf(status) !== -1;
+    card.style.display = (matchQ && matchK && matchO && matchS) ? '' : 'none';
+  });
+  document.querySelectorAll('.rel-row').forEach(function(row) {
+    var matchQ = !q || row.textContent.toLowerCase().indexOf(q) !== -1;
+    var matchO = !origin || (row.getAttribute('data-origins') || '').indexOf(origin) !== -1;
+    var matchS = !status || (row.getAttribute('data-statuses') || '').indexOf(status) !== -1;
+    row.style.display = (matchQ && matchO && matchS) ? '' : 'none';
+  });
+}
+function giraSelectNode(nodeId) {
+  if (!nodeId) return;
+  var upstream = [];
+  var downstream = [];
+  var related = {};
+  related[nodeId] = true;
+  document.querySelectorAll('.rel-row').forEach(function(row) {
+    var src = row.getAttribute('data-source');
+    var tgt = row.getAttribute('data-target');
+    var verb = row.getAttribute('data-verb');
+    if (src === nodeId) {
+      related[tgt] = true;
+      upstream.push(verb + ' -> ' + tgt);
+      row.classList.remove('dimmed');
+    } else if (tgt === nodeId) {
+      related[src] = true;
+      downstream.push(src + ' (' + verb + ')');
+      row.classList.remove('dimmed');
+    } else {
+      row.classList.add('dimmed');
+    }
+  });
+  document.querySelectorAll('.node-card').forEach(function(card) {
+    var id = card.getAttribute('data-node-id');
+    card.classList.toggle('selected', id === nodeId);
+    card.classList.toggle('dimmed', !related[id]);
+    if (id === nodeId) {
+      document.getElementById('gira-inspector-title').textContent = 'Component Inspector: ' + id;
+      document.getElementById('gira-inspector-what').innerHTML = card.innerHTML;
+    }
+  });
+  document.querySelectorAll('.svg-node').forEach(function(g) {
+    var id = g.getAttribute('data-node-id');
+    g.classList.toggle('dimmed', !related[id]);
+  });
+  document.querySelectorAll('.svg-edge').forEach(function(e) {
+    var s = e.getAttribute('data-source-id');
+    var t = e.getAttribute('data-target-id');
+    e.classList.toggle('dimmed', s !== nodeId && t !== nodeId);
+  });
+  document.getElementById('gira-inspector-who').innerHTML = downstream.length
+    ? '<ul><li>' + downstream.join('</li><li>') + '</li></ul>'
+    : '<span>No direct consumers recorded.</span>';
+  document.getElementById('gira-inspector-change').innerHTML = upstream.length
+    ? '<ul><li>' + upstream.join('</li><li>') + '</li></ul>'
+    : '<span>No outgoing dependencies recorded.</span>';
+}
+function giraResetSelection() {
+  document.getElementById('gira-search').value = '';
+  document.getElementById('gira-filter-kind').value = '';
+  document.getElementById('gira-filter-origin').value = '';
+  document.getElementById('gira-filter-status').value = '';
+  giraApplyFilters();
+  document.querySelectorAll('.dimmed, .selected').forEach(function(el) {
+    el.classList.remove('dimmed');
+    el.classList.remove('selected');
+  });
+}
+</script>
+</div>
 </body>
 </html>`)
 
 	return sb.String()
+}
+
+func collectEvidenceAttrs(evs []domain.EvidenceRecord) (string, string) {
+	oSet := make(map[string]bool)
+	sSet := make(map[string]bool)
+	var origins, statuses []string
+	for _, ev := range evs {
+		if o := string(ev.Origin); o != "" && !oSet[o] {
+			oSet[o] = true
+			origins = append(origins, o)
+		}
+		if s := string(ev.Status); s != "" && !sSet[s] {
+			sSet[s] = true
+			statuses = append(statuses, s)
+		}
+	}
+	return strings.Join(origins, ","), strings.Join(statuses, ",")
 }
 
 func renderBadgeHTML(val string) string {
@@ -526,7 +828,9 @@ func renderBadgeHTML(val string) string {
 	case "current":
 		return `<span class="badge badge-current">current</span>`
 	case "stale":
-		return `<span class="badge badge-stale">stale</span>`
+		return `<span class="badge badge-stale">⚠️ stale</span>`
+	case "unverified":
+		return `<span class="badge badge-unverified">⚠️ unverified</span>`
 	default:
 		return html.EscapeString(val)
 	}
@@ -541,19 +845,41 @@ func renderNodeCategoryHTML(sb *strings.Builder, category string, nodes []domain
 
 	sb.WriteString("<div class=\"node-grid\">\n")
 	for _, n := range nodes {
-		sb.WriteString("<div class=\"node-card\">\n")
+		originsAttr, statusesAttr := collectEvidenceAttrs(n.Evidence)
+		sb.WriteString(fmt.Sprintf("<div class=\"node-card\" data-node-id=\"%s\" data-kind=\"%s\" data-origins=\"%s\" data-statuses=\"%s\" onclick=\"giraSelectNode('%s')\">\n",
+			html.EscapeString(n.ID),
+			html.EscapeString(string(n.Kind)),
+			html.EscapeString(originsAttr),
+			html.EscapeString(statusesAttr),
+			html.EscapeString(n.ID),
+		))
 		sb.WriteString("<div class=\"node-header\">\n")
 		sb.WriteString(fmt.Sprintf("<span class=\"node-title\">%s</span>\n", html.EscapeString(n.Name)))
 		if len(n.Evidence) > 0 {
-			sb.WriteString(renderBadgeHTML(string(n.Evidence[0].Origin)))
+			sb.WriteString("<span>" + renderBadgeHTML(string(n.Evidence[0].Origin)) + " " + renderBadgeHTML(string(n.Evidence[0].Status)) + "</span>")
 		}
 		sb.WriteString("</div>\n")
 		sb.WriteString(fmt.Sprintf("<div class=\"node-id\">%s</div>\n", html.EscapeString(n.ID)))
 		if n.Description != "" {
 			sb.WriteString(fmt.Sprintf("<p style=\"font-size: 0.85rem; margin-top: 0.4rem;\">%s</p>\n", html.EscapeString(n.Description)))
 		}
-		if len(n.Evidence) > 0 && n.Evidence[0].Locator.Path != "" {
-			sb.WriteString(fmt.Sprintf("<div class=\"locator\">%s</div>\n", html.EscapeString(n.Evidence[0].Locator.String())))
+		if hasStaleEvidence(n.Evidence) {
+			sb.WriteString(fmt.Sprintf("<div class=\"stale-warning\">⚠️ NOTICE: Stale evidence detected for <code>%s</code></div>\n", html.EscapeString(n.ID)))
+		}
+		if len(n.Evidence) > 0 {
+			sb.WriteString("<div class=\"evidence-list\">\n")
+			for _, ev := range n.Evidence {
+				sb.WriteString("<div class=\"evidence-item\">")
+				sb.WriteString(renderBadgeHTML(string(ev.Origin)) + " " + renderBadgeHTML(string(ev.Status)))
+				if ev.DeploymentProfile != "" {
+					sb.WriteString(fmt.Sprintf(` <span class="badge badge-profile">%s</span>`, html.EscapeString(ev.DeploymentProfile)))
+				}
+				if ev.Locator.Path != "" {
+					sb.WriteString(fmt.Sprintf("<div class=\"locator\" onclick=\"event.stopPropagation();giraCopyLocator(this)\" title=\"Click to copy locator\">%s</div>", html.EscapeString(ev.Locator.String())))
+				}
+				sb.WriteString("</div>\n")
+			}
+			sb.WriteString("</div>\n")
 		}
 
 		// Contract methods/messages if present
@@ -654,7 +980,7 @@ func renderSVGGraph(sb *strings.Builder, mm *domain.MacroMap) {
 </defs>
 `)
 
-	// Render edges
+	// Render edges with relationship verb labels
 	for _, rel := range mm.Relationships {
 		src, ok1 := nodePos[rel.SourceID]
 		tgt, ok2 := nodePos[rel.TargetID]
@@ -673,11 +999,19 @@ func renderSVGGraph(sb *strings.Builder, mm *domain.MacroMap) {
 			x2 = tgt.x + boxWidth
 		}
 
-		sb.WriteString(fmt.Sprintf(`<path d="M %d %d C %d %d, %d %d, %d %d" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)" />`+"\n",
-			x1, y1, (x1+x2)/2, y1, (x1+x2)/2, y2, x2, y2))
+		midX := (x1 + x2) / 2
+		midY := (y1+y2)/2 - 4
+
+		sb.WriteString(fmt.Sprintf(`<g class="svg-edge" data-source-id="%s" data-target-id="%s">`+"\n",
+			html.EscapeString(rel.SourceID), html.EscapeString(rel.TargetID)))
+		sb.WriteString(fmt.Sprintf(`  <path d="M %d %d C %d %d, %d %d, %d %d" stroke="#64748b" stroke-width="2" fill="none" marker-end="url(#arrow)" />`+"\n",
+			x1, y1, midX, y1, midX, y2, x2, y2))
+		sb.WriteString(fmt.Sprintf(`  <text x="%d" y="%d" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="monospace">%s</text>`+"\n",
+			midX, midY, html.EscapeString(string(rel.Verb))))
+		sb.WriteString("</g>\n")
 	}
 
-	// Render node boxes
+	// Render node boxes with full-name <title> tooltips and data-node-id
 	for _, n := range mm.Nodes {
 		pos, ok := nodePos[n.ID]
 		if !ok {
@@ -694,7 +1028,10 @@ func renderSVGGraph(sb *strings.Builder, mm *domain.MacroMap) {
 			color = "#10b981"
 		}
 
-		sb.WriteString(fmt.Sprintf(`<g transform="translate(%d, %d)">`+"\n", pos.x, pos.y))
+		sb.WriteString(fmt.Sprintf(`<g class="svg-node" data-node-id="%s" transform="translate(%d, %d)" onclick="giraSelectNode('%s')">`+"\n",
+			html.EscapeString(n.ID), pos.x, pos.y, html.EscapeString(n.ID)))
+		sb.WriteString(fmt.Sprintf(`  <title>%s (%s)</title>`+"\n",
+			html.EscapeString(n.Name), html.EscapeString(n.ID)))
 		sb.WriteString(fmt.Sprintf(`  <rect width="%d" height="%d" rx="6" fill="#18202c" stroke="%s" stroke-width="1.5" />`+"\n",
 			boxWidth, boxHeight, color))
 		sb.WriteString(fmt.Sprintf(`  <text x="12" y="24" fill="#f8fafc" font-size="12" font-family="-apple-system, sans-serif" font-weight="600">%s</text>`+"\n",

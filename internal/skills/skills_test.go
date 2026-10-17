@@ -242,3 +242,30 @@ func TestNudgeNeverBlocks(t *testing.T) {
 		t.Fatalf("unmapped or malformed input must stay silent: %s", out.String())
 	}
 }
+
+func TestQuestionRouteDocFlowsAndBudget(t *testing.T) {
+	tool, args, cli, err := (Question{Op: "doc", ServiceID: "service:acme", Budget: 800}).route("idx.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool != "get_doc" || args["service_id"] != "service:acme" || args["budget"] != 800 {
+		t.Fatalf("unexpected doc route: tool=%s args=%v", tool, args)
+	}
+	wantCLI := "doc service:acme --budget 800 --index idx.json --format json"
+	if strings.Join(cli, " ") != wantCLI {
+		t.Fatalf("doc cli = %q, want %q", strings.Join(cli, " "), wantCLI)
+	}
+
+	tool, args, cli, err = (Question{Op: "flows", Entry: "service:frontend", Budget: 600}).route("idx.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tool != "get_flows" || args["entry"] != "service:frontend" || args["budget"] != 600 {
+		t.Fatalf("unexpected flows route: tool=%s args=%v", tool, args)
+	}
+	wantFlowsCLI := "flows service:frontend --budget 600 --index idx.json --format json"
+	if strings.Join(cli, " ") != wantFlowsCLI {
+		t.Fatalf("flows cli = %q, want %q", strings.Join(cli, " "), wantFlowsCLI)
+	}
+}
+

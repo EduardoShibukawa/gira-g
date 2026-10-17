@@ -268,6 +268,32 @@ func TestSCDocParity(t *testing.T) {
 		}
 	}
 
+	htmlOut, err := runCLI(t, "doc", "service:acme", "--format", "html", "--index", index)
+	if err != nil {
+		t.Fatalf("doc html failed: %v", err)
+	}
+	htmlStr := string(htmlOut)
+	if !strings.Contains(htmlStr, "<!DOCTYPE html>") {
+		t.Errorf("html output missing <!DOCTYPE html>")
+	}
+	for _, bad := range []string{"<script src=", "<link ", `src="http`, `href="http`, "@import", "url(http"} {
+		if strings.Contains(htmlStr, bad) {
+			t.Errorf("doc html is not self-contained: contains %q", bad)
+		}
+	}
+	for _, tok := range docFactTokens(&doc) {
+		if !strings.Contains(htmlStr, tok) {
+			t.Errorf("html is missing the JSON fact %q", tok)
+		}
+	}
+	htmlAgain, err := runCLI(t, "doc", "service:acme", "--format", "html", "--index", index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(htmlOut, htmlAgain) {
+		t.Errorf("html output is not byte-identical on repeat")
+	}
+
 	// Repeat runs are byte-identical in both formats (the envelope carries
 	// no wall-clock timestamps).
 	jsonAgain, err := runCLI(t, "doc", "service:acme", "--format", "json", "--index", index)
@@ -355,8 +381,8 @@ func TestSCDocBannerAndStale(t *testing.T) {
 	}
 }
 
-// Unknown services error honestly; the MVP requires an explicit --format;
-// `html` is a follow-up and says so.
+// Unknown services error honestly; requires an explicit --format;
+// unsupported formats error honestly.
 func TestSCDocUsageErrors(t *testing.T) {
 	index := docFixtureIndex(t)
 
@@ -366,8 +392,8 @@ func TestSCDocUsageErrors(t *testing.T) {
 	if _, err := runCLI(t, "doc", "service:acme", "--index", index); err == nil || !strings.Contains(err.Error(), "--format") {
 		t.Errorf("expected a missing---format error, got %v", err)
 	}
-	if _, err := runCLI(t, "doc", "service:acme", "--format", "html", "--index", index); err == nil || !strings.Contains(err.Error(), "follow-up") {
-		t.Errorf("expected an html follow-up error, got %v", err)
+	if _, err := runCLI(t, "doc", "service:acme", "--format", "xml", "--index", index); err == nil || !strings.Contains(err.Error(), "unsupported doc format") {
+		t.Errorf("expected an unsupported format error, got %v", err)
 	}
 	if _, err := runCLI(t, "doc", "--format", "json", "--index", index); err == nil {
 		t.Errorf("expected error for missing service_id, got nil")

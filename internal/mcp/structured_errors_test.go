@@ -158,12 +158,13 @@ func TestStructuredErrorsGiraQueryCompatibility(t *testing.T) {
 	// Should be able to handle error by code without substring parsing
 	knownCodes := map[string]bool{
 		"budget_exceeded": true,
+		"node_not_found":  true,
 		"envelope_error":  true,
 		"tool_not_found":  true,
 		"invalid_budget":  true,
 		"internal_error":  true,
 	}
 	if !knownCodes[code] {
-		t.Logf("unknown error code (acceptable): %s", code)
+		t.Fatalf("unknown error code: %s", code)
 	}
 }

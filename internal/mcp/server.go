@@ -20,6 +20,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 	"github.com/EduardoShibukawa/gira-g/internal/tokens"
+	"github.com/EduardoShibukawa/gira-g/internal/tools"
 )
 
 // JSONRPCRequest represents a JSON-RPC 2.0 request or notification.
@@ -55,10 +56,10 @@ const (
 
 // MCP Tool representations
 type ToolDefinition struct {
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	InputSchema InputSchema `json:"inputSchema"`
-	Enveloped   bool        `json:"enveloped"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	InputSchema map[string]interface{} `json:"inputSchema"`
+	Enveloped   bool                   `json:"enveloped"`
 }
 
 type InputSchema struct {
@@ -309,306 +310,16 @@ func (s *Server) handleRequest(req *JSONRPCRequest) (*JSONRPCResponse, bool) {
 }
 
 func (s *Server) getToolDefinitions() []ToolDefinition {
-	return []ToolDefinition{
-		{
-			Name:        "get_impact_briefing",
-			Description: "Analyzes upstream services, downstream consumers, mediating contracts, and unsupported boundaries affected by a change to target_id.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"target_id": {
-						Type:        "string",
-						Description: "ID of the target node (service, contract, or infrastructure) to analyze.",
-					},
-					"depth": {
-						Type:        "integer",
-						Description: "Multi-hop graph traversal depth (default 1).",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"target_id"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_pr_impact",
-			Description: "Impact briefing for a change set: maps the changed line ranges of a git revision range (or a supplied unified diff) to the nodes whose evidence they touch, and merges their impact briefings. Changed files no locator cites are listed as unmatched.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"range": {
-						Type:        "string",
-						Description: "Git revision range <base>..<head>, read from repo_path. Labels the result when diff is given.",
-					},
-					"diff": {
-						Type:        "string",
-						Description: "Optional unified diff text (for example `git diff -U0 base..head`); used instead of running git.",
-					},
-					"repo_path": {
-						Type:        "string",
-						Description: "Repository the range is read from (default: the server's working directory).",
-					},
-					"repo_id": {
-						Type:        "string",
-						Description: "Optional repository id; only locators of this repository are matched.",
-					},
-					"depth": {
-						Type:        "integer",
-						Description: "Multi-hop graph traversal depth (default 1).",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"range"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_tour",
-			Description: "Deterministic guided reading tour: from entry points (services with declared ports) or a focus node, walks consumes/provides/accesses edges breadth-first. Each step has order, title, node_ids, read (locators) and a templated why.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"focus": {
-						Type:        "string",
-						Description: "Optional node to start the tour at.",
-					},
-					"max_steps": {
-						Type:        "integer",
-						Description: "Maximum number of steps (default 20).",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_doc",
-			Description: "Single-service onboarding doc: entrypoints, symbols, provided/consumed contracts, imports, calls, run/test manifests, change dirs, tour, flows and known unknowns for a service. Same engine as `gira doc --format json`.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"service_id": {
-						Type:        "string",
-						Description: "ID of the service to document (for example service:acme).",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"service_id"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "diff_maps",
-			Description: "Architecture diff between two index files: renamed, added and removed nodes, added and removed edges, changed contracts, newly unsupported paths, and (informational) moved evidence. Renames are detected from structure.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"index_a": {
-						Type:        "string",
-						Description: "Path to the earlier macro-map.json.",
-					},
-					"index_b": {
-						Type:        "string",
-						Description: "Path to the later macro-map.json.",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"index_a", "index_b"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_context_slice",
-			Description: "Retrieves a bounded context slice around node_id across summary, contracts, or deep disclosure tiers.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"node_id": {
-						Type:        "string",
-						Description: "ID of the focal node to extract context slice for.",
-					},
-					"tier": {
-						Type:        "string",
-						Description: "Context slice disclosure tier: 'summary', 'contracts', or 'deep' (default 'summary').",
-						Enum:        []string{"summary", "contracts", "deep"},
-					},
-					"view": {
-						Type:        "string",
-						Description: "Context slice architectural view: 'full', 'architecture', or 'governance' (default 'full').",
-						Enum:        []string{"full", "architecture", "governance"},
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"node_id"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "explain_evidence",
-			Description: "Inspects provenance, derivation tier, deployment profile, and freshness status for a node and/or edge.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"node_id": {
-						Type:        "string",
-						Description: "Optional node ID to explain evidence records for.",
-					},
-					"edge_id": {
-						Type:        "string",
-						Description: "Optional edge / relationship ID to explain evidence records for.",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "locate_boundary",
-			Description: "Finds architectural boundary components, contract RPC methods, or unhandled/unsupported files matching query.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"query": {
-						Type:        "string",
-						Description: "Substring query to search across node IDs, names, contract methods, and unsupported files.",
-					},
-					"budget": {
-						Type:        "integer",
-						Description: "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
-					},
-				},
-				Required: []string{"query"},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "verify_artifact",
-			Description: "F1: recomputes the L1 artifact digest for CHECK/EXPECT/CWD+exit+fingerprint and returns {digest, closing_line}.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"check": {
-						Type:        "string",
-						Description: "CHECK: command label recorded in the digest.",
-					},
-					"expect": {
-						Type:        "string",
-						Description: "EXPECT: success marker recorded in the digest.",
-					},
-					"cwd": {
-						Type:        "string",
-						Description: "CWD recorded in the digest.",
-					},
-					"exit_code": {
-						Type:        "integer",
-						Description: "Exit code recorded in the digest.",
-					},
-					"fingerprint": {
-						Type:        "string",
-						Description: "Frozen input fingerprint hex.",
-					},
-					"taxonomy": {
-						Type:        "string",
-						Description: "L3 claim taxonomy recorded in the digest (measured|checked|inferred|assumed, default inferred).",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_control_total",
-			Description: "F2: validates control:{total,matched,mismatched,sampled_n,seed} against the seeded max(20,5%) rule. Format validation only: it rejects inconsistent lines but does not derive a measurement (derivation lives in gira eval --control-total).",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"total": {
-						Type:        "integer",
-						Description: "Control denominator (task count).",
-					},
-					"matched": {
-						Type:        "integer",
-						Description: "Blind re-derivation matches on the sample.",
-					},
-					"mismatched": {
-						Type:        "integer",
-						Description: "Blind re-derivation mismatches on the sample.",
-					},
-					"seed": {
-						Type:        "integer",
-						Description: "Sampler seed.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_findings_register",
-			Description: "F3: returns the L3 findings register entries (pointer only, outside slices).",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"register": {
-						Type:        "string",
-						Description: "Path to the findings register file.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "get_token_accounting",
-			Description: "F4: returns honest token accounting {gross,expansions,net,measured_bool} (measurement only).",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"text": {
-						Type:        "string",
-						Description: "Text to measure (lifted before measuring).",
-					},
-					"expansions": {
-						Type:        "integer",
-						Description: "Expansion debit.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
-		{
-			Name:        "gate_status",
-			Description: "F5: non-executing gate status read for a ledger file.",
-			InputSchema: InputSchema{
-				Type: "object",
-				Properties: map[string]PropertyDef{
-					"state": {
-						Type:        "string",
-						Description: "Gate ledger file path.",
-					},
-				},
-			},
-			Enveloped: true,
-		},
+	defs := make([]ToolDefinition, 0, len(tools.Registry))
+	for _, t := range tools.Registry {
+		defs = append(defs, ToolDefinition{
+			Name:        t.Name,
+			Description: t.Description,
+			InputSchema: t.InputSchema,
+			Enveloped:   t.Enveloped,
+		})
 	}
+	return defs
 }
 
 type toolCallParams struct {
@@ -770,40 +481,26 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Budget   int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_impact_briefing: %v", err)},
-				},
-			}
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_impact_briefing: %v", err), false, "Check arguments format")
 		}
 		if args.TargetID == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Missing required argument 'target_id'"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Missing required argument 'target_id'", false, "Provide target_id")
 		}
 
 		briefing, err := s.Engine.GetImpactBriefing(args.TargetID, args.Depth)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to get impact briefing: %v", err)},
-				},
+			if strings.Contains(err.Error(), "not found") {
+				return newStructuredError("node_not_found", fmt.Sprintf("Failed to get impact briefing: %v", err), true, "Use locate_boundary to search for valid node IDs")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get impact briefing: %v", err), true, "Check target_id")
 		}
 
 		outJSON, err := briefing.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to render impact briefing: %v", err)},
-				},
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render impact briefing: %v", err), false, "Check budget parameter")
 		}
 
 		return CallToolResult{
@@ -822,10 +519,10 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Budget   int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return errorResult(fmt.Sprintf("Invalid arguments for get_pr_impact: %v", err))
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_pr_impact: %v", err), false, "Check arguments format")
 		}
 		if args.Range == "" {
-			return errorResult("Missing required argument 'range'")
+			return newStructuredError("invalid_budget", "Missing required argument 'range'", false, "Provide a git revision range")
 		}
 		diff := args.Diff
 		if diff == "" {
@@ -835,21 +532,24 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			}
 			out, err := gitdiff.Run(context.Background(), dir, args.Range)
 			if err != nil {
-				return errorResult(fmt.Sprintf("Failed to read diff: %v", err))
+				return newStructuredError("envelope_error", fmt.Sprintf("Failed to read diff: %v", err), true, "Check repo_path and range")
 			}
 			diff = out
 		}
 		changes, err := gitdiff.Parse(diff)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to parse diff: %v", err))
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to parse diff: %v", err), false, "Provide a valid unified diff")
 		}
 		briefing, err := s.Engine.GetPRImpact(args.Range, args.RepoID, changes, args.Depth)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to get PR impact: %v", err))
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get PR impact: %v", err), true, "Check diff and range")
 		}
 		out, err := briefing.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to render PR impact: %v", err))
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
+			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render PR impact: %v", err), false, "Check budget parameter")
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 
@@ -861,19 +561,22 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		}
 		if len(params.Arguments) > 0 {
 			if err := json.Unmarshal(params.Arguments, &args); err != nil {
-				return errorResult(fmt.Sprintf("Invalid arguments for get_tour: %v", err))
+				return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_tour: %v", err), false, "Check arguments format")
 			}
 		}
 		tour, err := s.Engine.GetTour(args.Focus, args.MaxSteps)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to get tour: %v", err))
+			if strings.Contains(err.Error(), "not found") {
+				return newStructuredError("node_not_found", fmt.Sprintf("Failed to get tour: %v", err), true, "Use locate_boundary to search for valid node IDs")
+			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get tour: %v", err), true, "Check focus node ID")
 		}
 		out, err := tour.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			if errors.Is(err, slices.ErrBudgetExceeded) {
 				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
-			return errorResult(fmt.Sprintf("Failed to render tour: %v", err))
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render tour: %v", err), false, "Check budget parameter")
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 
@@ -884,22 +587,25 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		}
 		if len(params.Arguments) > 0 {
 			if err := json.Unmarshal(params.Arguments, &args); err != nil {
-				return errorResult(fmt.Sprintf("Invalid arguments for get_doc: %v", err))
+				return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_doc: %v", err), false, "Check arguments format")
 			}
 		}
 		if args.ServiceID == "" {
-			return errorResult("Missing required argument 'service_id'")
+			return newStructuredError("invalid_budget", "Missing required argument 'service_id'", false, "Provide service_id")
 		}
 		doc, err := s.Engine.GetDoc(args.ServiceID)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to get doc: %v", err))
+			if strings.Contains(err.Error(), "not found") {
+				return newStructuredError("node_not_found", fmt.Sprintf("Failed to get doc: %v", err), true, "Use locate_boundary to search for valid service IDs")
+			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get doc: %v", err), true, "Check service_id")
 		}
 		out, err := doc.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
 			if errors.Is(err, slices.ErrBudgetExceeded) {
 				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
-			return errorResult(fmt.Sprintf("Failed to render doc: %v", err))
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render doc: %v", err), false, "Check budget parameter")
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 
@@ -907,25 +613,29 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		var args struct {
 			IndexA string `json:"index_a"`
 			IndexB string `json:"index_b"`
+			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return errorResult(fmt.Sprintf("Invalid arguments for diff_maps: %v", err))
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for diff_maps: %v", err), false, "Check arguments format")
 		}
 		if args.IndexA == "" || args.IndexB == "" {
-			return errorResult("Missing required arguments 'index_a' and 'index_b'")
+			return newStructuredError("invalid_budget", "Missing required arguments 'index_a' and 'index_b'", false, "Provide index_a and index_b paths")
 		}
 		st := store.NewStore("")
 		a, err := st.LoadFile(args.IndexA)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to load index_a: %v", err))
+			return newStructuredError("index_missing", fmt.Sprintf("Failed to load index_a: %v", err), true, "Run gira index first")
 		}
 		b, err := st.LoadFile(args.IndexB)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to load index_b: %v", err))
+			return newStructuredError("index_missing", fmt.Sprintf("Failed to load index_b: %v", err), true, "Run gira index first")
 		}
-		out, err := archdiff.Compare(a, b).CanonicalJSON()
+		out, err := archdiff.Compare(a, b).Emit("json", args.Budget)
 		if err != nil {
-			return errorResult(fmt.Sprintf("Failed to render diff: %v", err))
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
+			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render diff: %v", err), false, "Check budget parameter")
 		}
 		return CallToolResult{Content: []ToolContent{{Type: "text", Text: string(out)}}}
 
@@ -937,20 +647,10 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Invalid arguments for get_context_slice: %v", err)},
-				},
-			}
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_context_slice: %v", err), false, "Check arguments format")
 		}
 		if args.NodeID == "" {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: "Missing required argument 'node_id'"},
-				},
-			}
+			return newStructuredError("invalid_budget", "Missing required argument 'node_id'", false, "Provide node_id")
 		}
 
 		tier := slices.SliceTier(args.Tier)
@@ -965,22 +665,18 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 		slice, err := s.Engine.GetContextSliceWithView(args.NodeID, tier, view)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to get context slice: %v", err)},
-				},
+			if strings.Contains(err.Error(), "not found") {
+				return newStructuredError("node_not_found", fmt.Sprintf("Failed to get context slice: %v", err), true, "Use locate_boundary to search for valid node IDs")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get context slice: %v", err), true, "Check node_id")
 		}
 
 		outJSON, err := slice.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to render context slice: %v", err)},
-				},
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to render context slice: %v", err), false, "Check budget parameter")
 		}
 
 		return CallToolResult{
@@ -996,12 +692,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Budget int    `json:"budget"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Invalid arguments for explain_evidence: %v", err)},
-				},
-			}
+			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for explain_evidence: %v", err), false, "Check arguments format")
 		}
 		if args.NodeID == "" && args.EdgeID == "" {
 			return newStructuredError("invalid_budget", "Either node_id or edge_id must be provided", false, "Provide either node_id or edge_id")
@@ -1009,17 +700,18 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 
 		report, err := s.Engine.ExplainEvidence(args.NodeID, args.EdgeID)
 		if err != nil {
+			if strings.Contains(err.Error(), "not found") {
+				return newStructuredError("node_not_found", fmt.Sprintf("Failed to explain evidence: %v", err), true, "Check node_id or edge_id exists")
+			}
 			return newStructuredError("envelope_error", fmt.Sprintf("Failed to explain evidence: %v", err), true, "Check node_id or edge_id exists")
 		}
 
 		outJSON, err := report.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to serialize canonical JSON: %v", err)},
-				},
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to serialize canonical JSON: %v", err), false, "Check budget parameter")
 		}
 
 		return CallToolResult{
@@ -1059,12 +751,10 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		result := slices.BoundaryResult{Matches: matches}
 		out, err := result.Emit(slices.FormatJSON, args.Budget)
 		if err != nil {
-			return CallToolResult{
-				IsError: true,
-				Content: []ToolContent{
-					{Type: "text", Text: fmt.Sprintf("Failed to format matches: %v", err)},
-				},
+			if errors.Is(err, slices.ErrBudgetExceeded) {
+				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
 			}
+			return newStructuredError("envelope_error", fmt.Sprintf("Failed to format matches: %v", err), false, "Check budget parameter")
 		}
 
 		return CallToolResult{

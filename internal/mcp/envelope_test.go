@@ -2,6 +2,8 @@ package mcp_test
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -16,6 +18,20 @@ func TestSCEnvelopeEveryTool(t *testing.T) {
 	mm := buildTestMacroMap()
 	engine := slices.NewEngine(mm)
 	server := mcp.NewServer("gira", "0.1.0", engine)
+
+	mmBytes, err := mm.CanonicalJSON()
+	if err != nil {
+		t.Fatalf("failed to serialize test macro map: %v", err)
+	}
+	tmpDir := t.TempDir()
+	indexA := filepath.Join(tmpDir, "index-a.json")
+	indexB := filepath.Join(tmpDir, "index-b.json")
+	if err := os.WriteFile(indexA, mmBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(indexB, mmBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Initialize
 	sendRequest(t, server, map[string]any{
@@ -48,8 +64,7 @@ func TestSCEnvelopeEveryTool(t *testing.T) {
 			case "get_tour":
 				req["params"].(map[string]any)["arguments"] = map[string]any{"focus": "service:frontend"}
 			case "diff_maps":
-				// Need two index files - skip for now, test with mock
-				return
+				req["params"].(map[string]any)["arguments"] = map[string]any{"index_a": indexA, "index_b": indexB}
 			case "explain_evidence":
 				req["params"].(map[string]any)["arguments"] = map[string]any{"node_id": "service:frontend"}
 			case "locate_boundary":

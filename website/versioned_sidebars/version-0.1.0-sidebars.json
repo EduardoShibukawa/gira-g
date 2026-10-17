@@ -20,6 +20,7 @@
         "concepts/extractor",
         "concepts/reference-corpus",
         "concepts/perturbed-variant",
+        "concepts/scorecard",
         "concepts/change-maker",
         "concepts/impact-briefing",
         "concepts/impact-set"
@@ -30,16 +31,19 @@
       "label": "CLI Reference",
       "items": [
         "cli/map",
+        "cli/init",
+        "cli/index",
         "cli/impact",
         "cli/slice",
-        "cli/index",
         "cli/serve",
         "cli/explain",
         "cli/tour",
+        "cli/doc",
         "cli/diff",
         "cli/flows",
         "cli/locate",
-        "cli/skills"
+        "cli/skills",
+        "cli/governance"
       ]
     },
     {

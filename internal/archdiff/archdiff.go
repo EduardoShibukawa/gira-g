@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
+	"github.com/EduardoShibukawa/gira-g/internal/tokens"
 )
 
 // Rename pairs a node of the first index with its counterpart in the second.
@@ -70,6 +72,7 @@ type Diff struct {
 	// Locators cites, for every node id the diff reports (renamed, added, removed,
 	// changed), the node's first evidence in its own index, or "unknown".
 	Locators map[string]string `json:"locators"`
+	Budget   *slices.Budget    `json:"budget,omitempty"`
 }
 
 // Structural reports whether the diff has any architectural change: renames,
@@ -491,6 +494,183 @@ func (d *Diff) CanonicalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+// Emit renders the diff in format ("json" or "md"), fitted to limit when limit > 0.
+// Truncation drops evidence_moved first, then no_longer_unsupported, then edges,
+// then added/removed/renamed nodes from the end. changed_contracts and
+// newly_unsupported are never dropped.
+func (d *Diff) Emit(format string, limit int) ([]byte, error) {
+	render := func(df *Diff) ([]byte, error) {
+		if format == "md" || format == "markdown" {
+			return []byte(df.RenderMarkdown() + "\n"), nil
+		}
+		return df.CanonicalJSON()
+	}
+	if limit <= 0 {
+		return render(d)
+	}
+
+	var order []string
+	for i := len(d.EvidenceMoved) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("ev:%d", i))
+	}
+	for i := len(d.NoLongerUnsupported) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("nlu:%d", i))
+	}
+	for i := len(d.RemovedEdges) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("re:%d", i))
+	}
+	for i := len(d.AddedEdges) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("ae:%d", i))
+	}
+	for i := len(d.RemovedNodes) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("rn:%d", i))
+	}
+	for i := len(d.AddedNodes) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("an:%d", i))
+	}
+	for i := len(d.Renamed) - 1; i >= 0; i-- {
+		order = append(order, fmt.Sprintf("ren:%d", i))
+	}
+
+	build := func(drop map[string]bool) (func(*slices.Budget) ([]byte, error), slices.Dropped) {
+		var dd slices.Dropped
+		c := *d
+		c.EvidenceMoved = make([]string, 0, len(d.EvidenceMoved))
+		for i, id := range d.EvidenceMoved {
+			if drop[fmt.Sprintf("ev:%d", i)] {
+				dd.Evidence++
+				continue
+			}
+			c.EvidenceMoved = append(c.EvidenceMoved, id)
+		}
+		c.NoLongerUnsupported = make([]string, 0, len(d.NoLongerUnsupported))
+		for i, p := range d.NoLongerUnsupported {
+			if drop[fmt.Sprintf("nlu:%d", i)] {
+				dd.Nodes++
+				continue
+			}
+			c.NoLongerUnsupported = append(c.NoLongerUnsupported, p)
+		}
+		c.RemovedEdges = make([]Edge, 0, len(d.RemovedEdges))
+		for i, e := range d.RemovedEdges {
+			if drop[fmt.Sprintf("re:%d", i)] {
+				dd.Relationships++
+				continue
+			}
+			c.RemovedEdges = append(c.RemovedEdges, e)
+		}
+		c.AddedEdges = make([]Edge, 0, len(d.AddedEdges))
+		for i, e := range d.AddedEdges {
+			if drop[fmt.Sprintf("ae:%d", i)] {
+				dd.Relationships++
+				continue
+			}
+			c.AddedEdges = append(c.AddedEdges, e)
+		}
+		c.RemovedNodes = make([]string, 0, len(d.RemovedNodes))
+		for i, id := range d.RemovedNodes {
+			if drop[fmt.Sprintf("rn:%d", i)] {
+				dd.Nodes++
+				continue
+			}
+			c.RemovedNodes = append(c.RemovedNodes, id)
+		}
+		c.AddedNodes = make([]string, 0, len(d.AddedNodes))
+		for i, id := range d.AddedNodes {
+			if drop[fmt.Sprintf("an:%d", i)] {
+				dd.Nodes++
+				continue
+			}
+			c.AddedNodes = append(c.AddedNodes, id)
+		}
+		c.Renamed = make([]Rename, 0, len(d.Renamed))
+		for i, r := range d.Renamed {
+			if drop[fmt.Sprintf("ren:%d", i)] {
+				dd.Nodes++
+				continue
+			}
+			c.Renamed = append(c.Renamed, r)
+		}
+		return func(b *slices.Budget) ([]byte, error) {
+			b.Estimator = "bytes/4"
+			b.Measured = false
+			c.Budget = b
+			return render(&c)
+		}, dd
+	}
+
+	hint := func(est int) string {
+		return fmt.Sprintf("truncated to fit %d tokens; the full output needs about %d: rerun with budget >= %d", limit, est, est)
+	}
+	settle := func(b *slices.Budget, rfn func(*slices.Budget) ([]byte, error)) ([]byte, int, error) {
+		for i := 0; i < 8; i++ {
+			out, err := rfn(b)
+			if err != nil {
+				return nil, 0, err
+			}
+			got := tokens.Estimate(out)
+			if got == b.Estimated {
+				return out, got, nil
+			}
+			b.Estimated = got
+		}
+		return nil, 0, fmt.Errorf("budget estimate did not settle")
+	}
+
+	fullRender, _ := build(nil)
+	b0 := &slices.Budget{Limit: limit}
+	var fullOut []byte
+	var fullEst int
+	for i := 0; i < 8; i++ {
+		b0.EscalateHint = hint(b0.Estimated)
+		out, est, err := settle(b0, fullRender)
+		if err != nil {
+			return nil, err
+		}
+		if hint(est) == b0.EscalateHint {
+			fullOut, fullEst = out, est
+			break
+		}
+		b0.Estimated = est
+	}
+	if fullEst <= limit {
+		return fullOut, nil
+	}
+	fullHint := hint(fullEst)
+
+	try := func(k int) ([]byte, bool, error) {
+		drop := make(map[string]bool, k)
+		for _, id := range order[:k] {
+			drop[id] = true
+		}
+		rfn, dropped := build(drop)
+		out, est, err := settle(&slices.Budget{Limit: limit, Truncated: dropped != slices.Dropped{}, Dropped: dropped, EscalateHint: fullHint}, rfn)
+		return out, est <= limit, err
+	}
+
+	if _, ok, err := try(len(order)); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, fmt.Errorf("%w: the parts that are never dropped need more than %d tokens; rerun with budget >= %d", slices.ErrBudgetExceeded, limit, limit)
+	}
+	lo, hi := 1, len(order)
+	for lo < hi {
+		mid := (lo + hi) / 2
+		if _, ok, err := try(mid); err != nil {
+			return nil, err
+		} else if ok {
+			hi = mid
+		} else {
+			lo = mid + 1
+		}
+	}
+	out, ok, err := try(lo)
+	if err == nil && !ok {
+		out, _, err = try(len(order))
+	}
+	return out, err
+}
+
 // RenderMarkdown renders the diff as a human changelog.
 func (d *Diff) RenderMarkdown() string {
 	var sb strings.Builder
@@ -537,6 +717,13 @@ func (d *Diff) RenderMarkdown() string {
 		sb.WriteString(fmt.Sprintf("\n## Evidence moved (%d, not an architectural change)\n", len(d.EvidenceMoved)))
 		for _, id := range d.EvidenceMoved {
 			sb.WriteString("- `" + id + "`\n")
+		}
+	}
+	if d.Budget != nil {
+		sb.WriteString(fmt.Sprintf("\n## Budget\n- limit: %d, estimated: %d, truncated: %t\n- dropped: nodes %d, relationships %d, evidence %d\n",
+			d.Budget.Limit, d.Budget.Estimated, d.Budget.Truncated, d.Budget.Dropped.Nodes, d.Budget.Dropped.Relationships, d.Budget.Dropped.Evidence))
+		if d.Budget.EscalateHint != "" {
+			sb.WriteString(fmt.Sprintf("- escalate: %s\n", d.Budget.EscalateHint))
 		}
 	}
 	return sb.String()
