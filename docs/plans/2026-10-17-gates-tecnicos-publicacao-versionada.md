@@ -165,7 +165,7 @@ Fontes de TODOS os `manifest.Repositories` (não só os com evidência); sem URL
 - Se `tool_id` entra no objeto embutido ou só em `meta.json`.
 - Se os 17 extratores com versão manual bastam como "versões dos extratores" de N3.
 
-**Status do gate: evidência registrada; decisão pendente do dono.**
+**Status do gate: direção escolhida (B/R2/`source_identity`); implementação e auditoria de consumidores/schema ainda pendentes.**
 
 ---
 
@@ -302,7 +302,7 @@ Subdecisão: `ManifestPath` vazio (`eval/eval.go:399`): manter o fallback `"gira
 - Caso de borda `belongsToComponent` não testado.
 - Quem identifica o repo do manifesto, já que o locator de override tem `Repo==""` (a identidade fica no hash do manifesto, N3).
 
-**Status do gate: evidência registrada; decisão pendente do dono.**
+**Status do gate: política O1 e política do eval escolhidas; implementação de normalização/saneamento e testes de caminhos ainda pendentes.**
 
 ---
 
@@ -372,7 +372,7 @@ Opção C (ou A): excluir `-ldflags` e `main.date` do `tool_id`, mantendo `main.
 - `vcs.revision`, `vcs.time`, `vcs.modified` não foram observados em nenhum build local.
 - Comportamento em outras versões do Go e no runner do release.
 
-**Status do gate: evidência registrada; decisão pendente do dono.**
+**Status do gate: opção C escolhida; testes de regressão de `tool_id`/hash de dev e confirmação no runner de release ainda pendentes.**
 
 ---
 
@@ -480,7 +480,7 @@ SC7 (travas), nos 3 SOs: grafias parametrizadas (relativa, absoluta, symlink de 
 - Outras versões ou instalações do Git for Windows.
 - Escrita em `NUL`/`/dev/null` como administrador no Linux/macOS.
 
-**Status do gate: evidência registrada (perfil runner admin); usuário não elevado/sem Developer Mode desconhecido.**
+**Status do gate: W1 aceito para o perfil do runner hospedado; não se generaliza para usuário comum. O teste `git archive | tar -x` com tab e a célula SC7 em usuário não elevado/sem Developer Mode permanecem pendentes, com skip explícito se symlink não puder ser criado.**
 
 ---
 
@@ -492,7 +492,7 @@ SC7 (travas), nos 3 SOs: grafias parametrizadas (relativa, absoluta, symlink de 
 
 **O que o gate precisa:** (a) implementação do store versionado e de `init --output` em ramo de trabalho, com testes de injeção de falha antes e depois do rename; (b) execução dessas suítes nos runners Linux, macOS e Windows `[CI]`; (c) para o Windows, o resultado do Gate 4 informa o desenho do sync de diretório (hoje nunca confirmado, spec Problem).
 
-**Status do gate: aberto.**
+**Status do gate: sem evidência antes da implementação; decidido que os testes serão parte do primeiro child heavy autorizado e bloqueiam o aceite/merge dessa implementação.**
 
 ---
 
