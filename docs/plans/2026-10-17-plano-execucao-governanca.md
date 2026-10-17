@@ -156,8 +156,8 @@ As propostas (spec v1/v2 e este plano) ficam abaixo de todas essas fontes até s
 
 | Etapa | Estado | Evidência |
 |---|---|---|
-| Etapa 1 (`4c2204c`) | implementada; aceite formal **não registrado** | [CÓDIGO]; Sources a dão como "substancialmente implementada" |
-| Etapa 1.1 (`0d5f248`) | as 4 pendências da Revisão aparecem resolvidas; aceite **não registrado** | ver a tabela abaixo |
+| Etapa 1 (`4c2204c`) | implementada; revisão adversarial sem bloqueios materiais; aceite formal **não registrado** (aguarda o dono) | [CÓDIGO]; [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
+| Etapa 1.1 (`0d5f248`) | as 4 pendências resolvidas; revisão adversarial sem bloqueios materiais; aceite **não registrado** (aguarda o dono) | [registro](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) |
 | Etapa 2.0 (PR #17, `7054031`, merge `61b58c2`) | **[CONCLUÍDA]** | CI nos 3 SO no branch e no merge [CI]; teste local sem escrita no cache [TESTE EXECUTADO]. Não fiz revisão linha a linha do diff para o critério "casos 1–3 afirmam o mesmo comportamento" [DESC] |
 | Etapa 2a–2i | não iniciadas, não autorizadas | — |
 
@@ -266,7 +266,8 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
 - **Custo:** uma sessão de revisão.
 - **Risco:** basear a Etapa 2 em código que nunca passou por PR.
 - **Pergunta:** "Aceita a Etapa 1/1.1 agora com a evidência do §3.3, ou exige revisão adversarial do diff antes?"
-- **decidido:** (b) por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`), depois aceite (a) se não houver bloqueios materiais. `aa4e6fe` (M0–M6) **não** entra nesta revisão e vira frente separada (V6; `tasks/2026-10-17-m0-m6-retro-review.md`). Aceite ainda **não** registrado: aguarda o resultado da revisão.
+- **decidido:** (b) por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`), depois aceite (a) se não houver bloqueios materiais. `aa4e6fe` (M0–M6) **não** entra nesta revisão e vira frente separada (V6; `tasks/2026-10-17-m0-m6-retro-review.md`).
+- **resultado da revisão (2026-10-17):** veredito **sem bloqueios materiais**; critérios (a)–(e) valem em `61b58c2`. Nove achados não bloqueantes (N1–N9 da revisão; P2: ordem de leitura vs escrita, depende de D2; caminho absoluto em `Locator.Path`, depende de D3) estão como follow-ups no [registro retroativo](../../tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md) (`verified`, `verified_at: 61b58c2`). O **aceite aguarda o dono**; não está registrado.
 
 **N3. Identidade do snapshot destacado**
 - **Contexto:** V2.
@@ -674,7 +675,7 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 
 | Próxima ação | Quem |
 |---|---|
-| ~~Responder N1 e N2~~ N1 (a) e N2 (b) respondidas em 2026-10-17; aceite da 1/1.1 aguarda a revisão | dono |
+| ~~Responder N1 e N2~~ N1 (a) e N2 (b) respondidas em 2026-10-17; revisão da 1/1.1 concluída sem bloqueios: o dono aceita ou não a Etapa 1/1.1 | dono |
 | Responder D1–D9c, N3 e N4; autorizar a 2a; opcionalmente, autorizar a 2b à parte | dono, depois agente |
 
 ---
@@ -686,7 +687,7 @@ Ordem pelas dependências. As decisões técnicas e as autorizações operaciona
 
 ### 14.1 Técnicas: Gira-G
 1. ~~**N1:**~~ **respondida: (a)**, 2026-10-17.
-2. ~~**N2:**~~ **respondida: (b)**, 2026-10-17; revisão de `aa4e6fe..0d5f248` (exclui `aa4e6fe`), depois aceite (a).
+2. **N2:** **respondida: (b)**, 2026-10-17; revisão concluída sem bloqueios materiais; **aceite da Etapa 1/1.1 pendente do dono** (ver §6.1 N2).
 3. **N4:** o ADR 0014 declara o store como cache derivado local, e o versionamento de conhecimento continua com o Git?
 4. **D1:** A′ (`index --output` destacado, `init` sempre canônico com cópia, ordem versão → snapshot → manifesto)?
 5. **N3:** o snapshot destacado carrega identidade (sidecar `P.meta.json`), como exige a decisão aprovada §4?

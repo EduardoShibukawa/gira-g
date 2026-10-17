@@ -55,7 +55,7 @@ Proposta. Este parent só fica `active` depois de `confirmed: heavy by owner`. O
 
 Pré-condições, todas decisões do dono:
 1. ~~N1 (nome e sequência)~~: decidida (a), 2026-10-17;
-2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b), 2026-10-17; aceite pendente da revisão adversarial;
+2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b), 2026-10-17; revisão adversarial concluída sem bloqueios materiais, evidência em `2026-10-17-etapa-1-1-1-retro-acceptance` (`verified`); aceite do dono pendente;
 3. N3, N4, D1–D9c (tabela de decisões do spec): abertas.
 
 Children previstos, em ordem de dependência:
@@ -80,6 +80,6 @@ skip: roda depois que os children estiverem verificados
 
 - as of: 2026-10-17, branch `work/2026-10-17-gira-n1-n2-o6-decisions`, base `186427e`
 - done: N1 (a) e N2 (b) registradas; O6 aplicada (proteção de `main`); spec v1 segue `draft`
-- next: revisão adversarial de `aa4e6fe..0d5f248`, depois registro de aceite da 1/1.1; o dono responde N3, N4, D1–D9c; com `confirmed: heavy`, o parent fica `active`
+- next: o dono vê o resultado da revisão e aceita (ou não) a Etapa 1/1.1 (`tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md`); depois, revisão de D1 contra a decisão aprovada §4 (N3); o dono responde N3, N4, D1–D9c; com `confirmed: heavy`, o parent fica `active`
 - open: N3, N4, D1–D9c e as perguntas do spec (`## Open questions`); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: B1 e B2 rodaram em `61b58c2`; rodar de novo se `main` andar
