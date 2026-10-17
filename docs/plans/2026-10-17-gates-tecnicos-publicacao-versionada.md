@@ -4,13 +4,13 @@
 |---|---|
 | Data | 2026-10-17 |
 | Tipo | Registro de evidência, somente documentação |
-| Estado | Evidência de gates. Spec `draft`. Tarefa-mãe `todo`. **Implementação não autorizada** |
+| Estado | Decisões do dono registradas (2026-10-17). Spec `draft`. Tarefa-mãe `todo`. **Implementação não autorizada** |
 | Base | `25882da` (main) |
 | Spec | [`2026-10-17-gira-versioned-publication.md`](../../specs/2026-10-17-gira-versioned-publication.md), `## Open questions` itens 1–5 |
 | Decisão | [`2026-10-17-decisao-arquitetural-publicacao-versionada.md`](2026-10-17-decisao-arquitetural-publicacao-versionada.md), `## Bloqueios antes da aprovação final`, itens 1–5 |
 | Tarefa-mãe | [`2026-10-17-gira-versioned-publication.md`](../../tasks/2026-10-17-gira-versioned-publication.md) |
 
-Este documento registra evidência. Não aprova a spec, não adiciona `confirmed: heavy`, não cria ADR 0014 nem tarefas-filhas, não altera código de produto e não decide nada que a decisão arquitetural deixou aberto. Toda recomendação é do agente, marcada `[INFERÊNCIA]`, e **aguarda o dono**.
+Este documento registra evidência e, no adendo ao final, as decisões do dono de 2026-10-17. Não aprova a spec, não adiciona `confirmed: heavy`, não cria ADR 0014 nem tarefas-filhas e não altera código de produto. Os achados técnicos continuam sujeitos aos testes de aceitação listados; Gate 5 é verificado dentro da primeira tarefa de implementação autorizada, não antes dela.
 
 ## Legenda das classes de evidência
 
@@ -31,11 +31,11 @@ Limitação comum: todos os experimentos foram em Linux. LSP não estava dispon�
 
 | Gate | Tema | Status |
 |---|---|---|
-| 1 | Contrato do mapa e consumidores | evidência registrada; decisão pendente do dono |
-| 2 | Manifesto fora da raiz Git (D3) | evidência registrada; decisão pendente do dono |
-| 3 | `main.date` (D5) | evidência registrada; decisão pendente do dono |
-| 4 | Windows | evidência registrada (perfil runner admin); usuário não elevado/sem Developer Mode desconhecido |
-| 5 | Durabilidade e publicação por plataforma | aberto |
+| 1 | Contrato do mapa e consumidores | direção escolhida; compatibilidade/consumidores ainda exigem implementação e testes |
+| 2 | Manifesto fora da raiz Git (D3) | política escolhida (O1); testes e saneamento do ambiente ainda pendentes |
+| 3 | `main.date` (D5) | opção C escolhida; regressão de `tool_id` ainda pendente |
+| 4 | Windows | W1 escolhido para o perfil de CI testado; limite documentado, critérios de SC7 ainda necessários |
+| 5 | Durabilidade e publicação por plataforma | reservado como gate de aceitação da implementação, com testes nos três SOs |
 
 ---
 
@@ -496,18 +496,23 @@ SC7 (travas), nos 3 SOs: grafias parametrizadas (relativa, absoluta, symlink de 
 
 ---
 
-## Decisões pendentes do dono
+## Decisões do dono registradas em 2026-10-17
 
-Cada item é uma pergunta com opções e uma recomendação `[INFERÊNCIA]`, que não é decisão.
+Estas escolhas encerram as alternativas de produto nesta rodada. Elas **não** aprovam a spec e **não** autorizam o tier heavy. Quando a decisão depende de mudança de schema ou contrato, o desenho e os testes abaixo são obrigatórios antes de marcar a spec como aprovada.
 
-1. **Valor de `schema_version` (Gate 1).** Opções: A `"1.1.0"` aditivo; B `"2.0.0"` com tipo do campo alterado (falha fechada em binários antigos); C `"2.0.0"` string sem `target_system` no topo; D `"2.0.0"` string sem cuidado (descartada pela evidência). Recomendação: B ou C, porque só elas falham fechado em binários já distribuídos; A só se o dono considerar o schema compatível e aceitar o downgrade silencioso.
-2. **Política do leitor novo (Gate 1).** Opções: R1 conjunto explícito de versões com código estável novo; R2 R1 com `"1.0.0"` só em `--index` explícito e com aviso; R3 qualquer versão da mesma maior. Recomendação: R1 com decodificador estrito na proveniência e `PublishFile` recusando downgrade de schema.
-3. **Nome e forma do campo de proveniência (Gate 1, N3).** Opções: `provenance` (conflita com a métrica `provenance_resolvable_pct`), `snapshot`, `source_identity`; incluir ou não `tool_id`/hash do executável no objeto embutido; SHAs de proveniência contarem ou não para staleness e `isStale`. Recomendação: nome sem conflito (`source_identity` ou `snapshot`), `url_sha256` em vez de URL crua, fontes de todos os repositórios do manifesto, `tool_id` em `meta.json` e não no mapa até decidir o Gate 3.
-4. **Manifesto fora da raiz Git (Gate 2, D3).** Opções O1–O5 (tabela do Gate 2). Recomendação: O1 (falha fechada `manifest_outside_git_root`, só quando há override; `git_root_unavailable` para git quebrado), com saneamento do ambiente Git; O3 como evolução futura.
-5. **`ManifestPath` vazio no `eval` (Gate 2).** Opções: manter fallback `"gira.yaml"`; exigir locator explícito; `eval` não aplica override. Recomendação: não manter o fallback silencioso.
-6. **`main.date` em `tool_id` (Gate 3, D5).** Opções A, B, C (tabela do Gate 3). Recomendação: C (ou A).
-7. **Hash do executável em dev builds (Gate 3).** Opções: manter como na proposta (só `vcs.modified`, sem `vcs.revision` ou `commit=="none"`); remover. Recomendação: sem recomendação firme; depende do atrito de dogfood aceito (reindex a cada rebuild).
-8. **Fechamento do Gate 4 (Windows).** Opções: W1 aceitar a evidência do perfil runner e documentar o limite; W2 exigir experimento extra sem Developer Mode e não elevado; W3 exigir `git archive | tar -x` com tab no Windows. Recomendação: W1, com W2 como teste de aceitação do SC7.
-9. **Gate 5.** Aceitar que a evidência de durabilidade por plataforma só existirá junto da implementação autorizada, ou exigir um protótipo descartável antes. Recomendação: aguardar a autorização heavy e tratar os testes do Gate 5 como parte do primeiro child de implementação.
+1. **Gate 1, forma de `schema_version`: opção B.** O novo formato usa `schema_version: 2` como inteiro (geração principal do contrato, não semver textual). A escolha é deliberada: parsers antigos esperam string e falham fechado em vez de servir silenciosamente um mapa incompatível. O leitor novo deve traduzir tipo/versão inválidos para erro estável `index_schema_unsupported`, sem classificá-los como mapa vazio.
+2. **Gate 1, política do leitor: opção R2.** Lista explícita e estrita de schemas suportados. Schema 2 é decodificado estritamente, inclusive `source_identity`; schema legado `"1.0.0"` só pode ser lido por `--index` explícito, com aviso. Nunca carregá-lo implicitamente com `gira.yaml`, nunca reescrever v1 in-place e nunca permitir downgrade de schema em publicação. Usar `index_schema_unsupported` para versão desconhecida e distinguir schema incompatível de `index_corrupt`.
+3. **Gate 1, nome e forma da proveniência: `source_identity`.** Campo embutido no mapa, com `schema_version: 2`, `manifest_sha256` sobre os bytes crus, `extractors` e `sources`. A lista inclui todos os repositórios declarados no manifesto, mesmo os sem evidência; entradas ordenadas deterministicamente, sem URL crua, usando `url_sha256`. `tool_id` e hash do executável não entram nesse campo embutido. SHA das fontes participa da avaliação de atualidade/staleness, separado da evidência de locators.
+4. **Gate 2, manifesto fora da raiz Git: opção O1.** Quando houver overrides que gerem locators, bloquear manifesto fora de uma worktree Git com `manifest_outside_git_root`; se a consulta Git falhar por Git ausente, dubious ownership ou erro inesperado, falhar fechado com `git_root_unavailable`. Sem overrides que gerem locators, indexação não deve falhar apenas por não haver raiz Git. Resolver symlinks, derivar caminho relativo à raiz com barras `/`, e sanear variáveis de redirecionamento Git (`GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY`, `GIT_ALTERNATE_OBJECT_DIRECTORIES`, `GIT_NAMESPACE`, `GIT_PREFIX` e `GIT_CEILING_DIRECTORIES`) nos probes de raiz e em `init`. Preservar a configuração do usuário para clone/fetch conforme ADR 0009.
+5. **Gate 2, `ManifestPath` vazio em eval: remover o fallback silencioso.** O chamador deve passar o manifesto real, incluindo os bytes crus usados pela chave. Se eval precisar gerar locator e não tiver caminho/bytes do manifesto, retornar erro estável `manifest_path_required`; não inventar `gira.yaml`. Quando não há overrides/locators, não criar locator fictício nem falhar por esse único motivo.
+6. **Gate 3, `main.date` em `tool_id`: opção C.** Excluir a setting `-ldflags` inteira do cálculo de `tool_id`; manter `main.version` e `main.commit` como campos próprios, além de GoVersion e dependências. O fato de `-trimpath` já remover `-ldflags` de BuildInfo reforça que depender da string crua não é estável. Se novos flags de build alterarem semântica, registrá-los como campos explícitos de identidade e adicionar teste.
+7. **Gate 3, hash do executável em builds de desenvolvimento: manter.** Se `vcs.modified` ou a ausência de `vcs.revision`/commit confiável indicar build de desenvolvimento, incluir o hash do executável. Aceita-se reindexação depois de rebuild para não fazer binários diferentes parecerem a mesma ferramenta. Build de release limpo não deve mudar `tool_id` só por `main.date`.
+8. **Gate 4, Windows: opção W1 com limite explícito.** Aceitar a evidência existente para o perfil do runner hospedado (admin elevado, Developer Mode e `core.symlinks=true`). Não generalizar para máquinas de usuários comuns. No SC7, tentar os testes de symlink e, quando o ambiente não permitir criá-lo, pular apenas essa célula com motivo registrado. O comportamento de `git archive | tar -x` com nomes que contêm tab no Windows continua uma verificação de compatibilidade a adicionar antes da aprovação final da spec.
+9. **Gate 5: adiar a execução para a primeira tarefa de implementação autorizada.** Não construir um protótipo descartável antes da autorização heavy. A tarefa inicial de publicação terá testes de falha antes/depois do rename, fsync de diretório, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de snapshot anterior e hash, em Linux/macOS/Windows. Esses testes são critério obrigatório para aceitar a implementação e mesclar sua PR, não uma pré-condição circular para começar a implementação autorizada.
 
-**Autorização.** Conforme a decisão arquitetural, §Bloqueios item 6, a spec continua `draft`, a tarefa-mãe continua `todo` e nenhuma tarefa-filha ou ADR 0014 pode começar até as decisões acima serem tomadas e o dono dar autorização heavy explícita. Este documento **não autoriza implementação**.
+## Status após as decisões
+
+- Gates 1–3 têm direção decidida, mas auditoria de consumidores/schema, testes de compatibilidade, política do eval e testes de regressão de `tool_id` ainda precisam ser concluídos.
+- Gate 4 é aceito apenas para o perfil de runner testado; o teste de `git archive | tar -x` com tab permanece aberto.
+- Gate 5 pertence à verificação da implementação, se e quando houver autorização heavy.
+- A spec segue `draft`; a tarefa-mãe segue `todo`; nenhuma implementação, ADR 0014 ou tarefa-filha foi autorizada.
