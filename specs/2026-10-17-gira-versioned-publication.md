@@ -6,7 +6,7 @@ version: 1
 
 # Publicação versionada de índices do Gira-G
 
-Rascunho para revisão do dono. Nenhuma decisão deste documento está aprovada. As recomendações vêm de uma proposta de agente e do plano de governança, e cada uma está marcada como **proposta**. A proposta original do agente (v2) está anexada sem alterações em [docs/plans/2026-10-17-gira-spec-v2-proposta-original.md](../docs/plans/2026-10-17-gira-spec-v2-proposta-original.md). A v1, que traz o algoritmo de fingerprint, está em [docs/plans/2026-10-17-gira-spec-v1-proposta-original.md](../docs/plans/2026-10-17-gira-spec-v1-proposta-original.md). O plano de execução fica em [docs/plans/2026-10-17-plano-execucao-governanca.md](../docs/plans/2026-10-17-plano-execucao-governanca.md).
+Rascunho de especificação. As direções N1–N4 e D1–D9c foram decididas pelo dono em 2026-10-17 e registradas em [decisão arquitetural](../docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md). O status continua `draft`: ainda faltam auditorias de compatibilidade e verificações de plataforma listadas em `## Open questions`. Essas decisões de direção **não autorizam implementação**. A proposta original do agente (v2) está anexada sem alterações em [docs/plans/2026-10-17-gira-spec-v2-proposta-original.md](../docs/plans/2026-10-17-gira-spec-v2-proposta-original.md). A v1, que traz o algoritmo de fingerprint, está em [docs/plans/2026-10-17-gira-spec-v1-proposta-original.md](../docs/plans/2026-10-17-gira-spec-v1-proposta-original.md). O plano de execução fica em [docs/plans/2026-10-17-plano-execucao-governanca.md](../docs/plans/2026-10-17-plano-execucao-governanca.md).
 
 ## Problem
 
@@ -65,11 +65,12 @@ Proposta, condicionada às decisões abaixo:
 
 - **SC1 Determinismo de invocação.** O mesmo manifesto indexado por caminho relativo, por caminho absoluto, a partir de um subdiretório (descoberta) e via `init` produz um mapa com o mesmo `sha256`. A matriz adversarial (cwd, `HOME`/`USERPROFILE`/`XDG_CACHE_HOME`, `TZ`, `LANG`, `core.quotePath`, `refs/replace`, nomes não ASCII e com tab, três execuções frias, dois ambientes isolados) não muda os bytes.
 - **SC2 Leituras Git independentes do ambiente.** Arquivos com nome não ASCII ou com tab indexam com a configuração padrão. `quotePath` e `refs/replace` não mudam os bytes. Clone e fetch continuam usando a configuração do usuário (ADR 0009).
-- **SC3 Identidade.**
+- **SC3 Identidade e proveniência.**
   - Cada contraexemplo da tabela da v1 muda a chave.
   - A codificação é injetiva: `("ab","c") ≠ ("a","bc")`.
   - Um build modificado inclui o hash do executável.
   - Mesmo `version_id` com bytes diferentes gera `nondeterministic_build`, sem sobrescrever nada.
+  - Cada snapshot canônico ou destacado carrega metadados autocontidos: hash SHA-256 dos bytes exatos do manifesto, `schema_version`, versões dos extratores e SHAs de todas as fontes relevantes. Consumidores antigos não podem ignorar silenciosamente um schema incompatível.
 - **SC4 Resolução segura.**
   - Os cenários S1 e S2 da v1 retornam `index_missing`, e não `[]`.
   - Versão só de outra ferramenta retorna `index_tool_mismatch`, sem carregar nada.
@@ -126,25 +127,25 @@ Proposta, condicionada às decisões abaixo:
 
 ## Decisions
 
-N1 e N2 estão **decididas** (dono, 2026-10-17); as demais estão **abertas**. A recomendação é uma proposta.
+N1, N2, N3, N4 e D1–D9c estão decididas como direções pelo dono em 2026-10-17, com a subdecisão `main.date` em D5 ainda aberta e as condições listadas no registro arquitetural. A spec permanece `draft` até os bloqueios de aprovação serem resolvidos; decisões de direção não autorizam implementação.
 
-| ID | Questão | Alternativas | Proposta |
+| ID | Questão | Alternativas | Decisão do dono / condição |
 |---|---|---|---|
 | N1 | Nome e sequência da etapa: o item 2 aprovado é "atualidade e sync multi-repo" | continuação do item 1 com rótulo novo; renumerar; fazer primeiro o item 2 | **decidido: continuação do item 1** com rótulo próprio (ex.: "Etapa 1.2"), por dono, 2026-10-17 (mensagem de decisão da sessão). Relabel dos documentos é follow-up separado |
 | N2 | Aceite da Etapa 1/1.1 em `61b58c2` antes da 2a | aceitar; aceitar depois de uma revisão adversarial de `aa4e6fe..0d5f248`; não aceitar | **decidido: (b)** por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial de `4c2204c` e `0d5f248` (exclui `aa4e6fe`), depois aceitar se não houver bloqueio material |
-| N3 | O snapshot destacado carrega identidade? (decisão aprovada nas Sources: snapshots identificam hash do manifesto, schema, extratores e SHAs) | sidecar `P.meta.json`; meta embutido; sem identidade | sidecar |
-| N4 | Escopo do ADR 0014 em relação a "Git faz o versionamento" | store = cache derivado, local e regenerável | sim |
-| D1 | Semântica de `--output` | manter; destacada (A′); cópia mais store; diretório-raiz; remover | A′: `index --output` destacado; `init` sempre canônico com cópia; ordem versão → snapshot → manifesto; P sobrescrito só se ausente ou válido, senão `--recover-corrupt` |
-| D2 | Localização do store | XDG → `~/.cache` → projeto; `os.UserCacheDir`; manter | XDG → `~/.cache` → projeto, numa função única. A base do gate também procura o caminho legado `~/.cache` quando XDG está definido |
-| D3 | Locator do manifesto | basename; relativo à raiz Git; manter | `Path = basename` com barra `/`. Para esse locator, "relativo à pasta do manifesto" produz o mesmo valor |
-| D4 | `source_key` | bytes crus; YAML canônico; normalização de EOL/BOM | bytes crus. Comentário, BOM e EOL exigem reindexar |
-| D5 | Ferramenta divergente | falhar fechado; servir com aviso (v1, **revogada**) | falhar fechado, sem flag. Sub-decisão: excluir `main.date` do `tool_id` |
-| D6 | Durabilidade e manifesto | tabela da v2; criar `--require-durable` | tabela da v2, sem `--require-durable` |
-| D7 | Retenção | sem GC; K=3 (v1, **revogada**) | sem GC. Quarentena só em `--recover-corrupt`; procedimento manual documentado |
-| D8 | Travas | M→S→P com `flock`/`LockFileEx`, 60 s, falha fechada | como proposto, sem `--no-lock` |
-| D9 | Legado | nunca com `gira.yaml`; leitura transitória (v1, **revogada**) | nunca com `gira.yaml`. Serve como base do gate na primeira publicação |
-| D9b | Descoberta sem manifesto | exigir `tool_id` atual; não exigir | exigir. Sub-decisão: introduzir `index_ambiguous` |
-| D9c | `skills install --index` aponta para legado | aviso; aviso e caminho absoluto; rejeitar | aviso e caminho absoluto |
+| N3 | O snapshot destacado carrega identidade? (decisão aprovada nas Sources: snapshots identificam hash do manifesto, schema, extratores e SHAs) | sidecar `P.meta.json`; meta embutido; sem identidade | **Decidido: metadados embutidos** no snapshot autocontido. Incluir hash SHA-256 do manifesto, versão de schema, versões dos extratores e SHAs de todas as fontes relevantes, inclusive quando não houver `Locator.CommitSHA`. Exige bump explícito do schema e auditoria de consumidores antes da aprovação final. |
+| N4 | Escopo do ADR 0014 em relação a "Git faz o versionamento" | store = cache derivado, local e regenerável | **Decidido: sim.** O store é cache derivado local, regenerável e não compartilhado; Git permanece a fonte de versionamento compartilhado. |
+| D1 | Semântica de `--output` | manter; destacada (A′); cópia mais store; diretório-raiz; remover | **Decidido: A′, condicionado a N3.** `index --output P` grava apenas o snapshot destacado; `init --output P` publica o estado canônico e grava em P uma cópia byte a byte do snapshot autocontido. Ordem canônica: versão → snapshot → manifesto. P corrompido é preservado salvo `--recover-corrupt`. Se a cópia falhar depois da publicação canônica, reportar sucesso parcial e o estado canônico. |
+| D2 | Localização do store | XDG → `~/.cache` → projeto; `os.UserCacheDir`; manter | **Decidido:** resolver único para leitura/escrita com XDG → `~/.cache` → fallback no projeto. A base do gate também consulta `~/.cache/gira/indexes/<sys>` quando XDG está definido, para compatibilidade legada. |
+| D3 | Locator do manifesto | basename; relativo à raiz Git; manter | **Direção decidida:** usar caminho relativo à raiz Git e normalizado com `/`, para evitar caminho absoluto dependente do clone e manter identidade de subpastas. **Bloqueio:** definir comportamento para manifesto fora da raiz Git e auditar ADR 0001 e consumidores antes da aprovação final; não usar fallback absoluto silencioso. |
+| D4 | `source_key` | bytes crus; YAML canônico; normalização de EOL/BOM | **Decidido:** bytes crus do manifesto. Comentários, BOM e EOL diferentes podem exigir reindexação; chave e parser devem observar os mesmos bytes. |
+| D5 | Ferramenta divergente | falhar fechado; servir com aviso (v1, **revogada**) | **Decidido:** falhar fechado com `index_tool_mismatch`, sem flag de exceção. **Aberto:** auditar se `main.date` altera a semântica da extração. Excluir do `tool_id` apenas se for informativo; manter se alterar semântica, com justificativa. |
+| D6 | Durabilidade e manifesto | tabela da v2; criar `--require-durable` | **Decidido:** tabela da v2, sem `--require-durable`. Unix: falha de sync pode deixar a versão visível, retorna erro e impede gravar o manifesto em `init`; Windows: `visible_unconfirmed`, saída 0 e aviso explícito, sem promessa contra perda de energia. Requer testes por plataforma. |
+| D7 | Retenção | sem GC; K=3 (v1, **revogada**) | **Decidido:** sem GC; limpeza manual documentada. Quarentena só em `--recover-corrupt`, sem remoção automática de versões. |
+| D8 | Travas | M→S→P com `flock`/`LockFileEx`, 60 s, falha fechada | **Decidido:** M→S→P, `flock`/`LockFileEx`, timeout de 60 s, `index_locked`/`lock_unavailable` com falha fechada e sem `--no-lock`. Documentar limitações de FS de rede e editores externos. |
+| D9 | Legado | nunca com `gira.yaml`; leitura transitória (v1, **revogada**) | **Decidido:** legado nunca é carregado automaticamente com `gira.yaml`; pode servir de base estrita do gate na primeira publicação canônica, com mensagem explícita. |
+| D9b | Descoberta sem manifesto | exigir `tool_id` atual; não exigir | **Decidido:** exigir `tool_id` atual e falhar fechado na ambiguidade com código estável `index_ambiguous`, preservando mensagem legível. |
+| D9c | `skills install --index` aponta para legado | aviso; aviso e caminho absoluto; rejeitar | **Decidido:** avisar no caminho legado e normalizar o caminho para absoluto. Cobrir com testes para caminho legado, relativo e snapshot destacado. |
 
 ## Risks and constraints
 
@@ -193,11 +194,16 @@ Nenhuma etapa apaga o caminho legado. Mudanças de bytes por D3 e D4 se revertem
 
 ## Open questions
 
-Todas bloqueiam a aprovação. Nenhuma foi adiada.
+A spec continua `draft`; os pontos abaixo bloqueiam sua aprovação e qualquer implementação. As direções da tabela de decisões foram escolhidas, mas a evidência técnica ainda precisa ser registrada.
 
-- N1, N2, N3, N4, D1, D2, D3, D4, D5 (inclusive `main.date`), D6, D7, D8, D9, D9b (inclusive `index_ambiguous`) e D9c, conforme a tabela de decisões.
-- A spec precisa de critérios mais finos para o symlink no runner Windows (exige privilégio) e para `os.DevNull` como `GIT_CONFIG_GLOBAL` no Windows. Hoje os dois são desconhecidos.
+1. **Contrato do mapa e consumidores:** auditar todos os consumidores de `MacroMap`/JSON e decidir o valor de `schema_version` depois de identificar o contrato atual. Demonstrar que o snapshot autocontido e seus metadados são preservados por CLI, `gira-arch-diff`, bench, tools, skills, exemplos, fixtures, testes e documentação.
+2. **D3 fora da raiz Git:** definir comportamento explícito para manifesto fora da raiz do repositório; nunca gravar caminho absoluto dependente da máquina como fallback silencioso. Auditar compatibilidade com ADR 0001 e consumers de locators.
+3. **D5 `main.date`:** verificar se o valor afeta a extração semântica. A subdecisão fica aberta até haver evidência.
+4. **Windows:** executar testes reprodutíveis no runner Windows para symlinks e `os.DevNull` usado como `GIT_CONFIG_GLOBAL`; hoje o comportamento é desconhecido.
+5. **Publicação/durabilidade:** testes por plataforma para falhas antes/depois do rename, fsync de diretório, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de artefatos válidos/corrompidos e validação de hash.
+6. **Autorização:** não iniciar ADR 0014, tarefas-filhas ou implementação heavy até os pontos 1–5 estarem evidenciados e o dono confirmar explicitamente a autorização de implementação.
 
 ## Revisions
 
 - v1 (2026-10-17): primeiro rascunho no repositório. Consolida a proposta v2 do agente (anexo), os requisitos acrescentados pelo dono (D9b, D9c, `main.date`, não usar `os.UserCacheDir`) e as decisões N1–N4 que o plano de governança encontrou.
+- v1.1 (2026-10-17): registra as direções N3, N4 e D1–D9c aprovadas pelo dono e explicita as evidências ainda necessárias antes da aprovação final; N1/N2 permanecem registradas pelo histórico de governança.
