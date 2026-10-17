@@ -24,9 +24,9 @@ Comportamento atual, lido em `61b58c2`:
 Afetados: usuários da CLI, hosts MCP configurados por `skills install`, bench, `tools/index-bundle`, a skill `gira-arch-diff` e a documentação.
 
 Gatilhos `heavy`:
-- **H1:** as escolhas de produto D1–D9c e N1–N4 estão pendentes.
+- **H1:** schema, proveniência embutida, compatibilidade com parsers antigos e política de publicação exigem contrato explícito e prova de que falhas são fechadas.
 - **H3:** mudam o contrato de `--output`, o layout do store e os erros do resolvedor, que são consumidos por skills, bench, tools e documentação.
-- **H5:** são nove etapas, em várias sessões.
+- **H5:** são várias etapas em várias sessões. As direções de produto estão decididas, mas isso não substitui os gates técnicos nem a autorização heavy.
 
 ## Expected behavior
 
@@ -35,7 +35,7 @@ Proposta, condicionada às decisões abaixo:
 - `gira index` sem `--output` publica uma versão imutável num store versionado. A versão é identificada por `version_id = H(source_key, tool_id)`, e um head por linhagem aponta para ela. O resolvedor só lê o store a partir de um `gira.yaml`.
 - `gira index --output P` grava apenas um snapshot destacado em P. Ele não altera o store, os heads nem o manifesto, e a saída avisa que o snapshot não é o índice ativo.
 - `gira init` sempre publica no store canônico. Com `--output P`, grava também em P uma cópia byte a byte. O manifesto é gravado por último: um build ou gate que falha não cria nem altera `gira.yaml`.
-- A mesma origem e a mesma ferramenta produzem os mesmos bytes, independentemente de cwd, de como o manifesto foi escrito, de `HOME`, `USERPROFILE`, `XDG_CACHE_HOME`, `TZ`, `LANG` e da configuração Git de leitura.
+- Para bytes crus idênticos do manifesto e as mesmas fontes/ferramenta, a invocação produz os mesmos bytes independentemente de cwd, da forma relativa/absoluta de indicar o caminho, de `HOME`, `USERPROFILE`, `XDG_CACHE_HOME`, `TZ`, `LANG` e da configuração Git de leitura. Alterar os bytes do manifesto (incluindo comentários, BOM ou EOL) pode mudar `source_key` e exigir reindexação.
 - Republicar o mesmo `version_id` com bytes diferentes gera `nondeterministic_build`.
 - O resolvedor nunca apresenta um mapa desatualizado como atual:
   - versão ausente: `index_missing`;
@@ -113,8 +113,9 @@ Proposta, condicionada às decisões abaixo:
 
 - **Contrato da CLI:** a semântica de `--output` em `index` e `init` (D1). `--output` de `export`, `view` e `skills manifest` não muda.
 - **Localização do store** (D2): `$XDG_CACHE_HOME/gira/indexes`, senão `~/.cache/gira/indexes`, senão `<raiz do projeto>/.gira/indexes`.
+- **Schema do mapa:** novo `schema_version: 2` inteiro e `source_identity` embutido. O leitor de schema 2 é estrito; `"1.0.0"` só é aceito em leitura `--index` explícita com aviso.
 - **Layout do store:** versões imutáveis com `meta.json` estrito e heads por linhagem.
-- **Erros novos:** `index_tool_mismatch`, `nondeterministic_build`, `index_locked`, `lock_unavailable`. Possivelmente `index_ambiguous` (D9b). Estado `visible_unconfirmed`.
+- **Erros novos:** `index_tool_mismatch`, `index_schema_unsupported`, `manifest_outside_git_root`, `git_root_unavailable`, `manifest_path_required`, `nondeterministic_build`, `index_locked`, `lock_unavailable`. `index_ambiguous` (D9b). Estado `visible_unconfirmed`.
 - **Locators de override no mapa** (D3): os bytes de mapas que têm overrides mudam.
 - **Consumidores:**
   - `gira-arch-diff`;
@@ -143,9 +144,9 @@ N1, N2, N3, N4 e D1–D9c e as nove decisões técnicas dos Gates 1–5 foram es
 | N4 | Escopo do ADR 0014 em relação a "Git faz o versionamento" | store = cache derivado, local e regenerável | **Decidido: sim.** O store é cache derivado local, regenerável e não compartilhado; Git permanece a fonte de versionamento compartilhado. |
 | D1 | Semântica de `--output` | manter; destacada (A′); cópia mais store; diretório-raiz; remover | **Decidido: A′, condicionado a N3.** `index --output P` grava apenas o snapshot destacado; `init --output P` publica o estado canônico e grava em P uma cópia byte a byte do snapshot autocontido. Ordem canônica: versão → snapshot → manifesto. P corrompido é preservado salvo `--recover-corrupt`. Se a cópia falhar depois da publicação canônica, reportar sucesso parcial e o estado canônico. |
 | D2 | Localização do store | XDG → `~/.cache` → projeto; `os.UserCacheDir`; manter | **Decidido:** resolver único para leitura/escrita com XDG → `~/.cache` → fallback no projeto. A base do gate também consulta `~/.cache/gira/indexes/<sys>` quando XDG está definido, para compatibilidade legada. |
-| D3 | Locator do manifesto | basename; relativo à raiz Git; manter | **Direção decidida:** usar caminho relativo à raiz Git e normalizado com `/`, para evitar caminho absoluto dependente do clone e manter identidade de subpastas. **Bloqueio:** definir comportamento para manifesto fora da raiz Git e auditar ADR 0001 e consumidores antes da aprovação final; não usar fallback absoluto silencioso. |
+| D3 | Locator do manifesto | basename; relativo à raiz Git; manter | **Decidido: relativo à raiz Git, normalizado com `/`, com política O1.** Com overrides, manifesto fora da raiz falha fechado (`manifest_outside_git_root`); erro de descoberta Git falha fechado (`git_root_unavailable`). Variáveis que redirecionam Git são saneadas nos probes e em `init`. Testes e auditoria de consumidores ainda são gates técnicos. |
 | D4 | `source_key` | bytes crus; YAML canônico; normalização de EOL/BOM | **Decidido:** bytes crus do manifesto. Comentários, BOM e EOL diferentes podem exigir reindexação; chave e parser devem observar os mesmos bytes. |
-| D5 | Ferramenta divergente | falhar fechado; servir com aviso (v1, **revogada**) | **Decidido:** falhar fechado com `index_tool_mismatch`, sem flag de exceção. **Aberto:** auditar se `main.date` altera a semântica da extração. Excluir do `tool_id` apenas se for informativo; manter se alterar semântica, com justificativa. |
+| D5 | Ferramenta divergente | falhar fechado; servir com aviso (v1, **revogada**) | **Decidido:** falhar fechado com `index_tool_mismatch`, sem flag de exceção. Para `tool_id`, opção C: excluir a setting `-ldflags` inteira, mantendo `main.version` e `main.commit` como campos próprios. Manter o hash do executável nos dev builds não confiáveis; registrar futuros flags semânticos como campos explícitos. |
 | D6 | Durabilidade e manifesto | tabela da v2; criar `--require-durable` | **Decidido:** tabela da v2, sem `--require-durable`. Unix: falha de sync pode deixar a versão visível, retorna erro e impede gravar o manifesto em `init`; Windows: `visible_unconfirmed`, saída 0 e aviso explícito, sem promessa contra perda de energia. Requer testes por plataforma. |
 | D7 | Retenção | sem GC; K=3 (v1, **revogada**) | **Decidido:** sem GC; limpeza manual documentada. Quarentena só em `--recover-corrupt`, sem remoção automática de versões. |
 | D8 | Travas | M→S→P com `flock`/`LockFileEx`, 60 s, falha fechada | **Decidido:** M→S→P, `flock`/`LockFileEx`, timeout de 60 s, `index_locked`/`lock_unavailable` com falha fechada e sem `--no-lock`. Documentar limitações de FS de rede e editores externos. |
