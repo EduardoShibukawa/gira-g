@@ -3,6 +3,7 @@ package windowsgates
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -12,6 +13,7 @@ import (
 // lock taken through spelling A blocks spelling B.
 func TestSpellingsSameManifest(t *testing.T) {
 	root := t.TempDir()
+	rawRoot := root
 	// Resolve the temp root once so symlinked temp dirs (macOS /var) do not
 	// masquerade as a symlink spelling.
 	if r, err := filepath.EvalSymlinks(root); err == nil {
@@ -59,6 +61,27 @@ func TestSpellingsSameManifest(t *testing.T) {
 		sp = append(sp, spelling{"dir_symlink_relative", filepath.Join(other, "dir_link_rel", "gira.yaml")})
 	} else {
 		rec(t, "spellings_setup", map[string]any{"spelling": "dir_symlink_relative", "error": err.Error()})
+	}
+	// Hardlink: a second name for the same inode (decision doc: documented limitation).
+	if err := os.Link(manifest, filepath.Join(other, "hardlink.yaml")); err == nil {
+		sp = append(sp, spelling{"hardlink", filepath.Join(other, "hardlink.yaml")})
+	} else {
+		rec(t, "spellings_setup", map[string]any{"spelling": "hardlink", "error": err.Error()})
+	}
+	// The temp dir exactly as the OS returned it (macOS /var vs /private/var,
+	// Windows 8.3 short names such as RUNNER~1).
+	if rawRoot != root {
+		sp = append(sp, spelling{"tempdir_unresolved_spelling", filepath.Join(rawRoot, "proj", "gira.yaml")})
+	}
+	if runtime.GOOS == "windows" {
+		sp = append(sp, spelling{"extended_length_prefix", `\\?\` + manifest})
+		j := run(other, nil, nil, "cmd", "/c", "mklink", "/J", "junction", proj)
+		rec(t, "spellings_setup", map[string]any{"spelling": "junction", "exit": j.Exit, "stdout": trim(j.Stdout), "stderr": trim(j.Stderr)})
+		if j.Exit == 0 {
+			sp = append(sp, spelling{"directory_junction", filepath.Join(other, "junction", "gira.yaml")})
+		}
+		// Forward-slash spelling.
+		sp = append(sp, spelling{"forward_slashes", filepath.ToSlash(manifest)})
 	}
 	// Case variant: same file on case-insensitive filesystems (Windows, default macOS).
 	sp = append(sp, spelling{"case_variant", filepath.Join(proj, "GIRA.YAML")})

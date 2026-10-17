@@ -34,16 +34,21 @@ func TestRunnerContext(t *testing.T) {
 		f["token_elevated_admin_role"] = trim(ps("([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)").Stdout)
 		f["user"] = trim(run("", nil, nil, "whoami").Stdout)
 		groups := run("", nil, nil, "whoami", "/groups")
+		f["whoami_groups_exit"], f["whoami_groups_stderr"] = groups.Exit, trim(groups.Stderr)
 		for _, line := range strings.Split(groups.Stdout, "\n") {
-			if strings.Contains(line, "Mandatory Label") {
-				f["integrity_level"] = strings.TrimSpace(strings.Fields(line)[0])
+			if strings.Contains(line, "Mandatory") || strings.Contains(line, "S-1-16-") || strings.Contains(line, "Administrators") {
+				f["whoami_groups_relevant_"+strings.TrimSpace(strings.Fields(line + " x")[0])] = strings.Join(strings.Fields(line), " ")
 			}
 		}
-		for _, line := range strings.Split(run("", nil, nil, "whoami", "/priv").Stdout, "\n") {
-			if strings.Contains(line, "SeCreateSymbolicLinkPrivilege") {
+		priv := run("", nil, nil, "whoami", "/priv")
+		f["whoami_priv_exit"], f["whoami_priv_stderr"] = priv.Exit, trim(priv.Stderr)
+		for _, line := range strings.Split(priv.Stdout, "\n") {
+			if strings.Contains(line, "SymbolicLink") {
 				f["se_create_symbolic_link"] = strings.Join(strings.Fields(line), " ")
 			}
 		}
+		f["whoami_priv_raw"] = priv.Stdout
+		f["whoami_groups_raw"] = groups.Stdout
 		reg := run("", nil, nil, "reg", "query", `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock`, "/v", "AllowDevelopmentWithoutDevLicense")
 		f["developer_mode_reg_exit"] = reg.Exit
 		f["developer_mode_reg"] = strings.Join(strings.Fields(reg.Stdout+" "+reg.Stderr), " ")
