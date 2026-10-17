@@ -135,7 +135,7 @@ Todos os itens acima: `[CÓDIGO INSPECIONADO]`.
 
 Fontes de TODOS os `manifest.Repositories` (não só os com evidência); sem URL crua; sem timestamp, caminho absoluto, hostname nem `main.date`; auto-hash fora do mapa (circular). Incluir `tool_id`/hash do executável no snapshot é opção em aberto e interage com o Gate 3.
 
-### Recomendação `[INFERÊNCIA]` (recomendação, aguarda o dono)
+### Recomendação original do agente `[INFERÊNCIA]` (histórica, anterior às decisões do dono registradas abaixo)
 
 - Só B (ou C) falham fechado em binários já distribuídos; para os consumidores do repo qualquer opção exige código. Entre B e C, a rejeição de C é incidental e a mensagem enganosa.
 - Leitor R1 com decodificador estrito (`DisallowUnknownFields`) ao menos na proveniência; validar hash 64 hex, SHAs 40 hex, listas ordenadas sem duplicatas, `provenance.schema_version == schema_version`, proveniência obrigatória a partir da versão nova; `PublishFile` recusar sobrescrever schema maior por menor.
@@ -272,7 +272,7 @@ Comportamento do Git `[TESTE EXECUTADO]`:
 
 Subdecisão: `ManifestPath` vazio (`eval/eval.go:399`): manter o fallback `"gira.yaml"`, exigir locator explícito do chamador, ou o `eval` não aplicar override.
 
-### Recomendação `[INFERÊNCIA]` (recomendação, aguarda o dono)
+### Recomendação original do agente `[INFERÊNCIA]` (histórica, anterior às decisões do dono registradas abaixo)
 
 - **O1**, só quando um locator de override seria emitido (manifesto com `overrides`); sem overrides nada é gravado e nada falha. Erro estável `manifest_outside_git_root` quando o Git responde "não é work tree"; segundo código `git_root_unavailable` para git ausente, `dubious ownership` ou erro de exec, também fechado.
 - Resolver o arquivo com `EvalSymlinks`; `git -C <dir real> rev-parse --show-toplevel --show-prefix`, exigir rc=0 e montar `prefixo + basename` já com `/`, evitando `filepath.Rel`.
@@ -355,7 +355,7 @@ Subdecisão: `ManifestPath` vazio (`eval/eval.go:399`): manter o fallback `"gira
 
 Pergunta derivada: o hash do executável continua valendo para dev builds (`vcs.modified`/`commit=="none"`)?
 
-### Recomendação `[INFERÊNCIA]` (recomendação, aguarda o dono)
+### Recomendação original do agente `[INFERÊNCIA]` (histórica, anterior às decisões do dono registradas abaixo)
 
 Opção C (ou A): excluir `-ldflags` e `main.date` do `tool_id`, mantendo `main.version`, `main.commit`, `GoVersion` e `Deps`. A decisão sobre manter o hash do executável em dev builds fica separada e também é do dono.
 
@@ -461,7 +461,7 @@ Nome com tab no Windows `[CI]`: `git update-index --index-info -z` com tab retor
 | W2 | Exigir um experimento extra sem Developer Mode e com processo não elevado antes de aprovar a spec | Mais um ciclo de CI; reduz o `[DESCONHECIDO]` principal |
 | W3 | Exigir `git archive \| tar -x` com tab no Windows antes da aprovação | Cobre o último ponto aberto de extração |
 
-### Recomendação `[INFERÊNCIA]` (recomendação, aguarda o dono)
+### Recomendação original do agente `[INFERÊNCIA]` (histórica, anterior às decisões do dono registradas abaixo)
 
 W1 para symlinks e `os.DevNull`, com W2 como teste de aceitação do SC7 no Windows (pular e registrar o motivo quando a criação de symlink falhar). Lock por identidade de arquivo. Leitura Git sempre com `-z`.
 
