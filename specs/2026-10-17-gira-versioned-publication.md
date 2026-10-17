@@ -126,12 +126,12 @@ Proposta, condicionada às decisões abaixo:
 
 ## Decisions
 
-Todas estão **abertas**. A recomendação é uma proposta.
+N1 e N2 estão **decididas** (dono, 2026-10-17); as demais estão **abertas**. A recomendação é uma proposta.
 
 | ID | Questão | Alternativas | Proposta |
 |---|---|---|---|
-| N1 | Nome e sequência da etapa: o item 2 aprovado é "atualidade e sync multi-repo" | continuação do item 1 com rótulo novo; renumerar; fazer primeiro o item 2 | continuação do item 1 |
-| N2 | Aceite da Etapa 1/1.1 em `61b58c2` antes da 2a | aceitar; aceitar depois de uma revisão adversarial de `aa4e6fe..0d5f248`; não aceitar | revisão adversarial e depois aceitar |
+| N1 | Nome e sequência da etapa: o item 2 aprovado é "atualidade e sync multi-repo" | continuação do item 1 com rótulo novo; renumerar; fazer primeiro o item 2 | **decidido: continuação do item 1** com rótulo próprio (ex.: "Etapa 1.2"), por dono, 2026-10-17 (mensagem de decisão da sessão). Relabel dos documentos é follow-up separado |
+| N2 | Aceite da Etapa 1/1.1 em `61b58c2` antes da 2a | aceitar; aceitar depois de uma revisão adversarial de `aa4e6fe..0d5f248`; não aceitar | **decidido: (b)** por dono, 2026-10-17 (mensagem de decisão da sessão): revisão adversarial de `4c2204c` e `0d5f248` (exclui `aa4e6fe`), depois aceitar se não houver bloqueio material |
 | N3 | O snapshot destacado carrega identidade? (decisão aprovada nas Sources: snapshots identificam hash do manifesto, schema, extratores e SHAs) | sidecar `P.meta.json`; meta embutido; sem identidade | sidecar |
 | N4 | Escopo do ADR 0014 em relação a "Git faz o versionamento" | store = cache derivado, local e regenerável | sim |
 | D1 | Semântica de `--output` | manter; destacada (A′); cópia mais store; diretório-raiz; remover | A′: `index --output` destacado; `init` sempre canônico com cópia; ordem versão → snapshot → manifesto; P sobrescrito só se ausente ou válido, senão `--recover-corrupt` |
