@@ -355,6 +355,7 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
   - custo de hash do executável [RELATO v1: cerca de 7 MB].
 - **Pontos em aberto:**
   - O `-ldflags` aparece em `BuildInfo.Settings`, então `main.date` muda o `tool_id` entre dois builds de release da mesma tag feitos em momentos diferentes. **Sub-pergunta:** excluir `main.date` do `tool_id`? [PROPOSTA: excluir, porque a data não muda o comportamento do binário].
+    - Nota de 2026-10-17: a afirmação acima é falsa para builds com `-trimpath` (usado em `.goreleaser.yaml:36`): em go1.24.0 a setting `-ldflags` não é registrada em `BuildInfo.Settings`. Evidência `[TESTE EXECUTADO]` e opções em [gates técnicos, Gate 3](2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-3-maindate-em-tool_id-d5).
   - Builds de desenvolvimento (`vcs.modified=true`) mudam a cada rebuild.
 - **Risco:** atrito no dogfood.
 - **Pergunta:** "Aprova o fail-closed sem flag? `main.date` entra no `tool_id`?"

@@ -84,3 +84,4 @@ skip: roda depois que os children estiverem verificados
 - next: concluir e evidenciar os gates da spec; solicitar autorização heavy explícita só depois dessa evidência
 - open: regra de D3 para manifesto fora da raiz Git; subdecisão D5 `main.date`; auditoria dos consumidores e schema; compatibilidade Windows para symlink e `os.DevNull`; M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: B1 e B2 rodaram em `61b58c2`; rodar de novo se `main` andar
+- gates (2026-10-17): evidência dos gates 1–4 registrada em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`; gate 4 (Windows) evidência registrada no perfil runner admin; gate 5 aberto. Próximo: decisões do dono listadas no documento. Status segue `todo`; spec `draft`; implementação não autorizada.
