@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -28,6 +29,9 @@ type PublishOptions struct {
 	// BeforeRenameError is an optional hook (used by tests) invoked after the temporary
 	// file is synced and closed, immediately before os.Rename promotes it.
 	BeforeRenameError func() error
+	// SyncDir is an optional hook (used by tests) to override parent directory fsync
+	// after os.Rename completes. When nil, syncDirectory is used.
+	SyncDir func(dir string) error
 }
 
 // Store handles persistence and retrieval of canonical MacroMap indexes.
@@ -39,14 +43,11 @@ func NewStore(baseDir string) *Store {
 	return &Store{BaseDir: baseDir}
 }
 
-// Save serializes and writes a MacroMap atomically to <BaseDir>/<targetSystem>/macro-map.json.
-// If an existing index at the destination is corrupted, Save refuses to overwrite it.
+// Save validates and atomically writes a MacroMap to <BaseDir>/<targetSystem>/macro-map.json,
+// enforcing both corrupt-index protection and the symbol-loss gate by default.
+// Callers that need to authorize symbol loss or corrupt-index recovery must use Publish with explicit PublishOptions.
 func (s *Store) Save(targetSystem string, mm *domain.MacroMap) error {
-	if strings.TrimSpace(targetSystem) == "" {
-		return fmt.Errorf("target system name cannot be empty")
-	}
-	dest := filepath.Join(s.BaseDir, targetSystem, "macro-map.json")
-	_, err := s.PublishFile(dest, mm, PublishOptions{AllowSymbolLoss: true})
+	_, err := s.Publish(targetSystem, mm, PublishOptions{})
 	return err
 }
 
@@ -60,16 +61,25 @@ func (s *Store) Publish(targetSystem string, mm *domain.MacroMap, opts PublishOp
 	return s.PublishFile(dest, mm, opts)
 }
 
-// SaveFile atomically writes a MacroMap to dest, refusing to overwrite a corrupted existing file.
+// SaveFile validates and atomically writes a MacroMap to dest, enforcing both
+// corrupt-index protection and the symbol-loss gate by default.
+// Callers that need to authorize symbol loss or corrupt-index recovery must use PublishFile with explicit PublishOptions.
 func (s *Store) SaveFile(dest string, mm *domain.MacroMap) error {
-	_, err := s.PublishFile(dest, mm, PublishOptions{AllowSymbolLoss: true})
+	_, err := s.PublishFile(dest, mm, PublishOptions{})
 	return err
 }
 
 // PublishFile validates mm, inspects any existing file at dest (failing closed if it is
 // corrupted unless opts.RecoverCorrupt is true, and running CheckSymbolLossGate unless
 // opts.AllowSymbolLoss is true), and atomically writes the new index via a temporary file
-// and os.Rename so an interrupted write never corrupts or truncates the previous index.
+// in the same directory, tmpFile.Sync(), os.Rename, and parent directory Sync().
+//
+// Durability boundaries:
+//   - Any failure before or during os.Rename leaves the previous file at dest byte-for-byte
+//     intact and removes the temporary file.
+//   - Once os.Rename succeeds, the new index is live in the filesystem namespace; if the
+//     subsequent parent directory Sync() fails, PublishFile returns an error indicating that
+//     post-rename directory metadata durability could not be guaranteed.
 func (s *Store) PublishFile(dest string, mm *domain.MacroMap, opts PublishOptions) (*indexer.SymbolLossReport, error) {
 	if strings.TrimSpace(dest) == "" {
 		return nil, fmt.Errorf("destination path cannot be empty")
@@ -154,7 +164,34 @@ func (s *Store) PublishFile(dest string, mm *domain.MacroMap, opts PublishOption
 	}
 	cleanupTmp = false
 
+	syncFn := syncDirectory
+	if opts.SyncDir != nil {
+		syncFn = opts.SyncDir
+	}
+	if err := syncFn(targetDir); err != nil {
+		return report, fmt.Errorf("failed syncing parent directory %s after rename: %w", targetDir, err)
+	}
+
 	return report, nil
+}
+
+// syncDirectory opens dir and invokes Sync() to flush the directory entry update
+// after os.Rename. On Windows, directory handle fsync is unsupported by the OS
+// and is skipped.
+func syncDirectory(dir string) error {
+	if runtime.GOOS == "windows" {
+		return nil
+	}
+	d, err := os.Open(dir)
+	if err != nil {
+		return err
+	}
+	syncErr := d.Sync()
+	closeErr := d.Close()
+	if syncErr != nil {
+		return syncErr
+	}
+	return closeErr
 }
 
 // Load reads and deserializes <BaseDir>/<targetSystem>/macro-map.json.

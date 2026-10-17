@@ -272,10 +272,27 @@ func splitArgs(args []string) ([]string, []string) {
 	return positionals, flags
 }
 
-// findProjectManifest searches for gira.yaml in the current working directory.
+// findProjectManifest searches for gira.yaml starting at the current working
+// directory and walking up parent directories so CLI commands executed from a
+// project subdirectory still resolve the enclosing project's gira.yaml.
 func findProjectManifest() string {
-	if fi, err := os.Stat("gira.yaml"); err == nil && !fi.IsDir() {
-		return "gira.yaml"
+	dir, err := os.Getwd()
+	if err != nil {
+		if fi, statErr := os.Stat("gira.yaml"); statErr == nil && !fi.IsDir() {
+			return "gira.yaml"
+		}
+		return ""
+	}
+	for {
+		candidate := filepath.Join(dir, "gira.yaml")
+		if fi, statErr := os.Stat(candidate); statErr == nil && !fi.IsDir() {
+			return candidate
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
 	}
 	return ""
 }
@@ -292,16 +309,20 @@ func loadIndex(indexPath string) (*domain.MacroMap, error) {
 		return s.LoadFile(indexPath)
 	}
 
-	// 2. If gira.yaml exists in the current project, resolve EXCLUSIVELY the index
-	// for its declared target_system.name. Never fall back to another system in cache.
+	// 2. If gira.yaml exists in the current project (or an ancestor directory),
+	// resolve EXCLUSIVELY the index for its declared target_system.name. Never fall back to another system in cache.
 	if manifestPath := findProjectManifest(); manifestPath != "" {
 		m, err := manifest.ParseFile(manifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse project manifest %s: %w", manifestPath, err)
 		}
 		sysName := m.TargetSystem.Name
+		projectRoot := filepath.Dir(manifestPath)
 		var sysCandidates []string
-		sysCandidates = append(sysCandidates, filepath.Join(".gira", "indexes", sysName, "macro-map.json"))
+		sysCandidates = append(sysCandidates, filepath.Join(projectRoot, ".gira", "indexes", sysName, "macro-map.json"))
+		if cwdCandidate := filepath.Join(".gira", "indexes", sysName, "macro-map.json"); cwdCandidate != sysCandidates[0] {
+			sysCandidates = append(sysCandidates, cwdCandidate)
+		}
 		if home, err := os.UserHomeDir(); err == nil && home != "" {
 			sysCandidates = append(sysCandidates, filepath.Join(home, ".cache", "gira", "indexes", sysName, "macro-map.json"))
 		}
@@ -313,7 +334,7 @@ func loadIndex(indexPath string) (*domain.MacroMap, error) {
 		return nil, fmt.Errorf("index_missing: no index found for target system %q declared in %s (run 'gira index' first)", sysName, manifestPath)
 	}
 
-	// 3. No gira.yaml in current directory: check explicit local index files in CWD.
+	// 3. No gira.yaml in current directory hierarchy: check explicit local index files in CWD.
 	localFiles := []string{
 		filepath.Join(".gira", "macro-map.json"),
 		filepath.Join(".gira", "index.json"),
@@ -405,6 +426,8 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 		manifestPath = allPositionals[0]
 	} else if strings.TrimSpace(manifestFlag) != "" {
 		manifestPath = manifestFlag
+	} else if found := findProjectManifest(); found != "" {
+		manifestPath = found
 	}
 
 	// 1. Read manifest
@@ -538,7 +561,7 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
-		AllowSymbolLoss: allowSymbolLoss || force,
+		AllowSymbolLoss: allowSymbolLoss,
 		RecoverCorrupt:  recoverCorrupt,
 	}, stdout)
 }

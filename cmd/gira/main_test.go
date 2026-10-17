@@ -613,7 +613,23 @@ repositories:
 		t.Errorf("expected error mentioning index_missing and my-project, got: %v", err)
 	}
 
-	// Case 2: Index "my-project" in store -> now export resolves exclusively to "my-project"
+	// Case 1b: Running from a nested subdirectory of projDir (without its own gira.yaml)
+	// must walk up to projDir/gira.yaml and still fail closed with index_missing for "my-project".
+	subDir := filepath.Join(projDir, "cmd", "subpkg")
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(subDir); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"export"}, nil, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "index_missing") || !strings.Contains(err.Error(), "my-project") {
+		t.Fatalf("expected subdirectory execution to resolve parent gira.yaml and return index_missing for my-project, got: %v", err)
+	}
+
+	// Case 2: Index "my-project" in store -> now export from both projDir and subDir resolves exclusively to "my-project"
 	myMap := domain.NewMacroMap("my-project")
 	_ = myMap.AddNode(domain.Node{ID: "service:my-svc", Kind: domain.NodeService, Name: "my-svc"})
 	if err := st.Save("my-project", myMap); err != nil {
@@ -622,13 +638,13 @@ repositories:
 	stdout.Reset()
 	stderr.Reset()
 	if err := Run([]string{"export"}, nil, &stdout, &stderr); err != nil {
-		t.Fatalf("expected export to succeed once my-project is indexed, got: %v", err)
+		t.Fatalf("expected export from subdirectory to succeed once my-project is indexed, got: %v", err)
 	}
 	if !strings.Contains(stdout.String(), "service:my-svc") || strings.Contains(stdout.String(), "other") {
-		t.Errorf("expected my-project nodes only, got: %s", stdout.String())
+		t.Errorf("expected my-project nodes only from subdirectory, got: %s", stdout.String())
 	}
 
-	// Case 3: Directory without gira.yaml when multiple systems ("my-project" and "other-system") exist in cache -> ambiguity error
+	// Case 3: Directory without gira.yaml in its hierarchy when multiple systems ("my-project" and "other-system") exist in cache -> ambiguity error
 	noManifestDir := t.TempDir()
 	if err := os.Chdir(noManifestDir); err != nil {
 		t.Fatal(err)

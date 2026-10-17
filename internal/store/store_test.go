@@ -214,6 +214,21 @@ func TestStore_PublishAtomicPreservesPreviousAndCleansTmp(t *testing.T) {
 			t.Errorf("unexpected leftover temporary file after failed publish: %s", e.Name())
 		}
 	}
+
+	// Simulate parent directory Sync() failure after os.Rename
+	var syncedDir string
+	_, err = s.PublishFile(targetPath, updated, store.PublishOptions{
+		SyncDir: func(dir string) error {
+			syncedDir = dir
+			return os.ErrInvalid
+		},
+	})
+	if err == nil {
+		t.Fatalf("expected SyncDir error to fail PublishFile")
+	}
+	if syncedDir != filepath.Dir(targetPath) {
+		t.Errorf("expected SyncDir called with %q, got %q", filepath.Dir(targetPath), syncedDir)
+	}
 }
 
 func TestStore_CorruptIndexPreservedUntilRecoverCorrupt(t *testing.T) {
@@ -231,10 +246,15 @@ func TestStore_CorruptIndexPreservedUntilRecoverCorrupt(t *testing.T) {
 
 	validMap := createTestMacroMap("sys")
 
-	// 1. Default PublishFile must refuse to overwrite corrupt index and preserve its bytes
-	_, err := s.PublishFile(targetPath, validMap, store.PublishOptions{})
-	if err == nil {
+	// 1. Default PublishFile, Save, and SaveFile must refuse to overwrite corrupt index and preserve its bytes
+	if _, err := s.PublishFile(targetPath, validMap, store.PublishOptions{}); err == nil {
 		t.Fatalf("expected error when existing index is corrupt and RecoverCorrupt=false")
+	}
+	if err := s.Save("sys", validMap); err == nil {
+		t.Fatalf("expected Save to refuse overwriting corrupt index")
+	}
+	if err := s.SaveFile(targetPath, validMap); err == nil {
+		t.Fatalf("expected SaveFile to refuse overwriting corrupt index")
 	}
 	gotBytes, err := os.ReadFile(targetPath)
 	if err != nil {
@@ -264,25 +284,31 @@ func TestStore_PublishEnforcesSymbolLossGateAndPreservesPrevious(t *testing.T) {
 	targetPath := filepath.Join(tempDir, "sys", "macro-map.json")
 
 	initial := createTestMacroMap("sys")
-	if _, err := s.PublishFile(targetPath, initial, store.PublishOptions{}); err != nil {
-		t.Fatalf("initial PublishFile failed: %v", err)
+	if err := s.Save("sys", initial); err != nil {
+		t.Fatalf("initial Save failed: %v", err)
 	}
 	beforeBytes, _ := os.ReadFile(targetPath)
 
-	// Next map drops service:auth (which has real extracted evidence) and contract:auth-grpc
+	// Next map drops service:auth (which has real extracted evidence) and contract:auth-grpc.
+	// Save, SaveFile, and PublishFile (with default PublishOptions) must ALL block and preserve previous index.
 	shrunk := domain.NewMacroMap("sys")
-	_, err := s.PublishFile(targetPath, shrunk, store.PublishOptions{})
-	if err == nil {
-		t.Fatalf("expected symbol-loss gate error when real extracted node disappears")
+	if err := s.Save("sys", shrunk); err == nil {
+		t.Fatalf("expected Save to enforce symbol-loss gate and fail when real extracted node disappears")
+	}
+	if err := s.SaveFile(targetPath, shrunk); err == nil {
+		t.Fatalf("expected SaveFile to enforce symbol-loss gate and fail when real extracted node disappears")
+	}
+	if _, err := s.PublishFile(targetPath, shrunk, store.PublishOptions{}); err == nil {
+		t.Fatalf("expected PublishFile to enforce symbol-loss gate and fail when real extracted node disappears")
 	}
 
-	// Previous index must be preserved
+	// Previous index must be preserved byte-for-byte
 	afterBytes, _ := os.ReadFile(targetPath)
 	if string(beforeBytes) != string(afterBytes) {
 		t.Fatalf("expected previous index to be preserved when symbol-loss gate blocks publication")
 	}
 
-	// With AllowSymbolLoss: true, publication succeeds
+	// With explicit AllowSymbolLoss: true on PublishFile, publication succeeds
 	rep, err := s.PublishFile(targetPath, shrunk, store.PublishOptions{AllowSymbolLoss: true})
 	if err != nil {
 		t.Fatalf("expected PublishFile with AllowSymbolLoss=true to succeed, got %v", err)

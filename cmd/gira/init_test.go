@@ -128,3 +128,80 @@ func TestSCSingleInit(t *testing.T) {
 		t.Errorf("expected error for non-git directory, got nil")
 	}
 }
+
+func TestInit_ForceDoesNotAllowSymbolLoss(t *testing.T) {
+	composeInitial := `version: '3.8'
+services:
+  frontend:
+    image: acme/frontend:v1
+  payments:
+    image: acme/payments:v1
+`
+	repoDir, _ := createGitRepoWithFiles(t, map[string]string{
+		"docker-compose.yaml": composeInitial,
+	})
+
+	cacheDir := t.TempDir()
+	outDir := t.TempDir()
+	outputPath := filepath.Join(outDir, "macro-map.json")
+
+	var stdout, stderr bytes.Buffer
+	if err := Run([]string{"init", repoDir, "--output", outputPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr); err != nil {
+		t.Fatalf("initial gira init failed: %v, stderr: %s", err, stderr.String())
+	}
+	beforeIndexBytes, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("failed to read initial index: %v", err)
+	}
+
+	// Commit a change that removes service:payments from docker-compose.yaml (without deleting the file)
+	composeShrunk := `version: '3.8'
+services:
+  frontend:
+    image: acme/frontend:v1
+`
+	if err := os.WriteFile(filepath.Join(repoDir, "docker-compose.yaml"), []byte(composeShrunk), 0644); err != nil {
+		t.Fatal(err)
+	}
+	for _, args := range [][]string{{"add", "."}, {"commit", "-m", "drop payments service"}} {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v failed: %v, out: %s", args, err, string(out))
+		}
+	}
+
+	// 1. `gira init --force` without `--allow-symbol-loss` MUST fail closed on symbol loss and preserve previous index
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"init", repoDir, "--force", "--output", outputPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Fatalf("expected gira init --force without --allow-symbol-loss to fail when service:payments is lost")
+	}
+	if !strings.Contains(err.Error(), "symbol-loss gate") {
+		t.Errorf("expected symbol-loss gate error, got: %v", err)
+	}
+	afterFailedBytes, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(beforeIndexBytes) != string(afterFailedBytes) {
+		t.Fatalf("expected previous index to be preserved when gira init --force is blocked by symbol-loss gate")
+	}
+
+	// 2. `gira init --force --allow-symbol-loss` explicitly authorizes the symbol removal and succeeds
+	stdout.Reset()
+	stderr.Reset()
+	if err := Run([]string{"init", repoDir, "--force", "--allow-symbol-loss", "--output", outputPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr); err != nil {
+		t.Fatalf("expected gira init --force --allow-symbol-loss to succeed, got: %v", err)
+	}
+	s := store.NewStore("")
+	mm, err := s.LoadFile(outputPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mm.Nodes) != 1 || mm.Nodes[0].ID != "service:frontend" {
+		t.Errorf("expected only service:frontend in updated index, got %+v", mm.Nodes)
+	}
+}
+
