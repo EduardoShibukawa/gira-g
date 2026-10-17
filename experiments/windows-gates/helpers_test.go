@@ -130,8 +130,12 @@ type treeEntry struct {
 	mode, path, content string
 }
 
-// makeRepo builds a non-bare repository at dir with the given entries, using
-// update-index so that no file is materialized. Returns the commit sha.
+// makeRepo builds a non-bare repository at dir with the given entries. Trees
+// are written with mktree and committed with commit-tree: no index and no
+// worktree file is involved, so names the filesystem cannot hold (tab on
+// Windows) are committed too. `update-index` is not usable for them: Git for
+// Windows ignores such paths (see TestTabFilenameConstruction). Returns the
+// commit sha.
 func makeRepo(t *testing.T, dir string, env []string, entries []treeEntry) string {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -140,21 +144,44 @@ func makeRepo(t *testing.T, dir string, env []string, entries []treeEntry) strin
 	if r := git(dir, env, "init", "-q", "-b", "main", dir); r.Exit != 0 {
 		t.Fatalf("git init: %+v", r)
 	}
-	var idx bytes.Buffer
-	for _, e := range entries {
-		r := run(dir, []byte(e.content), env, "git", "hash-object", "-w", "--stdin")
-		if r.Exit != 0 {
-			t.Fatalf("hash-object: %+v", r)
+	var build func(es []treeEntry) string
+	build = func(es []treeEntry) string {
+		subdirs := map[string][]treeEntry{}
+		var order []string
+		var buf bytes.Buffer
+		for _, e := range es {
+			head, rest, nested := strings.Cut(e.path, "/")
+			if nested {
+				if _, ok := subdirs[head]; !ok {
+					order = append(order, head)
+				}
+				subdirs[head] = append(subdirs[head], treeEntry{e.mode, rest, e.content})
+				continue
+			}
+			r := run(dir, []byte(e.content), env, "git", "hash-object", "-w", "--stdin")
+			if r.Exit != 0 {
+				t.Fatalf("hash-object: %+v", r)
+			}
+			buf.WriteString(e.mode + " blob " + trim(r.Stdout) + "\t" + head + "\x00")
 		}
-		idx.WriteString(e.mode + " " + trim(r.Stdout) + "\t" + e.path + "\x00")
+		for _, d := range order {
+			buf.WriteString("040000 tree " + build(subdirs[d]) + "\t" + d + "\x00")
+		}
+		r := run(dir, buf.Bytes(), env, "git", "mktree", "-z")
+		if r.Exit != 0 {
+			t.Fatalf("mktree: %+v", r)
+		}
+		return trim(r.Stdout)
 	}
-	if r := run(dir, idx.Bytes(), env, "git", "update-index", "-z", "--add", "--index-info"); r.Exit != 0 {
-		t.Fatalf("update-index: %+v", r)
-	}
+	tree := build(entries)
 	cenv := append(append([]string{}, env...), identity...)
-	if r := git(dir, cenv, "commit", "-q", "--no-gpg-sign", "-m", "fixture"); r.Exit != 0 {
-		t.Fatalf("commit: %+v", r)
+	r := run(dir, nil, cenv, "git", "commit-tree", "-m", "fixture", tree)
+	if r.Exit != 0 {
+		t.Fatalf("commit-tree: %+v", r)
 	}
-	r := git(dir, env, "rev-parse", "HEAD")
-	return trim(r.Stdout)
+	sha := trim(r.Stdout)
+	if r := git(dir, env, "update-ref", "refs/heads/main", sha); r.Exit != 0 {
+		t.Fatalf("update-ref: %+v", r)
+	}
+	return sha
 }

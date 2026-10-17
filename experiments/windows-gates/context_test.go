@@ -3,6 +3,7 @@ package windowsgates
 import (
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -32,15 +33,17 @@ func TestRunnerContext(t *testing.T) {
 		}
 		// True only for an elevated token (UAC-filtered admin returns False).
 		f["token_elevated_admin_role"] = trim(ps("([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)").Stdout)
-		f["user"] = trim(run("", nil, nil, "whoami").Stdout)
-		groups := run("", nil, nil, "whoami", "/groups")
+		// Bare "whoami" may resolve to MSYS coreutils on a runner; pin System32.
+		whoami := filepath.Join(os.Getenv("SystemRoot"), "System32", "whoami.exe")
+		f["user"] = trim(run("", nil, nil, whoami).Stdout)
+		groups := run("", nil, nil, whoami, "/groups")
 		f["whoami_groups_exit"], f["whoami_groups_stderr"] = groups.Exit, trim(groups.Stderr)
 		for _, line := range strings.Split(groups.Stdout, "\n") {
 			if strings.Contains(line, "Mandatory") || strings.Contains(line, "S-1-16-") || strings.Contains(line, "Administrators") {
 				f["whoami_groups_relevant_"+strings.TrimSpace(strings.Fields(line + " x")[0])] = strings.Join(strings.Fields(line), " ")
 			}
 		}
-		priv := run("", nil, nil, "whoami", "/priv")
+		priv := run("", nil, nil, whoami, "/priv")
 		f["whoami_priv_exit"], f["whoami_priv_stderr"] = priv.Exit, trim(priv.Stderr)
 		for _, line := range strings.Split(priv.Stdout, "\n") {
 			if strings.Contains(line, "SymbolicLink") {
