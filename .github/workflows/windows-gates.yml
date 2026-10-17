@@ -1,0 +1,57 @@
+name: windows-gates
+
+# Experiment only (spec 2026-10-17-gira-versioned-publication, gate 4).
+# Records platform behaviour for symlinks and os.DevNull as GIT_CONFIG_GLOBAL.
+# Not part of the product CI; never runs on pull requests.
+
+on:
+  push:
+    branches:
+      - 'exp/2026-10-17-windows-gates'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gates:
+    name: gates (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - windows-latest
+          - ubuntu-latest
+          - macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go (version pinned by the experiment go.mod, same as the repo)
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: experiments/windows-gates/go.mod
+          cache: false
+
+      - name: Run experiments
+        shell: bash
+        working-directory: experiments/windows-gates
+        env:
+          RESULTS_FILE: ${{ github.workspace }}/windows-gates-results-${{ runner.os }}.jsonl
+        run: |
+          set -o pipefail
+          go version
+          git --version
+          go test -v -count=1 ./... 2>&1 | tee "${{ github.workspace }}/windows-gates-test-${{ runner.os }}.log"
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-gates-${{ runner.os }}
+          path: |
+            windows-gates-test-${{ runner.os }}.log
+            windows-gates-results-${{ runner.os }}.jsonl
+          if-no-files-found: warn
