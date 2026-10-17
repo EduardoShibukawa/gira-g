@@ -63,19 +63,25 @@ Proposta, condicionada às decisões abaixo:
 
 ## Acceptance criteria
 
-- **SC1 Determinismo de invocação.** O mesmo manifesto indexado por caminho relativo, por caminho absoluto, a partir de um subdiretório (descoberta) e via `init` produz um mapa com o mesmo `sha256`. A matriz adversarial (cwd, `HOME`/`USERPROFILE`/`XDG_CACHE_HOME`, `TZ`, `LANG`, `core.quotePath`, `refs/replace`, nomes não ASCII e com tab, três execuções frias, dois ambientes isolados) não muda os bytes.
+- **SC1 Determinismo de invocação.** O mesmo manifesto dentro de uma raiz Git, indexado por caminho relativo, absoluto, a partir de subdiretório (descoberta), via symlink e via worktree/submódulo, converge para o mesmo `sha256`. A matriz adversarial (cwd, `HOME`/`USERPROFILE`/`XDG_CACHE_HOME`, `TZ`, `LANG`, `core.quotePath`, `refs/replace`, nomes não ASCII e com tab, três execuções frias, dois ambientes isolados) não muda os bytes. Variáveis de ambiente Git que redirecionam descoberta não podem sequestrar `init` nem a raiz do locator. Manifesto fora da raiz Git com overrides falha fechado antes de publicar qualquer artefato; sem overrides, indexação não falha apenas por ausência de raiz.
 - **SC2 Leituras Git independentes do ambiente.** Arquivos com nome não ASCII ou com tab indexam com a configuração padrão. `quotePath` e `refs/replace` não mudam os bytes. Clone e fetch continuam usando a configuração do usuário (ADR 0009).
 - **SC3 Identidade e proveniência.**
   - Cada contraexemplo da tabela da v1 muda a chave.
   - A codificação é injetiva: `("ab","c") ≠ ("a","bc")`.
   - Um build modificado inclui o hash do executável.
   - Mesmo `version_id` com bytes diferentes gera `nondeterministic_build`, sem sobrescrever nada.
-  - Cada snapshot canônico ou destacado carrega metadados autocontidos: hash SHA-256 dos bytes exatos do manifesto, `schema_version`, versões dos extratores e SHAs de todas as fontes relevantes. Consumidores antigos não podem ignorar silenciosamente um schema incompatível.
+  - O novo mapa usa `schema_version: 2` (JSON inteiro). O snapshot canônico e o destacado incluem um objeto `source_identity` autocontido com `schema_version: 2`, SHA-256 dos bytes exatos do manifesto, versões dos extratores e SHAs de todas as fontes relevantes.
+  - O nome do campo não é `provenance`; fontes incluem todos os repositórios declarados no manifesto, ordenados deterministicamente, sem URLs cruas; usar `url_sha256`.
+  - A decodificação do schema 2 e de `source_identity` é estrita. Binários antigos que esperam `schema_version` string devem falhar fechado; o leitor novo usa um conjunto explícito de versões, emite `index_schema_unsupported` para tipo/schema desconhecido e não pode descartar campos em `CanonicalJSON` ou `cloneMacroMap`.
+  - O legado `schema_version: "1.0.0"` só pode ser lido através de `--index` explícito com aviso; nunca é carregado implicitamente com `gira.yaml` e nunca é reescrito in-place.
 - **SC4 Resolução segura.**
   - Os cenários S1 e S2 da v1 retornam `index_missing`, e não `[]`.
   - Versão só de outra ferramenta retorna `index_tool_mismatch`, sem carregar nada.
+  - Tipo/schema desconhecido retorna `index_schema_unsupported`, distinto de `index_corrupt`.
+  - Publicação recusa downgrade de schema; uma versão legada explicitamente indicada por `--index` é somente para leitura e gera aviso.
   - Com `gira.yaml`, o legado nunca é carregado.
-  - `--index` continua igual.
+  - `--index` continua a funcionar para snapshots destacados compatíveis.
+  - O fallback de eval para `ManifestPath = "gira.yaml"` é removido; se overrides exigem locator e o chamador não fornecer manifesto real, retornar `manifest_path_required`.
 - **SC5 Publicação.**
   - Falha antes do rename: nada fica visível.
   - Falha depois do rename da versão: a versão fica visível, o head fica intacto e uma nova execução é idempotente.
@@ -127,7 +133,7 @@ Proposta, condicionada às decisões abaixo:
 
 ## Decisions
 
-N1, N2, N3, N4 e D1–D9c estão decididas como direções pelo dono em 2026-10-17, com a subdecisão `main.date` em D5 ainda aberta e as condições listadas no registro arquitetural. A spec permanece `draft` até os bloqueios de aprovação serem resolvidos; decisões de direção não autorizam implementação.
+N1, N2, N3, N4 e D1–D9c e as nove decisões técnicas dos Gates 1–5 foram escolhidas pelo dono em 2026-10-17. `main.date` sai de `tool_id` pela opção C; o hash do executável continua em builds de desenvolvimento não confiáveis. As escolhas estão registradas em [decisão arquitetural](../docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md) e [gates técnicos](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md). A spec continua `draft`: faltam auditoria de consumidores/schema, testes dos comportamentos escolhidos e verificação de `git archive | tar -x` com tab no Windows. Gate 5 vira critério de aceitação da implementação após autorização heavy; não é pré-condição para iniciar a primeira tarefa autorizada.
 
 | ID | Questão | Alternativas | Decisão do dono / condição |
 |---|---|---|---|
@@ -194,21 +200,18 @@ Nenhuma etapa apaga o caminho legado. Mudanças de bytes por D3 e D4 se revertem
 
 ## Open questions
 
-A spec continua `draft`; os pontos abaixo bloqueiam sua aprovação e qualquer implementação. As direções da tabela de decisões foram escolhidas, mas a evidência técnica ainda precisa ser registrada.
+A spec continua `draft` e implementação heavy não está autorizada. As direções de produto foram decididas; os pontos abaixo são evidências de compatibilidade e aceitação que ainda faltam.
 
-1. **Contrato do mapa e consumidores:** auditar todos os consumidores de `MacroMap`/JSON e decidir o valor de `schema_version` depois de identificar o contrato atual. Demonstrar que o snapshot autocontido e seus metadados são preservados por CLI, `gira-arch-diff`, bench, tools, skills, exemplos, fixtures, testes e documentação.
-   *Status (2026-10-17):* evidência registrada; decisão do dono pendente (valor de `schema_version`, política do leitor, nome da proveniência). Ver [Gate 1](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-1-contrato-do-mapa-e-consumidores).
-2. **D3 fora da raiz Git:** definir comportamento explícito para manifesto fora da raiz do repositório; nunca gravar caminho absoluto dependente da máquina como fallback silencioso. Auditar compatibilidade com ADR 0001 e consumers de locators.
-   *Status (2026-10-17):* evidência registrada; política de manifesto fora da raiz Git pendente do dono. Ver [Gate 2](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-2-manifesto-fora-da-raiz-git-d3).
-3. **D5 `main.date`:** verificar se o valor afeta a extração semântica. A subdecisão fica aberta até haver evidência.
-   *Status (2026-10-17):* evidência registrada (`main.date` é informativo na extração); subdecisão D5 pendente do dono. Ver [Gate 3](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-3-maindate-em-tool_id-d5).
-4. **Windows:** executar testes reprodutíveis no runner Windows para symlinks e `os.DevNull` usado como `GIT_CONFIG_GLOBAL`; hoje o comportamento é desconhecido.
-   *Status (2026-10-17):* evidência registrada no perfil do runner (admin, Developer Mode); usuário não elevado desconhecido. Ver [Gate 4](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-4-windows).
-5. **Publicação/durabilidade:** testes por plataforma para falhas antes/depois do rename, fsync de diretório, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de artefatos válidos/corrompidos e validação de hash.
-   *Status (2026-10-17):* aberto; depende de testes que só existem após a implementação. Ver [Gate 5](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-5-durabilidade-e-publicação-por-plataforma).
-6. **Autorização:** não iniciar ADR 0014, tarefas-filhas ou implementação heavy até os pontos 1–5 estarem evidenciados e o dono confirmar explicitamente a autorização de implementação.
+1. **Contrato do mapa e consumidores (decisões B/R2/`source_identity` registradas):** implementar e testar a forma exata do schema 2 e o leitor estrito; garantir que `CanonicalJSON` e `cloneMacroMap` preservam todos os campos (incluindo os campos já perdidos atualmente); auditar CLI, `store.LoadFile/PublishFile`, MCP, skills, bench, bundle, eval/scorecard, goldens, fixtures e documentação. Provar que um binário antigo falha fechado e não faz downgrade do schema.
+2. **Manifesto fora da raiz Git (O1) e ambiente Git:** implementar `manifest_outside_git_root` e `git_root_unavailable`; normalizar locator relativo à raiz Git depois de resolver symlinks; sanear as variáveis de redirecionamento em probes de raiz e `init`; executar a matriz raiz/subpasta/worktree/submódulo/symlink/fora do Git e provar que nenhum output é publicado em falha.
+3. **Eval e identidade do manifesto:** remover o fallback silencioso `"gira.yaml"`; garantir que o chamador passa o manifesto real e os bytes que alimentam `manifest_sha256`; com overrides sem manifesto real, retornar `manifest_path_required`. Confirmar que as fontes e seus SHAs participam da semântica de staleness como registrado.
+4. **`tool_id` (opção C + hash de desenvolvimento):** testes com e sem `-trimpath`; mudar apenas `main.date` deve manter `tool_id`/mapa de release estáveis; mudar `main.version` ou `main.commit` deve mudar `tool_id`; dev builds não confiáveis incluem hash do executável. Investigar/registrar o comportamento `vcs.*` que não apareceu nos builds locais.
+5. **Windows antes da aprovação final:** o Gate 4 aceitou a evidência para o perfil do runner hospedado (admin + Developer Mode), não para máquinas de usuários comuns. Adicionar o teste `git archive | tar -x` com nome de arquivo contendo tab no Windows. No SC7, tentar symlink em contexto não elevado/sem Developer Mode e registrar um skip explícito quando o ambiente não permitir criar o link.
+6. **Durabilidade e publicação, após autorização heavy:** a primeira tarefa de implementação deve trazer testes injetando falhas antes/depois do rename, fsync de diretório no Unix, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de snapshots válidos/corrompidos e validação de hash nos três SOs. Esses testes precisam passar antes de aceitar/mesclar a implementação, mas não podem ser exigidos antes de começar o primeiro child autorizado.
+7. **Autorização:** nenhuma tarefa-filha, ADR 0014 ou mudança de código de publicação versionada até as evidências 1–5 serem documentadas e o dono confirmar explicitamente a autorização heavy. A decisão de hoje escolhe contratos, mas não é essa autorização.
 
 ## Revisions
 
 - v1 (2026-10-17): primeiro rascunho no repositório. Consolida a proposta v2 do agente (anexo), os requisitos acrescentados pelo dono (D9b, D9c, `main.date`, não usar `os.UserCacheDir`) e as decisões N1–N4 que o plano de governança encontrou.
 - v1.1 (2026-10-17): registra as direções N3, N4 e D1–D9c aprovadas pelo dono e explicita as evidências ainda necessárias antes da aprovação final; N1/N2 permanecem registradas pelo histórico de governança.
+- v1.2 (2026-10-17): registra decisões suplementares dos Gates 1–5 (schema inteiro 2, política R2, `source_identity`, O1, eval sem fallback, `tool_id` opção C, hash de dev, W1 e Gate 5 como aceitação pós-implementação); spec segue `draft` e implementação continua não autorizada.
