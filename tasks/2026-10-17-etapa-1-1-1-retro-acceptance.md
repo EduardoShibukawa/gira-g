@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: verified
+status: accepted
 verified_at: "61b58c2"
 ---
 
@@ -11,8 +11,9 @@ verified_at: "61b58c2"
 
 - tier: standard (S1 revisão retroativa de dois commits já em `main`, sem mudança de código nesta tarefa; sem sinais heavy)
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `aa4e6fe..0d5f248` (exclui `aa4e6fe`), depois aceite (a) se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
+- accepted: by owner (2026-10-17, revisão adversarial concluída sem bloqueios materiais)
 
-O aceite do dono **não** está registrado. Este registro só prepara a evidência; o dono aceita depois de ver o resultado.
+O aceite formal do dono está registrado. Os achados não bloqueantes permanecem como riscos residuais e follow-ups separados; este aceite não autoriza as etapas posteriores nem altera decisões arquiteturais abertas.
 
 ## Objective
 
@@ -48,7 +49,7 @@ Out of scope:
 
 ## Outcome
 
-Veredito da revisão adversarial: **sem bloqueios materiais**. Status `verified`; falta o `accepted:` do dono (não registrado).
+Veredito da revisão adversarial: **sem bloqueios materiais**. O dono aceita formalmente a Etapa 1 e a Etapa 1.1 no estado `61b58c2`; status `accepted`. Os nove achados não bloqueantes abaixo permanecem follow-ups e não impedem este aceite.
 
 Achados não bloqueantes, tratados como riscos residuais e follow-ups. Nada foi corrigido e nenhuma decisão aberta foi mudada:
 
@@ -66,12 +67,12 @@ Achados não bloqueantes, tratados como riscos residuais e follow-ups. Nada foi 
 
 Windows [INFERÊNCIA]: sem trava, um leitor concorrente pode fazer o `os.Rename` falhar; o arquivo anterior fica intacto.
 
-Próximo passo: o dono decide se aceita (a). Se aceitar, o agente registra `accepted:` aqui. Depois, revisão de D1 contra a decisão aprovada §4 (N3 do plano).
+Próximo passo: resolver as questões arquiteturais ainda abertas, começando por N3 e D1, sem iniciar implementação até autorização heavy específica.
 
 ## Checkpoint
 
 - as of: 2026-10-17, branch `work/2026-10-17-gira-n1-n2-o6-decisions`, base `186427e`
-- done: revisão adversarial concluída (sem bloqueios materiais); evidência registrada
-- next: o dono vê o resultado e aceita ou não; só então `accepted:`
+- done: revisão adversarial concluída (sem bloqueios materiais); aceite formal registrado
+- next: decidir N3/D1 e demais questões arquiteturais abertas; implementação continua não autorizada
 - open: N1–N9 da revisão como follow-ups (N1 depende de D2, N2 de D3)
 - revalidate: as linhas citam `61b58c2`; rodar de novo se o código de `main` mudar
