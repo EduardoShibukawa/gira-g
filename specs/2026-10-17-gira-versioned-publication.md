@@ -197,10 +197,15 @@ Nenhuma etapa apaga o caminho legado. Mudanças de bytes por D3 e D4 se revertem
 A spec continua `draft`; os pontos abaixo bloqueiam sua aprovação e qualquer implementação. As direções da tabela de decisões foram escolhidas, mas a evidência técnica ainda precisa ser registrada.
 
 1. **Contrato do mapa e consumidores:** auditar todos os consumidores de `MacroMap`/JSON e decidir o valor de `schema_version` depois de identificar o contrato atual. Demonstrar que o snapshot autocontido e seus metadados são preservados por CLI, `gira-arch-diff`, bench, tools, skills, exemplos, fixtures, testes e documentação.
+   *Status (2026-10-17):* evidência registrada; decisão do dono pendente (valor de `schema_version`, política do leitor, nome da proveniência). Ver [Gate 1](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-1-contrato-do-mapa-e-consumidores).
 2. **D3 fora da raiz Git:** definir comportamento explícito para manifesto fora da raiz do repositório; nunca gravar caminho absoluto dependente da máquina como fallback silencioso. Auditar compatibilidade com ADR 0001 e consumers de locators.
+   *Status (2026-10-17):* evidência registrada; política de manifesto fora da raiz Git pendente do dono. Ver [Gate 2](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-2-manifesto-fora-da-raiz-git-d3).
 3. **D5 `main.date`:** verificar se o valor afeta a extração semântica. A subdecisão fica aberta até haver evidência.
+   *Status (2026-10-17):* evidência registrada (`main.date` é informativo na extração); subdecisão D5 pendente do dono. Ver [Gate 3](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-3-maindate-em-tool_id-d5).
 4. **Windows:** executar testes reprodutíveis no runner Windows para symlinks e `os.DevNull` usado como `GIT_CONFIG_GLOBAL`; hoje o comportamento é desconhecido.
+   *Status (2026-10-17):* evidência registrada no perfil do runner (admin, Developer Mode); usuário não elevado desconhecido. Ver [Gate 4](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-4-windows).
 5. **Publicação/durabilidade:** testes por plataforma para falhas antes/depois do rename, fsync de diretório, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de artefatos válidos/corrompidos e validação de hash.
+   *Status (2026-10-17):* aberto; depende de testes que só existem após a implementação. Ver [Gate 5](../docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md#gate-5-durabilidade-e-publicação-por-plataforma).
 6. **Autorização:** não iniciar ADR 0014, tarefas-filhas ou implementação heavy até os pontos 1–5 estarem evidenciados e o dono confirmar explicitamente a autorização de implementação.
 
 ## Revisions

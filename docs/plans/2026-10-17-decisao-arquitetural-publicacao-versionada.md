@@ -40,6 +40,8 @@ Este registro escolhe direções de produto para fechar as alternativas N3, N4 e
 5. **Durabilidade e publicação:** testar falhas antes e depois do rename, fsync de diretório no Unix, semântica `visible_unconfirmed`, publicação parcial de `init --output`, preservação do arquivo anterior e validação de hash em todos os três sistemas.
 6. **Gate final:** a spec continua `draft`, a tarefa-mãe continua `todo` e nenhum child de implementação deve começar até que os cinco pontos anteriores tenham evidência registrada e o dono faça uma autorização heavy explícita.
 
+Status da evidência (2026-10-17): itens 1–3 com evidência registrada e decisões do dono pendentes; item 4 evidência registrada (perfil runner admin; usuário não elevado desconhecido); item 5 aberto. Detalhes em [gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md).
+
 ## Auditoria de estado
 
 - N1 e N2 já foram registradas em PR #19, agora mesclada.
