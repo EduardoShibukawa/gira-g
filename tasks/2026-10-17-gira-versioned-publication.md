@@ -80,6 +80,7 @@ skip: roda depois que os children estiverem verificados
 
 - as of: 2026-10-17, branch `work/2026-10-17-gira-versioned-architecture-decisions`, base `db5a3cfa`
 - done: N1 (a), N2 (b) com aceite formal registrado, O6 aplicada, direções N3/N4/D1–D9c registradas em decisão arquitetural
+- status da spec: `draft`; implementação não autorizada e nenhuma tarefa-filha de implementação criada
 - next: concluir e evidenciar os gates da spec; solicitar autorização heavy explícita só depois dessa evidência
 - open: regra de D3 para manifesto fora da raiz Git; subdecisão D5 `main.date`; auditoria dos consumidores e schema; compatibilidade Windows para symlink e `os.DevNull`; M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: B1 e B2 rodaram em `61b58c2`; rodar de novo se `main` andar
