@@ -395,6 +395,10 @@ func createGitRepoWithFiles(t *testing.T, files map[string]string) (string, stri
 }
 
 func TestCLI_Index(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+
 	composeContent := `
 version: '3.8'
 services:
@@ -522,6 +526,10 @@ services:
 	if !strings.Contains(stdout.String(), "Indexed") {
 		t.Errorf("expected Indexed in stdout, got %s", stdout.String())
 	}
+	publishedPath := filepath.Join(tmpHome, ".cache", "gira", "indexes", "index-test-system", "macro-map.json")
+	if _, statErr := os.Stat(publishedPath); statErr != nil {
+		t.Errorf("expected default-store index at %s (temp home), got: %v", publishedPath, statErr)
+	}
 
 	// 3. Corrupt output file must NOT be overwritten unless --recover-corrupt is passed
 	corruptBytes := []byte("{corrupt-existing-index")
@@ -564,16 +572,9 @@ services:
 }
 
 func TestCLI_LoadIndexResolutionAndFailClosed(t *testing.T) {
-	origHome := os.Getenv("HOME")
 	tempHome := t.TempDir()
-	_ = os.Setenv("HOME", tempHome)
-	defer func() { _ = os.Setenv("HOME", origHome) }()
-
-	origWD, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = os.Chdir(origWD) }()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("USERPROFILE", tempHome)
 
 	storeRoot := filepath.Join(tempHome, ".cache", "gira", "indexes")
 	st := store.NewStore(storeRoot)
@@ -600,12 +601,10 @@ repositories:
 	if err := os.WriteFile(filepath.Join(projDir, "gira.yaml"), []byte(manifestYAML), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chdir(projDir); err != nil {
-		t.Fatal(err)
-	}
+	t.Chdir(projDir)
 
 	var stdout, stderr bytes.Buffer
-	err = Run([]string{"export"}, nil, &stdout, &stderr)
+	err := Run([]string{"export"}, nil, &stdout, &stderr)
 	if err == nil {
 		t.Fatalf("expected index_missing error when my-project is not indexed, got nil")
 	}
@@ -619,9 +618,7 @@ repositories:
 	if err := os.MkdirAll(subDir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chdir(subDir); err != nil {
-		t.Fatal(err)
-	}
+	t.Chdir(subDir)
 	stdout.Reset()
 	stderr.Reset()
 	err = Run([]string{"export"}, nil, &stdout, &stderr)
@@ -646,9 +643,7 @@ repositories:
 
 	// Case 3: Directory without gira.yaml in its hierarchy when multiple systems ("my-project" and "other-system") exist in cache -> ambiguity error
 	noManifestDir := t.TempDir()
-	if err := os.Chdir(noManifestDir); err != nil {
-		t.Fatal(err)
-	}
+	t.Chdir(noManifestDir)
 	stdout.Reset()
 	stderr.Reset()
 	err = Run([]string{"export"}, nil, &stdout, &stderr)
@@ -656,5 +651,3 @@ repositories:
 		t.Errorf("expected ambiguity error when multiple systems exist in cache without gira.yaml, got: %v", err)
 	}
 }
-
-
