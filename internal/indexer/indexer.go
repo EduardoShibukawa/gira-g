@@ -116,6 +116,12 @@ func StampEvidence(mm *domain.MacroMap, commitTimes map[string]time.Time, fallba
 	for i := range mm.Relationships {
 		stamp(mm.Relationships[i].Evidence)
 	}
+	for i := range mm.UnresolvedRefs {
+		stamp(mm.UnresolvedRefs[i].Evidence)
+	}
+	for i := range mm.Conflicts {
+		stamp(mm.Conflicts[i].Evidence)
+	}
 }
 
 func commitTime(ctx context.Context, repoDir, sha string) (time.Time, error) {

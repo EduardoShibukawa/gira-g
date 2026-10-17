@@ -426,6 +426,9 @@ services:
 		"overrides:",
 		"  relationships:",
 		`    - source_id: "service:frontend"`,
+		`      target_id: "service:cartservice"`,
+		`      verb: "consumes"`,
+		`    - source_id: "service:frontend"`,
 		`      target_id: "contract:custom-checkout"`,
 		`      verb: "consumes"`,
 		"  metadata:",
@@ -475,29 +478,38 @@ services:
 		t.Errorf("expected team web-core, got %v", frontendNode.Metadata["team"])
 	}
 
-	if checkoutNode == nil {
-		t.Fatalf("expected contract:custom-checkout node created by override")
-	}
-	if checkoutNode.Kind != domain.NodeContract {
-		t.Errorf("expected NodeContract kind, got %v", checkoutNode.Kind)
+	// contract:custom-checkout does not exist in docker-compose.yaml -> must NOT be fabricated as a dummy node
+	if checkoutNode != nil {
+		t.Fatalf("expected contract:custom-checkout NOT to be fabricated as a phantom node")
 	}
 
-	// Verify override relationship
+	// Verify valid override relationship to existing service:cartservice
 	var overrideRel *domain.Relationship
 	for i := range mm.Relationships {
-		if mm.Relationships[i].TargetID == "contract:custom-checkout" {
+		if mm.Relationships[i].TargetID == "service:cartservice" {
 			overrideRel = &mm.Relationships[i]
 			break
 		}
 	}
 	if overrideRel == nil {
-		t.Fatalf("expected relationship to contract:custom-checkout")
+		t.Fatalf("expected relationship to service:cartservice")
 	}
 	if overrideRel.Verb != domain.VerbConsumes {
 		t.Errorf("expected consumes verb, got %s", overrideRel.Verb)
 	}
 	if len(overrideRel.Evidence) == 0 || overrideRel.Evidence[0].Origin != "declared:override" {
 		t.Errorf("expected declared:override origin")
+	}
+	if overrideRel.Evidence[0].Locator.StartLine != 11 || overrideRel.Evidence[0].Locator.EndLine != 13 {
+		t.Errorf("expected override relationship line span 11..13, got %+v", overrideRel.Evidence[0].Locator)
+	}
+
+	// Verify unresolved reference recorded for contract:custom-checkout with YAML line span 14..16
+	if len(mm.UnresolvedRefs) != 1 {
+		t.Fatalf("expected 1 unresolved reference for contract:custom-checkout, got %d: %+v", len(mm.UnresolvedRefs), mm.UnresolvedRefs)
+	}
+	if mm.UnresolvedRefs[0].TargetID != "contract:custom-checkout" || mm.UnresolvedRefs[0].Evidence[0].Locator.StartLine != 14 || mm.UnresolvedRefs[0].Evidence[0].Locator.EndLine != 16 {
+		t.Errorf("unexpected unresolved reference: %+v", mm.UnresolvedRefs[0])
 	}
 
 	// 2. Default store persistence (no --output specified)
@@ -511,7 +523,29 @@ services:
 		t.Errorf("expected Indexed in stdout, got %s", stdout.String())
 	}
 
-	// 3. Offline failure when repo not cached
+	// 3. Corrupt output file must NOT be overwritten unless --recover-corrupt is passed
+	corruptBytes := []byte("{corrupt-existing-index")
+	if err := os.WriteFile(outputPath, corruptBytes, 0644); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"index", manifestPath, "--output", outputPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Fatalf("expected gira index to fail when existing output file is corrupt")
+	}
+	gotCorrupt, _ := os.ReadFile(outputPath)
+	if string(gotCorrupt) != string(corruptBytes) {
+		t.Fatalf("expected corrupt output file to be preserved on error")
+	}
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"index", manifestPath, "--output", outputPath, "--cache-dir", cacheDir, "--recover-corrupt"}, nil, &stdout, &stderr)
+	if err != nil {
+		t.Fatalf("expected gira index --recover-corrupt to succeed, got: %v", err)
+	}
+
+	// 4. Offline failure when repo not cached
 	emptyCacheDir := t.TempDir()
 	stdout.Reset()
 	stderr.Reset()
@@ -520,7 +554,7 @@ services:
 		t.Errorf("expected error in offline mode with missing cache, got nil")
 	}
 
-	// 4. Missing manifest file error
+	// 5. Missing manifest file error
 	stdout.Reset()
 	stderr.Reset()
 	err = Run([]string{"index", "/nonexistent/path/gira.yaml"}, nil, &stdout, &stderr)
@@ -528,3 +562,83 @@ services:
 		t.Errorf("expected error for missing manifest, got nil")
 	}
 }
+
+func TestCLI_LoadIndexResolutionAndFailClosed(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	tempHome := t.TempDir()
+	_ = os.Setenv("HOME", tempHome)
+	defer func() { _ = os.Setenv("HOME", origHome) }()
+
+	origWD, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chdir(origWD) }()
+
+	storeRoot := filepath.Join(tempHome, ".cache", "gira", "indexes")
+	st := store.NewStore(storeRoot)
+
+	// Populate another system in cache ("other-system")
+	otherMap := domain.NewMacroMap("other-system")
+	_ = otherMap.AddNode(domain.Node{ID: "service:other", Kind: domain.NodeService, Name: "other"})
+	if err := st.Save("other-system", otherMap); err != nil {
+		t.Fatalf("failed to save other-system: %v", err)
+	}
+
+	// Case 1: Project directory has gira.yaml for "my-project", which is NOT indexed yet.
+	// Even though "other-system" exists in cache, loadIndex must NOT fall back to "other-system" or empty map;
+	// it must return index_missing for "my-project".
+	projDir := t.TempDir()
+	manifestYAML := `version: 1
+target_system:
+  name: my-project
+repositories:
+  - id: repo
+    url: "https://example.com/repo.git"
+    sha: "1111222233334444555566667777888899990000"
+`
+	if err := os.WriteFile(filepath.Join(projDir, "gira.yaml"), []byte(manifestYAML), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(projDir); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = Run([]string{"export"}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Fatalf("expected index_missing error when my-project is not indexed, got nil")
+	}
+	if !strings.Contains(err.Error(), "index_missing") || !strings.Contains(err.Error(), "my-project") {
+		t.Errorf("expected error mentioning index_missing and my-project, got: %v", err)
+	}
+
+	// Case 2: Index "my-project" in store -> now export resolves exclusively to "my-project"
+	myMap := domain.NewMacroMap("my-project")
+	_ = myMap.AddNode(domain.Node{ID: "service:my-svc", Kind: domain.NodeService, Name: "my-svc"})
+	if err := st.Save("my-project", myMap); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if err := Run([]string{"export"}, nil, &stdout, &stderr); err != nil {
+		t.Fatalf("expected export to succeed once my-project is indexed, got: %v", err)
+	}
+	if !strings.Contains(stdout.String(), "service:my-svc") || strings.Contains(stdout.String(), "other") {
+		t.Errorf("expected my-project nodes only, got: %s", stdout.String())
+	}
+
+	// Case 3: Directory without gira.yaml when multiple systems ("my-project" and "other-system") exist in cache -> ambiguity error
+	noManifestDir := t.TempDir()
+	if err := os.Chdir(noManifestDir); err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	err = Run([]string{"export"}, nil, &stdout, &stderr)
+	if err == nil || !strings.Contains(err.Error(), "ambiguous index: multiple systems found in cache") {
+		t.Errorf("expected ambiguity error when multiple systems exist in cache without gira.yaml, got: %v", err)
+	}
+}
+
+

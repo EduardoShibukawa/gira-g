@@ -31,15 +31,93 @@ type TargetSystemMeta struct {
 
 // RelationshipOverride declares an explicit relationship correction or addition.
 type RelationshipOverride struct {
-	SourceID string `yaml:"source_id"`
-	TargetID string `yaml:"target_id"`
-	Verb     string `yaml:"verb"`
+	SourceID  string `yaml:"source_id"`
+	TargetID  string `yaml:"target_id"`
+	Verb      string `yaml:"verb"`
+	StartLine int    `yaml:"-"`
+	EndLine   int    `yaml:"-"`
 }
 
 // OverridesDeclaration defines declarative human corrections for relationships and metadata.
 type OverridesDeclaration struct {
 	Relationships []RelationshipOverride    `yaml:"relationships,omitempty"`
 	Metadata      map[string]map[string]any `yaml:"metadata,omitempty"`
+	MetadataLines map[string]int            `yaml:"-"`
+}
+
+// UnmarshalYAML decodes OverridesDeclaration while recording the exact YAML source lines
+// for each relationship item and metadata entry.
+func (o *OverridesDeclaration) UnmarshalYAML(value *yaml.Node) error {
+	type rawOverrides struct {
+		Relationships []RelationshipOverride    `yaml:"relationships,omitempty"`
+		Metadata      map[string]map[string]any `yaml:"metadata,omitempty"`
+	}
+	var raw rawOverrides
+	if err := value.Decode(&raw); err != nil {
+		return err
+	}
+	o.Relationships = raw.Relationships
+	o.Metadata = raw.Metadata
+
+	if value.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i+1 < len(value.Content); i += 2 {
+		keyNode := value.Content[i]
+		valNode := value.Content[i+1]
+		switch keyNode.Value {
+		case "relationships":
+			if valNode.Kind == yaml.SequenceNode {
+				for idx, item := range valNode.Content {
+					if idx < len(o.Relationships) {
+						start, end := yamlNodeLineSpan(item)
+						o.Relationships[idx].StartLine = start
+						o.Relationships[idx].EndLine = end
+					}
+				}
+			}
+		case "metadata":
+			if valNode.Kind == yaml.MappingNode {
+				if o.MetadataLines == nil {
+					o.MetadataLines = make(map[string]int)
+				}
+				for j := 0; j+1 < len(valNode.Content); j += 2 {
+					nodeKey := strings.TrimSpace(valNode.Content[j].Value)
+					if nodeKey != "" && valNode.Content[j].Line > 0 {
+						o.MetadataLines[nodeKey] = valNode.Content[j].Line
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func yamlNodeLineSpan(n *yaml.Node) (int, int) {
+	if n == nil {
+		return 0, 0
+	}
+	start := n.Line
+	end := n.Line
+	var walk func(cur *yaml.Node)
+	walk = func(cur *yaml.Node) {
+		if cur == nil {
+			return
+		}
+		if cur.Line > 0 {
+			if start == 0 || cur.Line < start {
+				start = cur.Line
+			}
+			if cur.Line > end {
+				end = cur.Line
+			}
+		}
+		for _, child := range cur.Content {
+			walk(child)
+		}
+	}
+	walk(n)
+	return start, end
 }
 
 // RepositoryDeclaration defines a Git repository belonging to the target system.

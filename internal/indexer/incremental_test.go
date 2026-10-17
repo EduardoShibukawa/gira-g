@@ -355,3 +355,92 @@ func TestSymbolLossGate(t *testing.T) {
 		t.Fatalf("expected AllowedByShrink=true")
 	}
 }
+
+func TestSymbolLossGate_DistinguishesPhantomNodesAndInvalidRefs(t *testing.T) {
+	// Legacy map contains:
+	// - service:order (real extracted node)
+	// - service:ghost (legacy dummy node with empty Evidence)
+	// - contract:phantom-override (legacy dummy node fabricated by ApplyOverrides with empty Repo)
+	// - rel:order-consumes-phantom (relationship to phantom node, reclassified into UnresolvedRefs in next)
+	prev := &domain.MacroMap{
+		SchemaVersion: "1.0.0",
+		TargetSystem:  "demo",
+		Nodes: []domain.Node{
+			{
+				ID:   "service:order",
+				Kind: domain.NodeService,
+				Name: "order",
+				Evidence: []domain.EvidenceRecord{
+					{
+						Origin:  domain.OriginExtracted,
+						Locator: domain.Locator{Repo: "demo", CommitSHA: "sha1", Path: "docker-compose.yml", StartLine: 2},
+					},
+				},
+			},
+			{
+				ID:       "service:ghost",
+				Kind:     domain.NodeService,
+				Name:     "service:ghost",
+				Evidence: nil, // Legacy ProcessFiles dummy node had no evidence
+			},
+			{
+				ID:   "contract:phantom-override",
+				Kind: domain.NodeContract,
+				Name: "contract:phantom-override",
+				Evidence: []domain.EvidenceRecord{
+					{
+						Origin:  extractors.OriginDeclaredOverride,
+						Locator: domain.Locator{Path: "gira.yaml"}, // No Repo -> legacy ensureNodeExists
+					},
+				},
+			},
+		},
+		Relationships: []domain.Relationship{
+			{
+				ID:       "rel:service:order-consumes-contract:phantom-override",
+				SourceID: "service:order",
+				TargetID: "contract:phantom-override",
+				Verb:     domain.VerbConsumes,
+				Evidence: []domain.EvidenceRecord{
+					{
+						Origin:  extractors.OriginDeclaredOverride,
+						Locator: domain.Locator{Path: "gira.yaml", StartLine: 10, EndLine: 12},
+					},
+				},
+			},
+		},
+	}
+
+	next := &domain.MacroMap{
+		SchemaVersion: "1.0.0",
+		TargetSystem:  "demo",
+		Nodes: []domain.Node{
+			prev.Nodes[0],
+		},
+		UnresolvedRefs: []domain.UnresolvedReference{
+			{
+				ID:         "unresolved:rel:service:order-consumes-contract:phantom-override:missing:contract:phantom-override",
+				RelationID: "rel:service:order-consumes-contract:phantom-override",
+				SourceID:   "service:order",
+				TargetID:   "contract:phantom-override",
+				MissingID:  "contract:phantom-override",
+				Verb:       domain.VerbConsumes,
+			},
+		},
+	}
+
+	rep, err := indexer.CheckSymbolLossGate(prev, next, nil, false)
+	if err != nil {
+		t.Fatalf("expected gate NOT to block removal of phantom nodes and reclassified refs, got err: %v", err)
+	}
+	if len(rep.RemovedPhantomNodes) != 2 {
+		t.Fatalf("expected 2 RemovedPhantomNodes, got %v", rep.RemovedPhantomNodes)
+	}
+	if len(rep.ReclassifiedInvalidRefs) != 1 {
+		t.Fatalf("expected 1 ReclassifiedInvalidRefs, got %v", rep.ReclassifiedInvalidRefs)
+	}
+	if rep.HasUnexplainedLoss() {
+		t.Fatalf("expected no unexplained loss, got %+v", rep)
+	}
+}
+

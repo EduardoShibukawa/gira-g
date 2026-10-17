@@ -276,6 +276,11 @@ func TestPipeline_ApplyOverrides_Relationships(t *testing.T) {
 		Kind: domain.NodeService,
 		Name: "backend",
 	})
+	_ = mm.AddNode(domain.Node{
+		ID:   "contract:existing-cart",
+		Kind: domain.NodeContract,
+		Name: "existing-cart",
+	})
 	_ = mm.AddRelationship(domain.Relationship{
 		ID:       "rel:frontend-accesses-backend",
 		SourceID: "service:frontend",
@@ -291,17 +296,29 @@ func TestPipeline_ApplyOverrides_Relationships(t *testing.T) {
 
 	overrides := &manifest.OverridesDeclaration{
 		Relationships: []manifest.RelationshipOverride{
-			// 1. Add new relationship to a new contract node
+			// 1. Missing target node -> must NOT fabricate a dummy node; must record UnresolvedReference
 			{
-				SourceID: "service:frontend",
-				TargetID: "contract:custom-cart",
-				Verb:     "consumes",
+				SourceID:  "service:frontend",
+				TargetID:  "contract:custom-cart",
+				Verb:      "consumes",
+				StartLine: 12,
+				EndLine:   14,
 			},
-			// 2. Override existing relationship verb
+			// 2. Existing target node -> adds relationship with declared:override evidence
 			{
-				SourceID: "service:frontend",
-				TargetID: "service:backend",
-				Verb:     "provides",
+				SourceID:  "service:frontend",
+				TargetID:  "contract:existing-cart",
+				Verb:      "consumes",
+				StartLine: 15,
+				EndLine:   17,
+			},
+			// 3. Override existing relationship verb -> updates verb and records ConflictRecord
+			{
+				SourceID:  "service:frontend",
+				TargetID:  "service:backend",
+				Verb:      "provides",
+				StartLine: 18,
+				EndLine:   20,
 			},
 		},
 	}
@@ -311,49 +328,47 @@ func TestPipeline_ApplyOverrides_Relationships(t *testing.T) {
 		t.Fatalf("ApplyOverrides failed: %v", err)
 	}
 
-	// Verify contract:custom-cart node was created with NodeContract kind
-	var contractNode *domain.Node
+	// Verify contract:custom-cart node was NOT fabricated as a dummy node
 	for i := range mm.Nodes {
 		if mm.Nodes[i].ID == "contract:custom-cart" {
-			contractNode = &mm.Nodes[i]
-			break
+			t.Fatalf("expected contract:custom-cart NOT to be fabricated as a phantom node")
 		}
 	}
-	if contractNode == nil {
-		t.Fatalf("expected contract:custom-cart node to be created")
+
+	// Verify UnresolvedReference recorded for contract:custom-cart with exact line span
+	if len(mm.UnresolvedRefs) != 1 {
+		t.Fatalf("expected 1 unresolved reference, got %d: %+v", len(mm.UnresolvedRefs), mm.UnresolvedRefs)
 	}
-	if contractNode.Kind != domain.NodeContract {
-		t.Errorf("expected NodeContract kind, got %v", contractNode.Kind)
+	uref := mm.UnresolvedRefs[0]
+	if uref.SourceID != "service:frontend" || uref.TargetID != "contract:custom-cart" || uref.MissingID != "contract:custom-cart" {
+		t.Errorf("unexpected unresolved reference: %+v", uref)
 	}
-	if len(contractNode.Evidence) == 0 || contractNode.Evidence[0].Origin != "declared:override" {
-		t.Errorf("expected declared:override origin in node evidence")
-	}
-	if contractNode.Evidence[0].Locator.Path != "custom-gira.yaml" {
-		t.Errorf("expected custom-gira.yaml locator path, got %s", contractNode.Evidence[0].Locator.Path)
+	if len(uref.Evidence) == 0 || uref.Evidence[0].Locator.Path != "custom-gira.yaml" || uref.Evidence[0].Locator.StartLine != 12 || uref.Evidence[0].Locator.EndLine != 14 {
+		t.Errorf("expected custom-gira.yaml:12-14 in unresolved ref evidence, got %+v", uref.Evidence)
 	}
 
-	// Verify new relationship
+	// Verify valid new relationship to existing contract:existing-cart
 	var customRel *domain.Relationship
 	for i := range mm.Relationships {
-		if mm.Relationships[i].TargetID == "contract:custom-cart" {
+		if mm.Relationships[i].TargetID == "contract:existing-cart" {
 			customRel = &mm.Relationships[i]
 			break
 		}
 	}
 	if customRel == nil {
-		t.Fatalf("expected relationship to contract:custom-cart")
+		t.Fatalf("expected relationship to contract:existing-cart")
 	}
 	if customRel.Verb != domain.VerbConsumes {
 		t.Errorf("expected consumes verb, got %s", customRel.Verb)
 	}
-	if len(customRel.Evidence) == 0 || customRel.Evidence[0].Origin != "declared:override" {
+	if len(customRel.Evidence) == 0 || customRel.Evidence[0].Origin != OriginDeclaredOverride {
 		t.Errorf("expected declared:override origin in relationship evidence")
 	}
-	if customRel.Evidence[0].Locator.Path != "custom-gira.yaml" {
-		t.Errorf("expected custom-gira.yaml locator path, got %s", customRel.Evidence[0].Locator.Path)
+	if customRel.Evidence[0].Locator.Path != "custom-gira.yaml" || customRel.Evidence[0].Locator.StartLine != 15 {
+		t.Errorf("expected custom-gira.yaml:15 locator, got %+v", customRel.Evidence[0].Locator)
 	}
 
-	// Verify overridden relationship
+	// Verify overridden relationship and ConflictRecord
 	var backendRel *domain.Relationship
 	for i := range mm.Relationships {
 		if mm.Relationships[i].TargetID == "service:backend" {
@@ -367,13 +382,18 @@ func TestPipeline_ApplyOverrides_Relationships(t *testing.T) {
 	if backendRel.Verb != domain.VerbProvides {
 		t.Errorf("expected updated verb 'provides', got %s", backendRel.Verb)
 	}
-	// Should have both original and override evidence records
 	if len(backendRel.Evidence) != 2 {
 		t.Fatalf("expected 2 evidence records, got %d", len(backendRel.Evidence))
 	}
 	lastEvidence := backendRel.Evidence[1]
-	if lastEvidence.Origin != "declared:override" || lastEvidence.Locator.Path != "custom-gira.yaml" {
+	if lastEvidence.Origin != OriginDeclaredOverride || lastEvidence.Locator.Path != "custom-gira.yaml" {
 		t.Errorf("unexpected last evidence record: %+v", lastEvidence)
+	}
+	if len(mm.Conflicts) != 1 {
+		t.Fatalf("expected 1 conflict record for overridden relationship verb, got %d", len(mm.Conflicts))
+	}
+	if mm.Conflicts[0].Kind != "relationship_verb" || mm.Conflicts[0].PreviousVal != "accesses" || mm.Conflicts[0].DeclaredVal != "provides" {
+		t.Errorf("unexpected conflict record: %+v", mm.Conflicts[0])
 	}
 }
 
@@ -395,12 +415,23 @@ func TestPipeline_ApplyOverrides_Metadata(t *testing.T) {
 				"team": "web-core",
 				"tier": "tier-1",
 			},
+			"service:missing": {
+				"team": "ghost-team",
+			},
+		},
+		MetadataLines: map[string]int{
+			"service:frontend": 20,
+			"service:missing":  24,
 		},
 	}
 
 	err := ApplyOverrides(mm, overrides, "")
 	if err != nil {
 		t.Fatalf("ApplyOverrides failed: %v", err)
+	}
+
+	if len(mm.Nodes) != 1 {
+		t.Fatalf("expected 1 node (service:missing must not be created), got %d", len(mm.Nodes))
 	}
 
 	node := mm.Nodes[0]
@@ -414,13 +445,29 @@ func TestPipeline_ApplyOverrides_Metadata(t *testing.T) {
 		t.Errorf("expected tier tier-1 added, got %v", node.Metadata["tier"])
 	}
 
-	// Verify evidence added with declared:override and default manifest path gira.yaml
+	// Verify evidence added with declared:override and default manifest path gira.yaml + line 20
 	if len(node.Evidence) != 1 {
 		t.Fatalf("expected 1 evidence record on node, got %d", len(node.Evidence))
 	}
 	ev := node.Evidence[0]
-	if ev.Origin != "declared:override" || ev.Locator.Path != "gira.yaml" {
+	if ev.Origin != OriginDeclaredOverride || ev.Locator.Path != "gira.yaml" || ev.Locator.StartLine != 20 {
 		t.Errorf("unexpected evidence record on node: %+v", ev)
+	}
+
+	// Verify ConflictRecord for overwritten metadata key "team"
+	if len(mm.Conflicts) != 1 {
+		t.Fatalf("expected 1 metadata conflict record, got %d", len(mm.Conflicts))
+	}
+	if mm.Conflicts[0].Kind != "metadata_value" || mm.Conflicts[0].Field != "team" || mm.Conflicts[0].PreviousVal != "legacy-team" || mm.Conflicts[0].DeclaredVal != "web-core" {
+		t.Errorf("unexpected metadata conflict record: %+v", mm.Conflicts[0])
+	}
+
+	// Verify UnresolvedReference for service:missing with line 24
+	if len(mm.UnresolvedRefs) != 1 {
+		t.Fatalf("expected 1 unresolved ref for service:missing, got %d", len(mm.UnresolvedRefs))
+	}
+	if mm.UnresolvedRefs[0].MissingID != "service:missing" || mm.UnresolvedRefs[0].Evidence[0].Locator.StartLine != 24 {
+		t.Errorf("unexpected unresolved ref for service:missing: %+v", mm.UnresolvedRefs[0])
 	}
 }
 
@@ -538,7 +585,8 @@ status: active
 # Feature Task
 
 Blocked by: [Task Dependency](tasks/dep-task.md)
-implements: architecture-policy
+implements: 0001-architecture
+implements: missing-policy
 
 ## Verification
 
@@ -579,7 +627,11 @@ name: code-reviewer
 		nodeMap[n.ID] = n
 	}
 
-	// Verify nodes
+	// Only the 3 real extracted nodes should exist (no dummy nodes for dep-task, missing-policy, check:ac1, payment-service, auth-service)
+	if len(mm.Nodes) != 3 {
+		t.Fatalf("expected exactly 3 real extracted nodes, got %d: %+v", len(mm.Nodes), mm.Nodes)
+	}
+
 	taskNode, hasTask := nodeMap["task:feature-task"]
 	if !hasTask {
 		t.Fatalf("missing task:feature-task node")
@@ -607,26 +659,36 @@ name: code-reviewer
 		t.Errorf("expected NodeSkill, got %v", skillNode.Kind)
 	}
 
-	// Verify relationships
+	// Verify resolved relationship between task:feature-task and policy:0001-architecture
 	relMap := make(map[string]bool)
 	for _, r := range mm.Relationships {
 		relMap[r.SourceID+"->"+string(r.Verb)+"->"+r.TargetID] = true
 	}
+	if !relMap["task:feature-task->implements->policy:0001-architecture"] {
+		t.Errorf("missing resolved implements relationship from feature-task to 0001-architecture")
+	}
 
-	if !relMap["task:dep-task->governs->task:feature-task"] {
-		t.Errorf("missing governs relationship from dep-task to feature-task")
+	// Verify references to absent nodes are recorded in UnresolvedRefs with provenance
+	unrefMap := make(map[string]domain.UnresolvedReference)
+	for _, u := range mm.UnresolvedRefs {
+		unrefMap[u.SourceID+"->"+string(u.Verb)+"->"+u.TargetID] = u
 	}
-	if !relMap["task:feature-task->implements->policy:architecture-policy"] {
-		t.Errorf("missing implements relationship from feature-task to architecture-policy")
+	wantUnresolved := []string{
+		"task:dep-task->governs->task:feature-task",
+		"task:feature-task->implements->policy:missing-policy",
+		"task:feature-task->verifies->contract:check:ac1",
+		"policy:0001-architecture->governs->service:payment-service",
+		"policy:0001-architecture->governs->service:auth-service",
 	}
-	if !relMap["task:feature-task->verifies->contract:check:ac1"] {
-		t.Errorf("missing verifies relationship from feature-task to contract:check:ac1")
-	}
-	if !relMap["policy:0001-architecture->governs->service:payment-service"] {
-		t.Errorf("missing governs relationship to payment-service")
-	}
-	if !relMap["policy:0001-architecture->governs->service:auth-service"] {
-		t.Errorf("missing governs relationship to auth-service")
+	for _, key := range wantUnresolved {
+		u, ok := unrefMap[key]
+		if !ok {
+			t.Errorf("missing expected UnresolvedRef %q (got %+v)", key, mm.UnresolvedRefs)
+			continue
+		}
+		if len(u.Evidence) == 0 || u.Evidence[0].Locator.StartLine <= 0 {
+			t.Errorf("expected line provenance on UnresolvedRef %q, got %+v", key, u.Evidence)
+		}
 	}
 }
 

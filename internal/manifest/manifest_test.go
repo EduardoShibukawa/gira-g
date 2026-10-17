@@ -266,6 +266,39 @@ repositories:
 	}
 }
 
+func TestParse_OverridesLineNumbers(t *testing.T) {
+	yamlData := `version: 1
+target_system:
+  name: provenance-test
+repositories:
+  - id: demo
+    url: "file:///tmp/repo"
+    sha: "dedc0178918e260823323b8d95005a8cb924b007"
+overrides:
+  relationships:
+    - source_id: "service:frontend"
+      target_id: "contract:custom"
+      verb: "consumes"
+  metadata:
+    "service:frontend":
+      team: "web-core"
+`
+	m, err := manifest.Parse([]byte(yamlData))
+	if err != nil {
+		t.Fatalf("unexpected error parsing manifest: %v", err)
+	}
+	if m.Overrides == nil || len(m.Overrides.Relationships) != 1 {
+		t.Fatalf("expected 1 relationship override")
+	}
+	rel := m.Overrides.Relationships[0]
+	if rel.StartLine != 10 || rel.EndLine != 12 {
+		t.Errorf("expected relationship override lines 10..12, got %d..%d", rel.StartLine, rel.EndLine)
+	}
+	if m.Overrides.MetadataLines["service:frontend"] != 14 {
+		t.Errorf("expected metadata key 'service:frontend' on line 14, got %d", m.Overrides.MetadataLines["service:frontend"])
+	}
+}
+
 func TestParse_InvalidOverrides(t *testing.T) {
 	tests := []struct {
 		name    string

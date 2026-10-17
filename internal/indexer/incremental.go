@@ -63,13 +63,17 @@ type SymbolLossReport struct {
 	LostNodes                []string `json:"lost_nodes,omitempty"`
 	LostContracts            []string `json:"lost_contracts,omitempty"`
 	LostRelationships        []string `json:"lost_relationships,omitempty"`
+	RemovedPhantomNodes      []string `json:"removed_phantom_nodes,omitempty"`
+	ReclassifiedInvalidRefs  []string `json:"reclassified_invalid_refs,omitempty"`
 	UnexplainedNodes         []string `json:"unexplained_nodes,omitempty"`
 	UnexplainedContracts     []string `json:"unexplained_contracts,omitempty"`
 	UnexplainedRelationships []string `json:"unexplained_relationships,omitempty"`
+	Details                  []string `json:"details,omitempty"`
 	AllowedByShrink          bool     `json:"allowed_by_shrink,omitempty"`
 }
 
-// HasUnexplainedLoss reports whether any lost symbol could not be attributed to a deleted file.
+// HasUnexplainedLoss reports whether any lost symbol could not be attributed to a deleted file
+// or to the cleanup of legacy phantom nodes / invalid references.
 func (r *SymbolLossReport) HasUnexplainedLoss() bool {
 	if r == nil {
 		return false
@@ -423,8 +427,9 @@ func ClassifyRefresh(prevFingerprints, currFingerprints map[string]FileFingerpri
 }
 
 // CheckSymbolLossGate checks whether next lost any Node, Contract, or Relationship
-// from prev whose evidence paths were NOT deleted in deletedPaths.
-// It fails closed with ErrSymbolLossGate unless every removed symbol is accounted
+// from prev whose evidence paths were NOT deleted in deletedPaths and that were NOT
+// legacy artificial/phantom nodes or invalid references now classified in UnresolvedRefs.
+// It fails closed with ErrSymbolLossGate unless every removed real symbol is accounted
 // for by a deleted file or allowShrink is true.
 func CheckSymbolLossGate(prev, next *domain.MacroMap, deletedPaths map[string]bool, allowShrink bool) (*SymbolLossReport, error) {
 	report := &SymbolLossReport{
@@ -460,14 +465,56 @@ func CheckSymbolLossGate(prev, next *domain.MacroMap, deletedPaths map[string]bo
 		return true
 	}
 
+	isPhantomNode := func(n domain.Node) bool {
+		if len(n.Evidence) == 0 {
+			return true
+		}
+		for _, ev := range n.Evidence {
+			if ev.Origin != extractors.OriginDeclaredOverride || ev.Locator.Repo != "" {
+				return false
+			}
+		}
+		return true
+	}
+
+	summarizeEvidence := func(evs []domain.EvidenceRecord) string {
+		if len(evs) == 0 {
+			return "no-evidence"
+		}
+		parts := make([]string, 0, len(evs))
+		for _, ev := range evs {
+			parts = append(parts, fmt.Sprintf("%s(%s)", ev.Locator.String(), ev.Origin))
+		}
+		sort.Strings(parts)
+		return strings.Join(parts, ", ")
+	}
+
 	nextNodes := make(map[string]bool, len(next.Nodes))
 	for _, n := range next.Nodes {
 		nextNodes[n.ID] = true
 	}
 
+	nextUnresolvedRels := make(map[string]bool, len(next.UnresolvedRefs))
+	nextUnresolvedPairs := make(map[string]bool, len(next.UnresolvedRefs))
+	for _, u := range next.UnresolvedRefs {
+		if u.RelationID != "" {
+			nextUnresolvedRels[u.RelationID] = true
+		}
+		if u.SourceID != "" && u.TargetID != "" {
+			nextUnresolvedPairs[u.SourceID+"\x00"+string(u.Verb)+"\x00"+u.TargetID] = true
+		}
+	}
+
 	explainedDeletedNodes := make(map[string]bool)
+	phantomNodes := make(map[string]bool)
+
 	for _, n := range prev.Nodes {
 		if nextNodes[n.ID] {
+			continue
+		}
+		if isPhantomNode(n) {
+			report.RemovedPhantomNodes = append(report.RemovedPhantomNodes, n.ID)
+			phantomNodes[n.ID] = true
 			continue
 		}
 		if n.Kind == domain.NodeContract {
@@ -476,6 +523,7 @@ func CheckSymbolLossGate(prev, next *domain.MacroMap, deletedPaths map[string]bo
 				explainedDeletedNodes[n.ID] = true
 			} else {
 				report.UnexplainedContracts = append(report.UnexplainedContracts, n.ID)
+				report.Details = append(report.Details, fmt.Sprintf("contract %s (kind=%s, evidence=[%s]) disappeared without source file deletion", n.ID, n.Kind, summarizeEvidence(n.Evidence)))
 			}
 		} else {
 			report.LostNodes = append(report.LostNodes, n.ID)
@@ -483,6 +531,7 @@ func CheckSymbolLossGate(prev, next *domain.MacroMap, deletedPaths map[string]bo
 				explainedDeletedNodes[n.ID] = true
 			} else {
 				report.UnexplainedNodes = append(report.UnexplainedNodes, n.ID)
+				report.Details = append(report.Details, fmt.Sprintf("node %s (kind=%s, evidence=[%s]) disappeared without source file deletion", n.ID, n.Kind, summarizeEvidence(n.Evidence)))
 			}
 		}
 	}
@@ -496,23 +545,32 @@ func CheckSymbolLossGate(prev, next *domain.MacroMap, deletedPaths map[string]bo
 		if nextRels[r.ID] {
 			continue
 		}
+		pairKey := r.SourceID + "\x00" + string(r.Verb) + "\x00" + r.TargetID
+		if nextUnresolvedRels[r.ID] || nextUnresolvedPairs[pairKey] || phantomNodes[r.SourceID] || phantomNodes[r.TargetID] {
+			report.ReclassifiedInvalidRefs = append(report.ReclassifiedInvalidRefs, r.ID)
+			continue
+		}
 		report.LostRelationships = append(report.LostRelationships, r.ID)
 		if evidenceDeleted(r.Evidence) || explainedDeletedNodes[r.SourceID] || explainedDeletedNodes[r.TargetID] {
 			continue
 		}
 		report.UnexplainedRelationships = append(report.UnexplainedRelationships, r.ID)
+		report.Details = append(report.Details, fmt.Sprintf("relationship %s (%s -%s-> %s, evidence=[%s]) disappeared without source file deletion", r.ID, r.SourceID, r.Verb, r.TargetID, summarizeEvidence(r.Evidence)))
 	}
 
 	sort.Strings(report.LostNodes)
 	sort.Strings(report.LostContracts)
 	sort.Strings(report.LostRelationships)
+	sort.Strings(report.RemovedPhantomNodes)
+	sort.Strings(report.ReclassifiedInvalidRefs)
 	sort.Strings(report.UnexplainedNodes)
 	sort.Strings(report.UnexplainedContracts)
 	sort.Strings(report.UnexplainedRelationships)
+	sort.Strings(report.Details)
 
 	if report.HasUnexplainedLoss() && !allowShrink {
-		return report, fmt.Errorf("%w: unexplained lost nodes=%v contracts=%v relationships=%v",
-			ErrSymbolLossGate, report.UnexplainedNodes, report.UnexplainedContracts, report.UnexplainedRelationships)
+		return report, fmt.Errorf("%w: unexplained lost nodes=%v contracts=%v relationships=%v; details: %s (pass --allow-symbol-loss to authorize intentional removal)",
+			ErrSymbolLossGate, report.UnexplainedNodes, report.UnexplainedContracts, report.UnexplainedRelationships, strings.Join(report.Details, "; "))
 	}
 
 	return report, nil

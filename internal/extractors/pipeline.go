@@ -187,39 +187,58 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 	annotateUnknownJoins(unsupportedMap, unsupportedContent, nodeMap)
 	markIntraModuleLibraries(nodeMap, files)
 
-	// Transfer nodes to MacroMap
-	for _, n := range nodeMap {
+	// Transfer nodes to MacroMap in deterministic order
+	nodeIDs := make([]string, 0, len(nodeMap))
+	for id := range nodeMap {
+		nodeIDs = append(nodeIDs, id)
+	}
+	sort.Strings(nodeIDs)
+	for _, id := range nodeIDs {
+		n := nodeMap[id]
 		if err := macroMap.AddNode(*n); err != nil {
 			return nil, fmt.Errorf("failed adding node %s: %w", n.ID, err)
 		}
 	}
 
-	// Transfer relationships to MacroMap, ensuring endpoints exist
-	for _, r := range relMap {
-		// Ensure endpoints exist in nodeMap
-		if _, ok := nodeMap[r.SourceID]; !ok {
-			// Create dummy node to preserve graph integrity if source not found
-			srcKind := deriveKindFromID(r.SourceID)
-			srcNode := domain.Node{
-				ID:   r.SourceID,
-				Kind: srcKind,
-				Name: r.SourceID,
+	// Transfer relationships to MacroMap in deterministic order; record unresolved
+	// references instead of fabricating phantom dummy nodes when endpoints are missing.
+	relIDs := make([]string, 0, len(relMap))
+	for id := range relMap {
+		relIDs = append(relIDs, id)
+	}
+	sort.Strings(relIDs)
+	for _, id := range relIDs {
+		r := relMap[id]
+		_, srcOK := nodeMap[r.SourceID]
+		_, tgtOK := nodeMap[r.TargetID]
+		if !srcOK || !tgtOK {
+			evs := make([]domain.EvidenceRecord, len(r.Evidence))
+			copy(evs, r.Evidence)
+			if !srcOK {
+				macroMap.UnresolvedRefs = append(macroMap.UnresolvedRefs, domain.UnresolvedReference{
+					ID:         fmt.Sprintf("unresolved:%s:missing:%s", r.ID, r.SourceID),
+					RelationID: r.ID,
+					SourceID:   r.SourceID,
+					TargetID:   r.TargetID,
+					MissingID:  r.SourceID,
+					Verb:       r.Verb,
+					Evidence:   evs,
+				})
 			}
-			if err := macroMap.AddNode(srcNode); err == nil {
-				nodeMap[r.SourceID] = &srcNode
+			if !tgtOK && r.TargetID != r.SourceID {
+				evsCopy := make([]domain.EvidenceRecord, len(r.Evidence))
+				copy(evsCopy, r.Evidence)
+				macroMap.UnresolvedRefs = append(macroMap.UnresolvedRefs, domain.UnresolvedReference{
+					ID:         fmt.Sprintf("unresolved:%s:missing:%s", r.ID, r.TargetID),
+					RelationID: r.ID,
+					SourceID:   r.SourceID,
+					TargetID:   r.TargetID,
+					MissingID:  r.TargetID,
+					Verb:       r.Verb,
+					Evidence:   evsCopy,
+				})
 			}
-		}
-		if _, ok := nodeMap[r.TargetID]; !ok {
-			// Create dummy node to preserve graph integrity if target not found
-			tgtKind := deriveKindFromID(r.TargetID)
-			tgtNode := domain.Node{
-				ID:   r.TargetID,
-				Kind: tgtKind,
-				Name: r.TargetID,
-			}
-			if err := macroMap.AddNode(tgtNode); err == nil {
-				nodeMap[r.TargetID] = &tgtNode
-			}
+			continue
 		}
 
 		if err := macroMap.AddRelationship(*r); err != nil {
@@ -306,7 +325,8 @@ const OriginDeclaredOverride domain.DerivationOrigin = "declared:override"
 
 // ApplyOverrides applies declarative manifest overrides to the given MacroMap.
 // Relationships added or updated receive origin "declared:override" and a Locator pointing to manifestPath.
-// Metadata for existing nodes is updated without opaque mutation (with explicit provenance evidence).
+// Missing endpoints are recorded in mm.UnresolvedRefs (never fabricated as dummy nodes), and
+// contradictions with existing extracted facts are recorded in mm.Conflicts.
 func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaration, manifestPath string) error {
 	if mm == nil {
 		return fmt.Errorf("macro map cannot be nil")
@@ -318,10 +338,17 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 		manifestPath = "gira.yaml"
 	}
 
-	now := time.Now()
+	now := time.Now().UTC()
 
-	// 1. Apply metadata overrides to existing nodes
-	for nodeID, meta := range overrides.Metadata {
+	// 1. Apply metadata overrides in deterministic nodeID and key order
+	metaNodeIDs := make([]string, 0, len(overrides.Metadata))
+	for nodeID := range overrides.Metadata {
+		metaNodeIDs = append(metaNodeIDs, nodeID)
+	}
+	sort.Strings(metaNodeIDs)
+
+	for _, nodeID := range metaNodeIDs {
+		meta := overrides.Metadata[nodeID]
 		var targetNode *domain.Node
 		for i := range mm.Nodes {
 			if mm.Nodes[i].ID == nodeID {
@@ -330,38 +357,110 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 			}
 		}
 
-		if targetNode != nil {
-			if targetNode.Metadata == nil {
-				targetNode.Metadata = make(map[string]any)
+		loc := domain.Locator{Path: manifestPath}
+		if overrides.MetadataLines != nil {
+			if line := overrides.MetadataLines[nodeID]; line > 0 {
+				loc.StartLine = line
+				loc.EndLine = line
 			}
-			for k, v := range meta {
-				targetNode.Metadata[k] = v
-			}
-			targetNode.Evidence = append(targetNode.Evidence, domain.EvidenceRecord{
-				Locator: domain.Locator{
-					Path: manifestPath,
-				},
-				Origin:       OriginDeclaredOverride,
-				Status:       domain.StatusCurrent,
-				DiscoveredAt: now,
-			})
 		}
-	}
-
-	// 2. Apply relationship overrides
-	for _, relOverride := range overrides.Relationships {
-		overrideEvidence := domain.EvidenceRecord{
-			Locator: domain.Locator{
-				Path: manifestPath,
-			},
+		overrideEv := domain.EvidenceRecord{
+			Locator:      loc,
 			Origin:       OriginDeclaredOverride,
+			RuleID:       "rule:override-metadata",
+			Rationale:    "declarative metadata override from manifest",
 			Status:       domain.StatusCurrent,
 			DiscoveredAt: now,
 		}
 
-		// Ensure source and target nodes exist in MacroMap so AddRelationship succeeds
-		ensureNodeExists(mm, relOverride.SourceID, manifestPath, now)
-		ensureNodeExists(mm, relOverride.TargetID, manifestPath, now)
+		if targetNode == nil {
+			mm.UnresolvedRefs = append(mm.UnresolvedRefs, domain.UnresolvedReference{
+				ID:        fmt.Sprintf("unresolved:override:metadata:%s", nodeID),
+				MissingID: nodeID,
+				Evidence:  []domain.EvidenceRecord{overrideEv},
+			})
+			continue
+		}
+
+		if targetNode.Metadata == nil {
+			targetNode.Metadata = make(map[string]any)
+		}
+		keys := make([]string, 0, len(meta))
+		for k := range meta {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := meta[k]
+			if prevVal, exists := targetNode.Metadata[k]; exists && fmt.Sprint(prevVal) != fmt.Sprint(v) {
+				conflictEvs := make([]domain.EvidenceRecord, 0, len(targetNode.Evidence)+1)
+				conflictEvs = append(conflictEvs, targetNode.Evidence...)
+				conflictEvs = append(conflictEvs, overrideEv)
+				mm.Conflicts = append(mm.Conflicts, domain.ConflictRecord{
+					ID:          fmt.Sprintf("conflict:metadata:%s:%s", nodeID, k),
+					SubjectID:   nodeID,
+					Kind:        "metadata_value",
+					Field:       k,
+					DeclaredVal: fmt.Sprint(v),
+					PreviousVal: fmt.Sprint(prevVal),
+					Evidence:    conflictEvs,
+				})
+			}
+			targetNode.Metadata[k] = v
+		}
+		targetNode.Evidence = append(targetNode.Evidence, overrideEv)
+	}
+
+	// Build node existence index for relationship endpoint verification
+	nodeExists := make(map[string]bool, len(mm.Nodes))
+	for _, n := range mm.Nodes {
+		nodeExists[n.ID] = true
+	}
+
+	// 2. Apply relationship overrides
+	for _, relOverride := range overrides.Relationships {
+		loc := domain.Locator{
+			Path:      manifestPath,
+			StartLine: relOverride.StartLine,
+			EndLine:   relOverride.EndLine,
+		}
+		overrideEvidence := domain.EvidenceRecord{
+			Locator:      loc,
+			Origin:       OriginDeclaredOverride,
+			RuleID:       "rule:override-relationship",
+			Rationale:    "declarative relationship override from manifest",
+			Status:       domain.StatusCurrent,
+			DiscoveredAt: now,
+		}
+
+		relID := fmt.Sprintf("rel:%s-%s-%s", relOverride.SourceID, relOverride.Verb, relOverride.TargetID)
+		srcOK := nodeExists[relOverride.SourceID]
+		tgtOK := nodeExists[relOverride.TargetID]
+		if !srcOK || !tgtOK {
+			if !srcOK {
+				mm.UnresolvedRefs = append(mm.UnresolvedRefs, domain.UnresolvedReference{
+					ID:         fmt.Sprintf("unresolved:%s:missing:%s", relID, relOverride.SourceID),
+					RelationID: relID,
+					SourceID:   relOverride.SourceID,
+					TargetID:   relOverride.TargetID,
+					MissingID:  relOverride.SourceID,
+					Verb:       domain.RelationVerb(relOverride.Verb),
+					Evidence:   []domain.EvidenceRecord{overrideEvidence},
+				})
+			}
+			if !tgtOK && relOverride.TargetID != relOverride.SourceID {
+				mm.UnresolvedRefs = append(mm.UnresolvedRefs, domain.UnresolvedReference{
+					ID:         fmt.Sprintf("unresolved:%s:missing:%s", relID, relOverride.TargetID),
+					RelationID: relID,
+					SourceID:   relOverride.SourceID,
+					TargetID:   relOverride.TargetID,
+					MissingID:  relOverride.TargetID,
+					Verb:       domain.RelationVerb(relOverride.Verb),
+					Evidence:   []domain.EvidenceRecord{overrideEvidence},
+				})
+			}
+			continue
+		}
 
 		// Check if a relationship between source and target already exists
 		var matchedRel *domain.Relationship
@@ -373,10 +472,23 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 		}
 
 		if matchedRel != nil {
+			if matchedRel.Verb != domain.RelationVerb(relOverride.Verb) {
+				conflictEvs := make([]domain.EvidenceRecord, 0, len(matchedRel.Evidence)+1)
+				conflictEvs = append(conflictEvs, matchedRel.Evidence...)
+				conflictEvs = append(conflictEvs, overrideEvidence)
+				mm.Conflicts = append(mm.Conflicts, domain.ConflictRecord{
+					ID:          fmt.Sprintf("conflict:relationship:%s:%s->%s", matchedRel.ID, matchedRel.Verb, relOverride.Verb),
+					SubjectID:   matchedRel.ID,
+					Kind:        "relationship_verb",
+					Field:       "verb",
+					DeclaredVal: relOverride.Verb,
+					PreviousVal: string(matchedRel.Verb),
+					Evidence:    conflictEvs,
+				})
+			}
 			matchedRel.Verb = domain.RelationVerb(relOverride.Verb)
 			matchedRel.Evidence = append(matchedRel.Evidence, overrideEvidence)
 		} else {
-			relID := fmt.Sprintf("rel:%s-%s-%s", relOverride.SourceID, relOverride.Verb, relOverride.TargetID)
 			newRel := domain.Relationship{
 				ID:       relID,
 				SourceID: relOverride.SourceID,
@@ -393,58 +505,8 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 	return nil
 }
 
-func deriveKindFromID(nodeID string) domain.NodeType {
-	switch {
-	case strings.HasPrefix(nodeID, "contract:"):
-		return domain.NodeContract
-	case strings.HasPrefix(nodeID, "infra:") || strings.HasPrefix(nodeID, "infrastructure:"):
-		return domain.NodeInfrastructure
-	case strings.HasPrefix(nodeID, "lib:") || strings.HasPrefix(nodeID, "library:"):
-		return domain.NodeLibrary
-	case strings.HasPrefix(nodeID, "policy:"):
-		return domain.NodePolicy
-	case strings.HasPrefix(nodeID, "skill:"):
-		return domain.NodeSkill
-	case strings.HasPrefix(nodeID, "task:"):
-		return domain.NodeTask
-	default:
-		return domain.NodeService
-	}
-}
-
-func ensureNodeExists(mm *domain.MacroMap, nodeID, manifestPath string, now time.Time) {
-	for _, n := range mm.Nodes {
-		if n.ID == nodeID {
-			return
-		}
-	}
-
-	kind := deriveKindFromID(nodeID)
-
-	name := nodeID
-	if idx := strings.Index(nodeID, ":"); idx != -1 {
-		name = nodeID[idx+1:]
-	}
-
-	node := domain.Node{
-		ID:   nodeID,
-		Kind: kind,
-		Name: name,
-		Evidence: []domain.EvidenceRecord{
-			{
-				Locator: domain.Locator{
-					Path: manifestPath,
-				},
-				Origin:       OriginDeclaredOverride,
-				Status:       domain.StatusCurrent,
-				DiscoveredAt: now,
-			},
-		},
-	}
-	_ = mm.AddNode(node)
-}
-
 // ApplyOverrides applies declarative manifest overrides to the given MacroMap.
 func (p *Pipeline) ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaration, manifestPath string) error {
 	return ApplyOverrides(mm, overrides, manifestPath)
 }
+

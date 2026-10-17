@@ -76,6 +76,8 @@ func (l Locator) String() string {
 type EvidenceRecord struct {
 	Locator           Locator          `json:"locator"`
 	Origin            DerivationOrigin `json:"origin"`
+	RuleID            string           `json:"rule_id,omitempty"`
+	Rationale         string           `json:"rationale,omitempty"`
 	DeploymentProfile string           `json:"deployment_profile,omitempty"`
 	Status            FreshnessStatus  `json:"status"`
 	// DiscoveredAt is the commit time of the repository the locator cites (or the
@@ -116,6 +118,30 @@ type UnsupportedBoundary struct {
 	UnknownJoins []string `json:"unknown_joins,omitempty"`
 }
 
+// UnresolvedReference records a relationship or override that cites a non-existent
+// node ID, preserving provenance without fabricating a phantom node in MacroMap.Nodes.
+type UnresolvedReference struct {
+	ID         string           `json:"id"`
+	RelationID string           `json:"relation_id,omitempty"`
+	SourceID   string           `json:"source_id,omitempty"`
+	TargetID   string           `json:"target_id,omitempty"`
+	MissingID  string           `json:"missing_id"`
+	Verb       RelationVerb     `json:"verb,omitempty"`
+	Evidence   []EvidenceRecord `json:"evidence"`
+}
+
+// ConflictRecord documents a deterministic conflict between declared/override facts
+// and extracted/inferred facts for a node or relationship.
+type ConflictRecord struct {
+	ID          string           `json:"id"`
+	SubjectID   string           `json:"subject_id"`
+	Kind        string           `json:"kind"`
+	Field       string           `json:"field,omitempty"`
+	DeclaredVal string           `json:"declared_value"`
+	PreviousVal string           `json:"previous_value"`
+	Evidence    []EvidenceRecord `json:"evidence"`
+}
+
 // MacroMap represents the complete architectural graph for a Target System.
 type MacroMap struct {
 	SchemaVersion string                `json:"schema_version"`
@@ -127,7 +153,9 @@ type MacroMap struct {
 	// unsupported construct inside a file an Extractor did parse, as opposed
 	// to a file no Extractor parses. The row stays in Unsupported (briefings
 	// keep the explicit unknown), but it is not an unsupported file.
-	UnsupportedConstructs []string `json:"unsupported_constructs,omitempty"`
+	UnsupportedConstructs []string              `json:"unsupported_constructs,omitempty"`
+	UnresolvedRefs        []UnresolvedReference `json:"unresolved_refs,omitempty"`
+	Conflicts             []ConflictRecord      `json:"conflicts,omitempty"`
 }
 
 // IsUnsupportedConstruct reports whether the Unsupported row at path is an
@@ -174,6 +202,53 @@ func NewMacroMap(targetSystem string) *MacroMap {
 		Relationships: make([]Relationship, 0),
 		Unsupported:   make([]UnsupportedBoundary, 0),
 	}
+}
+
+// Validate checks structural invariants of the MacroMap so corrupted or incomplete
+// index files cannot be loaded or published as valid state.
+func (m *MacroMap) Validate() error {
+	if m == nil {
+		return fmt.Errorf("macro map is nil")
+	}
+	if m.SchemaVersion == "" {
+		return fmt.Errorf("macro map missing schema_version")
+	}
+	if m.TargetSystem == "" {
+		return fmt.Errorf("macro map missing target_system")
+	}
+	nodeIDs := make(map[string]bool, len(m.Nodes))
+	for _, n := range m.Nodes {
+		if n.ID == "" {
+			return fmt.Errorf("macro map contains node with empty id")
+		}
+		if n.Kind == "" {
+			return fmt.Errorf("macro map node %q missing kind", n.ID)
+		}
+		if nodeIDs[n.ID] {
+			return fmt.Errorf("macro map contains duplicate node id %q", n.ID)
+		}
+		nodeIDs[n.ID] = true
+	}
+	relIDs := make(map[string]bool, len(m.Relationships))
+	for _, r := range m.Relationships {
+		if r.ID == "" {
+			return fmt.Errorf("macro map contains relationship with empty id")
+		}
+		if r.SourceID == "" || r.TargetID == "" || r.Verb == "" {
+			return fmt.Errorf("macro map relationship %q has incomplete endpoints or verb", r.ID)
+		}
+		if !nodeIDs[r.SourceID] {
+			return fmt.Errorf("macro map relationship %q cites missing source node %q", r.ID, r.SourceID)
+		}
+		if !nodeIDs[r.TargetID] {
+			return fmt.Errorf("macro map relationship %q cites missing target node %q", r.ID, r.TargetID)
+		}
+		if relIDs[r.ID] {
+			return fmt.Errorf("macro map contains duplicate relationship id %q", r.ID)
+		}
+		relIDs[r.ID] = true
+	}
+	return nil
 }
 
 // AddNode inserts a node into the MacroMap, ensuring IDs remain unique.
@@ -243,6 +318,22 @@ func (m *MacroMap) CanonicalJSON() ([]byte, error) {
 		sort.Strings(constructs)
 		normalized.UnsupportedConstructs = constructs
 	}
+	if len(m.UnresolvedRefs) > 0 {
+		unresolved := make([]UnresolvedReference, len(m.UnresolvedRefs))
+		copy(unresolved, m.UnresolvedRefs)
+		sort.Slice(unresolved, func(i, j int) bool {
+			return unresolved[i].ID < unresolved[j].ID
+		})
+		normalized.UnresolvedRefs = unresolved
+	}
+	if len(m.Conflicts) > 0 {
+		conflicts := make([]ConflictRecord, len(m.Conflicts))
+		copy(conflicts, m.Conflicts)
+		sort.Slice(conflicts, func(i, j int) bool {
+			return conflicts[i].ID < conflicts[j].ID
+		})
+		normalized.Conflicts = conflicts
+	}
 
 	var buf bytes.Buffer
 	enc := json.NewEncoder(&buf)
@@ -254,3 +345,4 @@ func (m *MacroMap) CanonicalJSON() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+

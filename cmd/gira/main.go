@@ -272,49 +272,107 @@ func splitArgs(args []string) ([]string, []string) {
 	return positionals, flags
 }
 
+// findProjectManifest searches for gira.yaml in the current working directory.
+func findProjectManifest() string {
+	if fi, err := os.Stat("gira.yaml"); err == nil && !fi.IsDir() {
+		return "gira.yaml"
+	}
+	return ""
+}
+
 func loadIndex(indexPath string) (*domain.MacroMap, error) {
-	candidates := make([]string, 0, 8)
+	s := store.NewStore("")
+
+	// 1. Explicit --index path: must exist and be valid.
 	if strings.TrimSpace(indexPath) != "" {
-		candidates = append(candidates, indexPath)
-	} else {
-		// Look in current working directory .gira/macro-map.json and .gira/index.json
-		candidates = append(candidates, filepath.Join(".gira", "macro-map.json"))
-		candidates = append(candidates, filepath.Join(".gira", "index.json"))
-		// Look in current working directory macro-map.json and index.json
-		candidates = append(candidates, "macro-map.json")
-		candidates = append(candidates, "index.json")
-		// Look in user cache directory default index
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
-			candidates = append(candidates, filepath.Join(home, ".cache", "gira", "indexes", "default", "macro-map.json"))
-			sHome := store.NewStore(filepath.Join(home, ".cache", "gira", "indexes"))
-			if systems, err := sHome.List(); err == nil {
-				for _, sys := range systems {
-					candidates = append(candidates, filepath.Join(home, ".cache", "gira", "indexes", sys, "macro-map.json"))
-				}
-			}
+		fi, err := os.Stat(indexPath)
+		if err != nil || fi.IsDir() {
+			return nil, fmt.Errorf("index_missing: index file not found: %s", indexPath)
 		}
-		sLocal := store.NewStore(filepath.Join(".gira", "indexes"))
-		if systems, err := sLocal.List(); err == nil {
-			for _, sys := range systems {
-				candidates = append(candidates, filepath.Join(".gira", "indexes", sys, "macro-map.json"))
-			}
-		}
+		return s.LoadFile(indexPath)
 	}
 
-	s := store.NewStore("")
-	for _, cand := range candidates {
+	// 2. If gira.yaml exists in the current project, resolve EXCLUSIVELY the index
+	// for its declared target_system.name. Never fall back to another system in cache.
+	if manifestPath := findProjectManifest(); manifestPath != "" {
+		m, err := manifest.ParseFile(manifestPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse project manifest %s: %w", manifestPath, err)
+		}
+		sysName := m.TargetSystem.Name
+		var sysCandidates []string
+		sysCandidates = append(sysCandidates, filepath.Join(".gira", "indexes", sysName, "macro-map.json"))
+		if home, err := os.UserHomeDir(); err == nil && home != "" {
+			sysCandidates = append(sysCandidates, filepath.Join(home, ".cache", "gira", "indexes", sysName, "macro-map.json"))
+		}
+		for _, cand := range sysCandidates {
+			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
+				return s.LoadFile(cand)
+			}
+		}
+		return nil, fmt.Errorf("index_missing: no index found for target system %q declared in %s (run 'gira index' first)", sysName, manifestPath)
+	}
+
+	// 3. No gira.yaml in current directory: check explicit local index files in CWD.
+	localFiles := []string{
+		filepath.Join(".gira", "macro-map.json"),
+		filepath.Join(".gira", "index.json"),
+		"macro-map.json",
+		"index.json",
+	}
+	for _, cand := range localFiles {
 		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
 			return s.LoadFile(cand)
 		}
 	}
 
-	// If a specific index path was explicitly requested, return error
-	if strings.TrimSpace(indexPath) != "" {
-		return nil, fmt.Errorf("index file not found: %s", indexPath)
+	// 4. Inspect local and user cache stores. Only auto-select when exactly one system exists.
+	type sysCandidate struct {
+		name string
+		path string
+	}
+	var discovered []sysCandidate
+	seenSys := make(map[string]bool)
+
+	sLocal := store.NewStore(filepath.Join(".gira", "indexes"))
+	if systems, err := sLocal.List(); err == nil {
+		for _, sys := range systems {
+			if !seenSys[sys] {
+				seenSys[sys] = true
+				discovered = append(discovered, sysCandidate{
+					name: sys,
+					path: filepath.Join(".gira", "indexes", sys, "macro-map.json"),
+				})
+			}
+		}
+	}
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		sHome := store.NewStore(filepath.Join(home, ".cache", "gira", "indexes"))
+		if systems, err := sHome.List(); err == nil {
+			for _, sys := range systems {
+				if !seenSys[sys] {
+					seenSys[sys] = true
+					discovered = append(discovered, sysCandidate{
+						name: sys,
+						path: filepath.Join(home, ".cache", "gira", "indexes", sys, "macro-map.json"),
+					})
+				}
+			}
+		}
 	}
 
-	// Default fallback: return empty MacroMap
-	return domain.NewMacroMap("default"), nil
+	if len(discovered) == 1 {
+		return s.LoadFile(discovered[0].path)
+	}
+	if len(discovered) > 1 {
+		names := make([]string, 0, len(discovered))
+		for _, d := range discovered {
+			names = append(names, d.name)
+		}
+		return nil, fmt.Errorf("ambiguous index: multiple systems found in cache (%s); run from a directory with gira.yaml or pass --index <path>", strings.Join(names, ", "))
+	}
+
+	return nil, fmt.Errorf("index_missing: no index found (run 'gira index' first or pass --index <path>)")
 }
 
 func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -327,11 +385,15 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 	var offline bool
 	var cacheDir string
 	var manifestFlag string
+	var allowSymbolLoss bool
+	var recoverCorrupt bool
 
 	fs.StringVar(&outputPath, "output", "", "Path to write output macro-map.json")
 	fs.BoolVar(&offline, "offline", false, "Disable network egress and use local cache exclusively")
 	fs.StringVar(&cacheDir, "cache-dir", "", "Local repository cache directory")
 	fs.StringVar(&manifestFlag, "manifest", "", "Path to gira.yaml manifest")
+	fs.BoolVar(&allowSymbolLoss, "allow-symbol-loss", false, "Explicitly authorize removal of real symbols without file deletion")
+	fs.BoolVar(&recoverCorrupt, "recover-corrupt", false, "Explicitly authorize overwriting a corrupted existing index file")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -351,13 +413,16 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
 	}
 
-	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, stdout)
+	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
+		AllowSymbolLoss: allowSymbolLoss,
+		RecoverCorrupt:  recoverCorrupt,
+	}, stdout)
 }
 
 // indexManifest builds the MacroMap from an already-parsed manifest and
-// persists it. It is the single indexing path shared by `index` (manifest
-// given) and `init` (manifest generated from a local checkout).
-func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offline bool, cacheDir string, stdout io.Writer) error {
+// persists it atomically. It is the single indexing path shared by `index`
+// (manifest given) and `init` (manifest generated from a local checkout).
+func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offline bool, cacheDir string, pubOpts store.PublishOptions, stdout io.Writer) error {
 	// 2. Initialize CacheManager
 	cm, err := gitcache.NewCacheManager(cacheDir)
 	if err != nil {
@@ -365,24 +430,20 @@ func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offlin
 	}
 
 	// 3–5. Fetch repos, extract, apply overrides (shared with the evaluator)
-	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{Offline: offline, ManifestPath: manifestPath})
+	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{
+		Offline:      offline,
+		ManifestPath: manifestPath,
+		AllowShrink:  pubOpts.AllowSymbolLoss,
+	})
 	if err != nil {
 		return err
 	}
 
-	// 6. Persist generated MacroMap
+	// 6. Atomically publish generated MacroMap (validating previous index and symbol-loss gate)
 	if outputPath != "" {
-		data, err := mm.CanonicalJSON()
-		if err != nil {
-			return fmt.Errorf("failed to serialize macro map: %w", err)
-		}
-		if dir := filepath.Dir(outputPath); dir != "" && dir != "." {
-			if err := os.MkdirAll(dir, 0755); err != nil {
-				return fmt.Errorf("failed to create output directory: %w", err)
-			}
-		}
-		if err := os.WriteFile(outputPath, data, 0644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
+		s := store.NewStore("")
+		if _, err := s.PublishFile(outputPath, mm, pubOpts); err != nil {
+			return fmt.Errorf("failed to publish output file: %w", err)
 		}
 		fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
 			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, outputPath)
@@ -392,7 +453,7 @@ func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offlin
 			storeDir = filepath.Join(home, ".cache", "gira", "indexes")
 		}
 		s := store.NewStore(storeDir)
-		if err := s.Save(m.TargetSystem.Name, mm); err != nil {
+		if _, err := s.Publish(m.TargetSystem.Name, mm, pubOpts); err != nil {
 			return fmt.Errorf("failed to persist macro map: %w", err)
 		}
 		dest := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
@@ -418,11 +479,15 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	var outputPath string
 	var offline bool
 	var cacheDir string
+	var allowSymbolLoss bool
+	var recoverCorrupt bool
 
 	fs.BoolVar(&force, "force", false, "Repin the manifest SHA to the local HEAD even when gira.yaml exists")
 	fs.StringVar(&outputPath, "output", "", "Path to write output macro-map.json")
 	fs.BoolVar(&offline, "offline", false, "Disable network egress and use local cache exclusively")
 	fs.StringVar(&cacheDir, "cache-dir", "", "Local repository cache directory")
+	fs.BoolVar(&allowSymbolLoss, "allow-symbol-loss", false, "Explicitly authorize removal of real symbols without file deletion")
+	fs.BoolVar(&recoverCorrupt, "recover-corrupt", false, "Explicitly authorize overwriting a corrupted existing index file")
 
 	if err := fs.Parse(flagArgs); err != nil {
 		return err
@@ -472,7 +537,10 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
 	}
 
-	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, stdout)
+	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
+		AllowSymbolLoss: allowSymbolLoss || force,
+		RecoverCorrupt:  recoverCorrupt,
+	}, stdout)
 }
 
 func gitToplevel(dir string) string {
