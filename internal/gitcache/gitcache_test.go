@@ -366,7 +366,7 @@ func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
 	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\nexit 23\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\ncat >/dev/null\nexit 0\n"), 0755); err != nil {
+	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\nwhile IFS= read -r line; do :; done\nexit 0\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", binDir)
