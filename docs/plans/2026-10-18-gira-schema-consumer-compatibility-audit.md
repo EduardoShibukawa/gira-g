@@ -9,7 +9,7 @@
 
 | Repository | Remote `main` SHA inspected | Current evidence |
 |---|---|---|
-| [Gira-G](https://github.com/EduardoShibukawa/gira-g) | `5a24a361841fdbe0ef85ce41987d2a17ba87b45b` | Post-merge CI run [39090339780](https://github.com/EduardoShibukawa/gira-g/actions/runs/39090339780) had Ubuntu, macOS, validator, floor guard and warn-only gate-lint successful when inspected; Windows was still in progress. Documentation run [39090339761](https://github.com/EduardoShibukawa/gira-g/actions/runs/39090339761) succeeded. This is not a fully green CI claim until the Windows job finishes. |
+| [Gira-G](https://github.com/EduardoShibukawa/gira-g) | `5a24a361841fdbe0ef85ce41987d2a17ba87b45b` | Post-merge CI run [39090339780](https://github.com/EduardoShibukawa/gira-g/actions/runs/39090339780) completed successfully on Ubuntu, macOS and Windows, and the validator, floor guard and warn-only gate-lint also succeeded. Documentation run [39090339761](https://github.com/EduardoShibukawa/gira-g/actions/runs/39090339761) succeeded. These green checks validate the current existing code and docs, not the proposed schema-2 implementation. |
 | [G-Ingá](https://github.com/EduardoShibukawa/G-Inga) | `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0` | Main CI run [39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) succeeded for both `test` and `pre-commit`/validation. The strict fallback is in main via [PR #108](https://github.com/EduardoShibukawa/G-Inga/pull/108). |
 
 ### Local-baseline limitation
