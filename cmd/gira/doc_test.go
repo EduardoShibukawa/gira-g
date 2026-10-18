@@ -348,6 +348,22 @@ func TestSCDocParity(t *testing.T) {
 	}
 }
 
+// Without --format the doc is Markdown, byte-identical to --format md.
+func TestSCDocDefaultFormat(t *testing.T) {
+	index := docFixtureIndex(t)
+	def, err := runCLI(t, "doc", "service:acme", "--index", index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md, err := runCLI(t, "doc", "service:acme", "--format", "md", "--index", index)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(def, md) {
+		t.Fatalf("default format differs from --format md")
+	}
+}
+
 // The indexed-commit banner goes to stderr for human output only, like the
 // sibling commands; a checkout whose HEAD the index does not cite is stale.
 func TestSCDocBannerAndStale(t *testing.T) {
@@ -359,6 +375,14 @@ func TestSCDocBannerAndStale(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "indexed commit:") {
 		t.Fatalf("missing the indexed-commit banner: %q", errOut.String())
+	}
+
+	var htmlOut, htmlErr bytes.Buffer
+	if err := Run([]string{"doc", "service:acme", "--format", "html", "--index", index}, strings.NewReader(""), &htmlOut, &htmlErr); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(htmlErr.String(), "indexed commit:") {
+		t.Fatalf("html output missing the indexed-commit banner: %q", htmlErr.String())
 	}
 
 	var jsonOut, jsonErr bytes.Buffer
@@ -381,16 +405,13 @@ func TestSCDocBannerAndStale(t *testing.T) {
 	}
 }
 
-// Unknown services error honestly; requires an explicit --format;
+// Unknown services error honestly; 
 // unsupported formats error honestly.
 func TestSCDocUsageErrors(t *testing.T) {
 	index := docFixtureIndex(t)
 
 	if _, err := runCLI(t, "doc", "service:nope", "--format", "json", "--index", index); err == nil {
 		t.Errorf("expected error for unknown service, got nil")
-	}
-	if _, err := runCLI(t, "doc", "service:acme", "--index", index); err == nil || !strings.Contains(err.Error(), "--format") {
-		t.Errorf("expected a missing---format error, got %v", err)
 	}
 	if _, err := runCLI(t, "doc", "service:acme", "--format", "xml", "--index", index); err == nil || !strings.Contains(err.Error(), "unsupported doc format") {
 		t.Errorf("expected an unsupported format error, got %v", err)

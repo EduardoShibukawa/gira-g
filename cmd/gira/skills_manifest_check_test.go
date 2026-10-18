@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/EduardoShibukawa/gira-g/internal/skills"
 )
 
 // SC3 (CLI side): manifest determinism + check pass/fail via `gira skills`.
@@ -127,4 +129,26 @@ func TestSCSkillsManifestAndCheck(t *testing.T) {
 			t.Fatal("check modified drifted file on disk")
 		}
 	})
+}
+
+// The install prints the machine-readable report on stdout and an agent-facing
+// hint on stderr that names the get_doc MCP tool.
+func TestSkillsInstallHintsGetDoc(t *testing.T) {
+	dir := t.TempDir()
+	var stdout, stderr bytes.Buffer
+	if err := Run([]string{"skills", "install", "--host", "cursor", "--dir", dir}, nil, &stdout, &stderr); err != nil {
+		t.Fatal(err)
+	}
+	var rep struct {
+		Created []string `json:"created"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &rep); err != nil {
+		t.Fatalf("install stdout is not the JSON report: %v\n%s", err, stdout.String())
+	}
+	if strings.Contains(stdout.String(), "get_doc") {
+		t.Fatal("hint leaked into stdout")
+	}
+	if strings.TrimSpace(stderr.String()) != skills.InstallHint || !strings.Contains(stderr.String(), "get_doc") {
+		t.Fatalf("stderr = %q, want the get_doc hint", stderr.String())
+	}
 }

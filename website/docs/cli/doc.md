@@ -9,7 +9,7 @@ Render a single-service onboarding document from the Macro Map: Markdown for hum
 ## Synopsis
 
 ```text
-gira doc <service-id> --format md|json|html [--index <path>] [--checkout <dir>] [--budget <tokens>]
+gira doc <service-id> [--format md|json|html] [--index <path>] [--checkout <dir>] [--budget <tokens>]
 ```
 
 ## Arguments
@@ -22,7 +22,7 @@ gira doc <service-id> --format md|json|html [--index <path>] [--checkout <dir>] 
 
 | Flag | Type | Default | Description |
 |---|---|---|---|
-| `--format` | string | (required) | Output format: `md` (Markdown), `json` (agent envelope), or `html` (self-contained single-file HTML) |
+| `--format` | string | `md` | Output format: `md` (Markdown), `json` (agent envelope), or `html` (self-contained single-file HTML) |
 | `--index` | string | — | Path to `macro-map.json` (auto-resolves `.gira/macro-map.json`, `macro-map.json`, or user cache when omitted) |
 | `--checkout` | string | — | Local checkout directory whose `HEAD` is compared against indexed commits for staleness warnings on `stderr` |
 | `--budget` | int | `0` | Hard ceiling on estimated output tokens (`0` = no budget ceiling) |

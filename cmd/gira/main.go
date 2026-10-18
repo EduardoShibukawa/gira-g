@@ -48,9 +48,9 @@ func emitMarkdownLine(stdout io.Writer, text string) error {
 // humanBanner writes the indexed-commit line and, when checkout is given and its
 // HEAD is not an indexed commit, a stale line — to stderr, so the stdout
 // document (and its E3 goldens/budget markers) stays byte-identical (ADR 0008
-// §4). It only fires for human (Markdown) output, so JSON stays clean.
+// §4). It only fires for human (Markdown and HTML) output, so JSON stays clean.
 func humanBanner(stderr io.Writer, mm *domain.MacroMap, checkout string, format slices.Format) {
-	if mm == nil || format != slices.FormatMarkdown {
+	if mm == nil || (format != slices.FormatMarkdown && format != slices.FormatHTML) {
 		return
 	}
 	if cs := mm.IndexedCommits(); len(cs) > 0 {
@@ -233,7 +233,7 @@ Commands:
   slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>] Extract bounded context slice (tier: summary|contracts|deep, view: full|architecture|governance)
   explain [--node <id>] [--edge <id>] [--index <path>]      Explain discrete evidence records
   tour [--focus <node>] [--max-steps <n>] [--index <path>]  Deterministic guided reading tour from entry points or a focus node
-  doc <service-id> --format md|json [--index <path>] [--checkout <dir>] [--budget <tokens>] Single-service onboarding doc (md human, json agent; same facts)
+  doc <service-id> [--format md|json|html] [--index <path>] [--checkout <dir>] [--budget <tokens>] Single-service onboarding doc (md human, json agent; same facts)
   diff <index-a> <index-b> [--format json|md]               Architecture diff: renames, nodes, edges, contracts, unsupported paths
   skills install --host claude|cursor|agents [--dir <project>] [--index <path>] Generate GIRA skills and MCP registration for a host
   skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
@@ -1168,7 +1168,7 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 	var budget int
 
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
-	fs.StringVar(&format, "format", "", "Output format (md|json|html; explicit)")
+	fs.StringVar(&format, "format", "md", "Output format (md|json|html)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 
@@ -1178,19 +1178,17 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	all := append(positionals, fs.Args()...)
 	if len(all) == 0 {
-		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> --format md|json|html [--index <path>]")
+		return fmt.Errorf("missing service_id argument. Usage: gira doc <service-id> [--format md|json|html] [--index <path>]")
 	}
 
 	var docFormat slices.Format
 	switch strings.ToLower(format) {
-	case "md", "markdown":
+	case "md", "markdown", "":
 		docFormat = slices.FormatMarkdown
 	case "json":
 		docFormat = slices.FormatJSON
 	case "html":
 		docFormat = slices.FormatHTML
-	case "":
-		return fmt.Errorf("missing --format: requires an explicit --format md|json|html. Usage: gira doc <service-id> --format md|json|html [--index <path>]")
 	default:
 		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json, html", format)
 	}
@@ -1293,8 +1291,12 @@ func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Write
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(stdout, string(data))
-	return err
+	if _, err = fmt.Fprintln(stdout, string(data)); err != nil {
+		return err
+	}
+	// The stdout report stays machine-readable; the hint for agents goes to stderr.
+	fmt.Fprintln(stderr, skills.InstallHint)
+	return nil
 }
 
 func runSkillsManifest(args []string, stdout io.Writer, stderr io.Writer) error {
