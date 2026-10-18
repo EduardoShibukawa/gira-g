@@ -11,6 +11,10 @@ depends_on:
 
 # Gira-G: store versionado e publicação atômica
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Implementar store local com versões imutáveis, heads por linhagem e publicação recuperável, com semântica de durabilidade explícita.
 
