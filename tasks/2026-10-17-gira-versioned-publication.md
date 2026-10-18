@@ -9,7 +9,7 @@ spec: 2026-10-17-gira-versioned-publication@1
 
 ## Routing and approvals
 
-- tier: heavy (H1: contrato de `MacroMap`/proveniência, compatibilidade e algumas políticas de fallback ainda exigem decisão evidenciada; H3: muda o contrato de `--output`, schema, layout do store e erros do resolvedor consumidos por skills, bench, tools e docs; H5: várias etapas em várias sessões). Direções N3, N4 e D1–D9c registradas em `docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md`; D5 sobre `main.date` e a política de manifestos fora da raiz Git continuam abertas até auditoria.
+- tier: heavy (H1: contrato de `MacroMap`/proveniência e compatibilidade; H3: muda o contrato de `--output`, schema, layout do store e erros do resolvedor consumidos por skills, bench, tools e docs; H5: várias etapas em várias sessões). N3, N4, D1–D9c e as escolhas dos Gates 1–5 estão registradas em `docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md` e `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Permanecem trabalho técnico de validação; isso não é `confirmed: heavy`.
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 
@@ -56,7 +56,7 @@ Proposta. Este parent só fica `active` depois de `confirmed: heavy by owner`. O
 Pré-condições, todas decisões do dono:
 1. ~~N1 (nome e sequência)~~: decidida (a), 2026-10-17;
 2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b); revisão adversarial concluída sem bloqueios materiais; aceite formal registrado em `2026-10-17-etapa-1-1-1-retro-acceptance` (`accepted`), merge da PR #19;
-3. N3, N4, D1–D9c: direções escolhidas pelo dono e registradas no [registro arquitetural](../docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md); não autoriza implementação. Bloqueios finais: auditoria dos consumidores/schema, regra para manifesto fora da raiz Git, evidência semântica de `main.date` e testes do runner Windows.
+3. N3, N4, D1–D9c e decisões dos Gates 1–5: direção escolhida e registrada; a auditoria dos consumidores/schema, testes de caminhos/ambiente Git, regressões de `tool_id`, teste de `git archive | tar -x` com tab no Windows e validação por plataforma ainda precisam de evidência. Gate 5 é critério obrigatório de aceitação da implementação após autorização, não pré-condição para começar a primeira tarefa autorizada.
 
 Children previstos, em ordem de dependência:
 1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a).
@@ -78,10 +78,10 @@ skip: roda depois que os children estiverem verificados
 
 ## Checkpoint
 
-- as of: 2026-10-17, branch `work/2026-10-17-gira-versioned-architecture-decisions`, base `db5a3cfa`
-- done: N1 (a), N2 (b) com aceite formal registrado, O6 aplicada, direções N3/N4/D1–D9c registradas em decisão arquitetural
-- status da spec: `draft`; implementação não autorizada e nenhuma tarefa-filha de implementação criada
-- next: concluir e evidenciar os gates da spec; solicitar autorização heavy explícita só depois dessa evidência
-- open: regra de D3 para manifesto fora da raiz Git; subdecisão D5 `main.date`; auditoria dos consumidores e schema; compatibilidade Windows para symlink e `os.DevNull`; M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
-- revalidate: B1 e B2 rodaram em `61b58c2`; rodar de novo se `main` andar
-- gates (2026-10-17): evidência dos gates 1–4 registrada em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`; gate 4 (Windows) evidência registrada no perfil runner admin; gate 5 aberto. Próximo: decisões do dono listadas no documento. Status segue `todo`; spec `draft`; implementação não autorizada.
+- as of: 2026-10-17, branch `work/2026-10-17-gira-gate-owner-decisions`, base `731cf4ba`
+- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas
+- status da spec: `draft`; tarefa-mãe `todo`; implementação heavy não autorizada e nenhuma tarefa-filha de implementação criada
+- next: fechar a auditoria de consumidores/schema, testar o contrato estrito/anti-downgrade, caminhos/ambiente Git, identidade de eval e `tool_id`, e o caso `git archive | tar -x` com tab no Windows; então rever a aprovação da spec e pedir autorização heavy separadamente
+- open: evidência de compatibilidade de consumidores/schema; execução dos testes definidos pelas decisões; comportamento de tab em `git archive | tar -x` no Windows; W2 (symlink com usuário não elevado/sem Developer Mode, com skip justificado se não permitido); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
+- revalidate: CI PR #21 (head `4c59c6a`) passou `test` nos três SOs, `validator`, `floor guard`, `gate-lint` e `docs build`; essas são verificações de documentação, não testes da implementação versionada
+- gates (2026-10-17): decisões registradas em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Gate 5 será testado no primeiro child autorizado e precisa passar antes de aceitar/mesclar a implementação. Status segue `todo`; spec `draft`; implementação não autorizada.

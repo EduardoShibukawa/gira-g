@@ -2,11 +2,12 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.2 |
+| Versão | 1.3 |
 | Verificação | 2026-10-17 (-03) |
-| Código-base verificado | `61b58c281f5a7fae4092f0cbff2ecfd8794dea77` |
-| Status | **[PROPOSTA]**. N1–N4 e D1–D9c têm direções decididas pelo dono; O6 aplicada. Spec continua `draft` e implementação não autorizada até resolver os gates de compatibilidade e plataforma. |
-| Registro de decisões | [decisão arquitetural da publicação versionada](2026-10-17-decisao-arquitetural-publicacao-versionada.md) |
+| Código-base dos experimentos | `25882da` (sem mudanças de código de produto nas PRs documentais seguintes) |
+| Estado remoto consultado | `main` = `731cf4ba` depois da PR #21 |
+| Status | **[PROPOSTA]**. N1–N4, D1–D9c e as decisões dos Gates 1–5 têm direções registradas. Spec continua `draft`; tarefa-mãe `todo`; implementação heavy não autorizada enquanto faltam auditorias e testes de compatibilidade. |
+| Registro de decisões | [decisão arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md) e [decisões dos gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md) |
 | Nota de rótulo | Nesses documentos, "Etapa 2" (e 2a–2i) denota a publicação versionada, agora posicionada como continuação do item 1 do plano aprovado (rótulo exemplo "Etapa 1.2"), conforme N1 (a). O item 2 aprovado (atualidade end-to-end e sync multi-repo) permanece reservado. A troca de rótulo nos documentos é um follow-up separado |
 | Artefatos ligados | spec [`2026-10-17-gira-versioned-publication`](../../specs/2026-10-17-gira-versioned-publication.md) (`draft` v1), parent [`2026-10-17-gira-versioned-publication`](../../tasks/2026-10-17-gira-versioned-publication.md) (`todo`), propostas originais [v2](2026-10-17-gira-spec-v2-proposta-original.md) e [v1](2026-10-17-gira-spec-v1-proposta-original.md) |
 | Requer revisão | §6 (decisões), §8 (critérios por etapa), §14 (lista final) |
@@ -47,7 +48,7 @@ Achados de governança:
 - "Etapa 2" diverge do item 2 do plano de evolução aprovado (N1).
 - D1 pode contrariar a decisão aprovada sobre identidade de snapshots (N3).
 
-**Próximo passo:** N1/N2 e as direções N3/N4/D1–D9c estão registradas. A publicação versionada permanece bloqueada até os gates no registro arquitetural serem evidenciados; nenhuma etapa de implementação foi autorizada.
+**Próximo passo:** N1/N2, N3/N4/D1–D9c e as escolhas dos Gates 1–5 estão registradas. A publicação versionada permanece bloqueada até auditorias e testes de compatibilidade dos Gates 1–4; Gate 5 é critério de aceitação no primeiro child autorizado. Nenhuma etapa de implementação foi autorizada.
 
 ---
 
@@ -288,7 +289,7 @@ Formato de cada entrada: **Contexto** · **Alternativas** · **Recomendação [P
 
 ### 6.2 Decisões da spec v2 (D1–D9) e do prompt (D9b, D9c)
 
-**Atualização de precedência (2026-10-17):** as alternativas e recomendações abaixo preservam o histórico da deliberação. As direções do dono e os bloqueios antes da aprovação final estão no [registro arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md), que prevalece em caso de divergência. Nenhum item desta seção autoriza implementação.
+**Atualização de precedência (2026-10-17):** as alternativas e recomendações abaixo preservam o histórico da deliberação. As direções de arquitetura estão no [registro arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md), e as decisões técnicas adicionais estão em [gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md). Esses dois registros prevalecem em caso de divergência. Nenhum item desta seção autoriza implementação.
 
 **D1. Semântica de `--output`**
 - **Contexto:** hoje `--output` substitui o store (§3.5). Consumidores: `gira-arch-diff`, `bench/phases.json:20`, `benchtest.go:76`, `tools/index-bundle/bootstrap.sh:42,49`, cerca de 15 páginas de documentação e cerca de 15 testes (Apêndice A.3).
@@ -679,8 +680,8 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 
 | Próxima ação | Quem |
 |---|---|
-| N1/N2 respondidas; aceite da Etapa 1/1.1 registrado; direções de N3/N4/D1–D9c documentadas no registro arquitetural | feito |
-| Resolver os gates técnicos do registro arquitetural; depois decidir separadamente se e quando autorizar a implementação heavy | dono, depois agente |
+| N1/N2 respondidas; aceite da Etapa 1/1.1 registrado; direções N3/N4/D1–D9c e escolhas dos Gates 1–5 documentadas | feito |
+| Completar a auditoria de consumidores/schema, regressões de compatibilidade e a evidência Windows de `git archive | tar -x` com tab; depois solicitar decisão separada de autorização heavy | agente; autorização só do dono |
 
 ---
 
@@ -690,23 +691,27 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 Ordem pelas dependências. As decisões técnicas e as autorizações operacionais estão separadas.
 
 ### 14.1 Técnicas: Gira-G
-1. ~~**N1:**~~ **respondida: (a)**, 2026-10-17.
-2. **N2:** **respondida: (b)**, 2026-10-17; revisão concluída sem bloqueios materiais; aceite formal registrado em `tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md`.
-3. **N4:** **decidida:** store local, derivado e regenerável; Git continua sendo a fonte de versionamento.
-4. **D1:** **decidida:** A′, condicionada a snapshot destacado autocontido com metadados embutidos e semântica explícita de publicação parcial.
-5. **N3:** **decidida:** metadados de proveniência embutidos; schema/consumidores ainda exigem auditoria.
-6. **D2:** **decidida:** XDG → `~/.cache` → `.gira/indexes`, resolver único e busca de gate no caminho legado.
-7. **D3:** **direção decidida:** relativo à raiz Git normalizado com `/`; política fora da raiz continua bloqueadora.
-8. **D4:** **decidida:** `source_key` sobre bytes crus do manifesto.
-9. **D5:** **decidida em parte:** mismatch fail-closed; `main.date` continua aberto até auditoria semântica.
-10. **D6:** **decidida:** tabela de durabilidade da v2, sem `--require-durable`, com testes por plataforma.
-11. **D7:** **decidida:** sem GC; quarentena explícita e limpeza manual documentada.
-12. **D8:** **decidida:** travas M→S→P, timeout de 60 s, falha fechada e sem bypass.
-13. **D9:** **decidida:** legado não é carregado automaticamente com `gira.yaml`; pode servir de base estrita para o primeiro gate.
-14. **D9b:** **decidida:** exigir `tool_id` atual e erro estável `index_ambiguous`.
-15. **D9c:** **decidida:** avisar para caminho legado e normalizar o caminho para absoluto.
+1. ~~**N1:**~~ respondida (a): publicação versionada como continuação do item 1, com rótulo próprio.
+2. ~~**N2:**~~ respondida (b); Etapa 1/1.1 aceita formalmente em `61b58c2` depois de revisão adversarial sem bloqueios materiais.
+3. **N3:** snapshot autocontido com `source_identity` embutido; schema novo exige compatibilidade estrita.
+4. **N4:** store é cache local, derivado e regenerável; Git mantém o versionamento compartilhado.
+5. **D1:** A′, condicionada a snapshot destacado autocontido e tratamento explícito de publicação parcial.
+6. **D2:** resolver único XDG → `~/.cache` → fallback no projeto; a base do gate consulta também o caminho legado.
+7. **D3 / Gate 2:** locator relativo à raiz Git; O1 para manifesto fora da raiz quando há overrides, com `manifest_outside_git_root` e `git_root_unavailable`; saneamento do ambiente Git.
+8. **D4:** `source_key` sobre bytes crus do manifesto.
+9. **D5 / Gate 3:** mismatch de ferramenta fail-closed; opção C exclui `-ldflags` de `tool_id`; hash do executável permanece para dev builds não confiáveis.
+10. **D6:** semântica de durabilidade da v2, sem `--require-durable`; testes nos três sistemas obrigatórios.
+11. **D7:** sem coleta automática de versões; recuperação explícita e limpeza manual documentada.
+12. **D8:** travas M→S→P, timeout 60 s, falha fechada e sem bypass.
+13. **D9:** legado nunca carregado automaticamente com `gira.yaml`; pode ser base estrita do primeiro gate.
+14. **D9b:** descoberta sem manifesto exige `tool_id` atual e erro estável `index_ambiguous`.
+15. **D9c:** aviso para caminho legado em `skills install --index` e normalização para absoluto.
+16. **Gate 1:** schema 2 inteiro; leitor R2 (legado `"1.0.0"` só por `--index` explícito e com aviso); `source_identity` embutido; fontes ordenadas e sem URL crua.
+17. **Gate 2 / eval:** O1; sem fallback silencioso `ManifestPath = "gira.yaml"`; `manifest_path_required` quando há overrides sem manifesto real.
+18. **Gate 4 / Windows:** W1 aceito para o perfil de runner testado, com limites explícitos e testes SC7; `git archive | tar -x` com tab continua por testar.
+19. **Gate 5:** testes de durabilidade/publicação entram como critério de aceitação da primeira tarefa de implementação autorizada, sem protótipo antes da autorização.
 
-**Bloqueio comum:** não aprovar a spec nem autorizar implementação até completar as auditorias e verificações descritas no [registro arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md).
+**Limite:** estas decisões escolhem contratos, não aprovam a spec nem autorizam implementação. Fechar as auditorias técnicas remanescentes e obter autorização heavy explícita continua obrigatório.
 
 ### 14.2 Técnicas: G-Ingá
 
