@@ -750,5 +750,25 @@ func cloneMacroMap(mm *domain.MacroMap) (*domain.MacroMap, error) {
 	if len(mm.UnsupportedConstructs) > 0 {
 		out.UnsupportedConstructs = append([]string(nil), mm.UnsupportedConstructs...)
 	}
+	if len(mm.UnresolvedRefs) > 0 {
+		out.UnresolvedRefs = make([]domain.UnresolvedReference, len(mm.UnresolvedRefs))
+		for i, unresolved := range mm.UnresolvedRefs {
+			unresolvedCopy := unresolved
+			if len(unresolved.Evidence) > 0 {
+				unresolvedCopy.Evidence = append([]domain.EvidenceRecord(nil), unresolved.Evidence...)
+			}
+			out.UnresolvedRefs[i] = unresolvedCopy
+		}
+	}
+	if len(mm.Conflicts) > 0 {
+		out.Conflicts = make([]domain.ConflictRecord, len(mm.Conflicts))
+		for i, conflict := range mm.Conflicts {
+			conflictCopy := conflict
+			if len(conflict.Evidence) > 0 {
+				conflictCopy.Evidence = append([]domain.EvidenceRecord(nil), conflict.Evidence...)
+			}
+			out.Conflicts[i] = conflictCopy
+		}
+	}
 	return out, nil
 }
