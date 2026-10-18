@@ -683,3 +683,81 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 		t.Fatal("gitDirty() reported clean repository as dirty due to redirected environment")
 	}
 }
+
+
+func TestInitDoesNotPublishManifestWhenIndexingFails(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repoDir, "README.md"), []byte("hello\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "README.md")
+	runGit("commit", "-m", "initial")
+
+	cacheDir := filepath.Join(t.TempDir(), "empty-cache")
+	var stdout, stderr bytes.Buffer
+	err := Run([]string{"init", repoDir, "--offline", "--cache-dir", cacheDir}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("init unexpectedly succeeded with an empty offline cache")
+	}
+	if _, statErr := os.Stat(filepath.Join(repoDir, "gira.yaml")); !os.IsNotExist(statErr) {
+		t.Fatalf("failed init left a manifest behind; stat error = %v", statErr)
+	}
+}
+
+func TestInitForceDoesNotRepinManifestWhenIndexingFails(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repoDir, "README.md"), []byte("hello\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "README.md")
+	runGit("commit", "-m", "initial")
+
+	manifestPath := filepath.Join(repoDir, "gira.yaml")
+	oldSHA := strings.Repeat("0", 40)
+	if err := writeLocalManifest(manifestPath, repoDir, oldSHA); err != nil {
+		t.Fatalf("write initial manifest: %v", err)
+	}
+	before, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = Run([]string{"init", repoDir, "--force", "--offline", "--cache-dir", filepath.Join(t.TempDir(), "empty-cache")}, nil, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("init --force unexpectedly succeeded with an empty offline cache")
+	}
+	after, readErr := os.ReadFile(manifestPath)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("failed init --force changed manifest bytes\nbefore: %s\nafter: %s", before, after)
+	}
+}
