@@ -4,7 +4,8 @@ tier: standard
 status: todo
 parent: 2026-10-17-gira-versioned-publication
 spec: 2026-10-17-gira-versioned-publication@1
-depends_on: []
+depends_on:
+  - 2026-10-18-gira-clone-macro-map-diagnostics
 ---
 
 # Gira-G: leituras Git determinísticas e segurança de caminhos
@@ -42,4 +43,4 @@ Tornar leituras locais Git determinísticas e garantir que paths impossíveis de
 | AC3 | CI Ubuntu/macOS/Windows, validator e floor guard | not run | | |
 
 ## Dependencies
-- PR #28 integrada em main.
+- Tarefa 2026-10-18-gira-clone-macro-map-diagnostics concluída e PR #28 integrada em main.
