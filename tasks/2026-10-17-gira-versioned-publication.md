@@ -30,6 +30,8 @@ Out of scope:
 
 - AC1 = SC1 … AC10 = SC10 do spec.
 
+Pacote de preparação para revisão: [compatibilidade e regressão da publicação versionada](../docs/plans/2026-10-18-pacote-compatibilidade-regressao-publicacao-versionada.md). É um plano documental; os testes listados permanecem não executados até haver autorização e implementação.
+
 ## Verification
 
 | ID | Check | Result | Ref | Note |
