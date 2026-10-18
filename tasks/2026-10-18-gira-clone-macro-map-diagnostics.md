@@ -21,6 +21,7 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 - Parse `git ls-tree` output using NUL-delimited records and preserve unusual pathnames.
 - Always reap the `tar` child when `git archive` fails.
 - Sanitize Git repository-redirection environment variables for local CLI repository probes.
+- Stage new `gira.yaml` and delay `--force` repinning until indexing succeeds, so failed indexing does not leave a newly created or repinned manifest.
 - Add focused regression tests for diagnostic copies, unusual pathnames, and Git environment isolation.
 
 ## Out of scope
@@ -36,7 +37,8 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 - AC4: `ListTree` preserves filenames containing tabs, newlines, and backslashes.
 - AC5: `ExportTree` reaps the tar child even when `git archive` fails.
 - AC6: local Git probes ignore repository-redirection environment variables.
-- AC7: focused tests and repository CI pass on Ubuntu, macOS, and Windows.
+- AC7: failed `gira init` does not create a new manifest or repin an existing one.
+- AC8: focused tests and repository CI pass on Ubuntu, macOS, and Windows.
 
 ## Verification
 
@@ -48,7 +50,8 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 | AC4 | unusual-path regression for `ListTree` | not run | | Await CI |
 | AC5 | fake `git`/`tar` subprocess regression for archive failure and child reaping | not run | | Await CI |
 | AC6 | Git environment isolation regression | not run | | Await CI |
-| AC7 | CI tests on Ubuntu/macOS/Windows, validator, floor guard | not run | | Await latest head CI |
+| AC7 | `init` failure tests preserve manifest state | not run | | Await CI |
+| AC8 | CI tests on Ubuntu/macOS/Windows, validator, floor guard | not run | | Await latest head CI |
 | V1 | self-review of diff against AC1–AC4 | not run | | Await final head SHA |
 
 ## Plan
@@ -56,8 +59,9 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 1. Preserve diagnostic slices in `cloneMacroMap`, copying each nested evidence slice.
 2. Switch Git tree parsing to NUL-delimited records and always reap the extraction process.
 3. Sanitize inherited repository-redirection variables for local Git probes.
-4. Run repository CI and review the integrated diff.
-5. Update verification only against the final tested commit SHA.
+4. Publish new/repinned manifests only after indexing succeeds.
+5. Run repository CI and review the integrated diff.
+6. Update verification only against the final tested commit SHA.
 
 ## Blockers
 
