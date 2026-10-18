@@ -3,8 +3,8 @@ schema: task/1
 tier: standard
 status: todo
 parent: 2026-10-17-gira-versioned-publication
-depends_on:
-  - PR #28 merge
+spec: 2026-10-17-gira-versioned-publication@1
+depends_on: []
 ---
 
 # Gira-G: leituras Git determinísticas e segurança de caminhos
