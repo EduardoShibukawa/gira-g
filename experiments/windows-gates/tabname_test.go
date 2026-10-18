@@ -2,6 +2,7 @@ package windowsgates
 
 import (
 	"bytes"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -24,6 +25,21 @@ func TestTabFilenameConstruction(t *testing.T) {
 		if cl.Exit == 0 {
 			lb := git(bare, env, "ls-tree", "-r", "-z", "HEAD")
 			f["bare_ls_tree_r_z_exit"], f["bare_ls_tree_r_z"] = lb.Exit, lb.Stdout
+
+			// Test git archive piped to tar -x (ExportTree contract in internal/gitcache/cache.go)
+			targetDir := filepath.Join(t.TempDir(), "target")
+			_ = os.MkdirAll(targetDir, 0o755)
+			e1, e2, se1, se2 := runPipe(bare, env, targetDir, "git", []string{"archive", "HEAD"}, "tar", []string{"-x", "-C", targetDir})
+			f["archive_exit"] = e1
+			f["archive_stderr"] = trim(se1)
+			f["tar_extract_exit"] = e2
+			f["tar_extract_stderr"] = trim(se2)
+			entries, _ := os.ReadDir(targetDir)
+			var extracted []string
+			for _, en := range entries {
+				extracted = append(extracted, en.Name())
+			}
+			f["extracted_files"] = extracted
 		}
 		fs := git(dir, env, "fsck", "--strict")
 		f["fsck_exit"], f["fsck_stderr"] = fs.Exit, trim(fs.Stderr)

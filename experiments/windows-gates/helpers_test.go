@@ -94,6 +94,61 @@ func run(dir string, stdin []byte, extra []string, name string, args ...string) 
 	return res
 }
 
+// runPipe executes cmd1 piped to cmd2 in targetDir with filtered GIT_* environment.
+func runPipe(dir string, env []string, targetDir string, name1 string, args1 []string, name2 string, args2 []string) (exit1, exit2 int, stderr1, stderr2 string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	c1 := exec.CommandContext(ctx, name1, args1...)
+	c1.Dir = dir
+	var filteredEnv []string
+	for _, kv := range os.Environ() {
+		if strings.HasPrefix(strings.ToUpper(kv), "GIT_") {
+			continue
+		}
+		filteredEnv = append(filteredEnv, kv)
+	}
+	c1.Env = append(filteredEnv, env...)
+
+	c2 := exec.CommandContext(ctx, name2, args2...)
+	c2.Dir = targetDir
+	c2.Env = append(filteredEnv, env...)
+
+	pipe, err := c1.StdoutPipe()
+	if err != nil {
+		return -1, -1, err.Error(), ""
+	}
+	c2.Stdin = pipe
+	var s1, s2 bytes.Buffer
+	c1.Stderr = &s1
+	c2.Stderr = &s2
+
+	if err := c2.Start(); err != nil {
+		return -1, -1, "", err.Error()
+	}
+	err1 := c1.Run()
+	err2 := c2.Wait()
+
+	exit1 = 0
+	var ee1 *exec.ExitError
+	if err1 != nil {
+		if errors.As(err1, &ee1) {
+			exit1 = ee1.ExitCode()
+		} else {
+			exit1 = -1
+		}
+	}
+	exit2 = 0
+	var ee2 *exec.ExitError
+	if err2 != nil {
+		if errors.As(err2, &ee2) {
+			exit2 = ee2.ExitCode()
+		} else {
+			exit2 = -1
+		}
+	}
+	return exit1, exit2, s1.String(), s2.String()
+}
+
 // isolatedHome creates an empty HOME and returns the env that points every
 // per-user location at it. System config is left alone unless noSystem.
 func isolatedHome(t *testing.T, noSystem bool) (home string, env []string) {
