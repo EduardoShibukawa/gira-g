@@ -20,7 +20,7 @@ Este pacote torna explícitos os testes de fronteira necessários para revisar a
 - **[CÓDIGO INSPECIONADO nesta revisão remota]** `cmd/gira/main.go`: o fluxo de `init` grava/repina `gira.yaml` antes de chamar `indexManifest`.
 - **[CI VERIFICADO via GitHub]** no SHA base, o workflow do Gira-G terminou com sucesso. Isso não cobre os cenários novos deste pacote.
 - **[PENDENTE]** reprodução independente, testes de regressão, matriz de plataformas e auditoria completa dos consumidores externos.
-- **[PENDENTE]** inspeção do consumidor correspondente no G-Ingá. A busca remota executada nesta revisão não resolveu o caminho exato do arquivo consumidor; não presumir que o inventário esteja completo.
+- **[CÓDIGO INSPECIONADO no G-Ingá, SHA `860792469bf0c7b56d37d98c8dc07079ce816928`]** `tools/eval/evaluate_girag_slicing.ts`, `queryGiragSlice`: tenta `gira slice ... --index` com `execSync`; se a CLI falha, captura o erro sem propagar e tenta leitura direta do JSON via `data.nodes || []`. Isso pode mascarar incompatibilidade de schema como fallback, e a leitura direta não valida `schema_version`/`source_identity`.
 
 Referências de código:
 - [cloneMacroMap](https://github.com/EduardoShibukawa/gira-g/blob/main/internal/indexer/incremental.go)
@@ -105,7 +105,7 @@ Auditar cada consumidor antes de aprovar o schema final. O inventário inicial n
 - ferramentas e benchmarks: `bench/layer0`, `bench/phases.json`, `internal/benchtest`, `tools/index-bundle/bootstrap.sh`, skill `gira-arch-diff`;
 - documentação: README, CLI docs e `website/docs`.
 
-Para G-Ingá, localizar e auditar o consumidor real que chama ou avalia Gira-G; não assumir o caminho apenas pelo nome citado em relatórios. Registrar arquivo/função, comando ou formato consumido, tratamento de exit code, versão/schema aceitos e testes. Incluir no mínimo:
+Para G-Ingá, o consumidor identificado é [`tools/eval/evaluate_girag_slicing.ts`](https://github.com/EduardoShibukawa/G-Inga/blob/main/tools/eval/evaluate_girag_slicing.ts), função `queryGiragSlice` (inspecionado no SHA `860792469bf0c7b56d37d98c8dc07079ce816928`). Ela chama `gira slice` com `--index`; qualquer erro da CLI é capturado e não propagado, após o que tenta percorrer diretamente `data.nodes || []` no JSON. Esse fallback não valida `schema_version` nem `source_identity` e pode transformar erro de compatibilidade em fallback aparentemente normal. A correção pertence a uma tarefa de implementação autorizada no escopo apropriado, não a este PR documental. Auditar também `tools/eval/evaluate_girag_slicing.test.ts` e fixtures/scorecards que fornecem `GiragSliceData`; registrar o formato consumido, tratamento de exit code, versões/schema aceitos e testes. Incluir no mínimo:
 
 1. saída vazia com exit 0 não pode ser interpretada como mapa válido;
 2. schema desconhecido precisa distinguir incompatibilidade de corrupção;
