@@ -1,8 +1,9 @@
 ---
 schema: task/1
-tier: heavy
+tier: standard
 status: todo
 parent: 2026-10-17-gira-versioned-publication
+spec: 2026-10-17-gira-versioned-publication@1
 depends_on:
   - 2026-10-17-gira-versioned-publication-02-gitcache-env
   - 2026-10-17-gira-versioned-publication-03-locator
