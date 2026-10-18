@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 ---
 
 # Gira-G: auditoria de compatibilidade dos consumidores do Macro Map
@@ -71,3 +71,8 @@ Produce an evidence-backed audit of the current Gira-G Macro Map contract and re
 - The versioned-publication spec is `draft`; parent `tasks/2026-10-17-gira-versioned-publication.md` remains `todo` and explicitly lacks `confirmed: heavy`.
 - Consumer/schema compatibility and other gate evidence remain open in the existing parent and technical-gates plan. This audit does not approve the spec or authorize implementation.
 - Preparation-time evidence: Gira-G `main` `22d12ee75a9af87cc44e837492b547dc5f0932e7`; G-Ingá `main` `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; G-Ingá PR #106 merge `887f25adfe9c55ccd1d1b80082ac86ecd53d846d`; strict-fallback PR #108 https://github.com/EduardoShibukawa/G-Inga/pull/108. Revalidate when the task starts.
+
+
+## Follow-up status (2026-10-18)
+
+The audit report was created and merged, but its local-baseline acceptance criterion remains unverified because no local checkout was available in that run. Remote evidence and local worktree state must not be conflated. The active follow-up task `2026-10-18-gira-versioned-publication-00-audit-revalidation.md` refreshes remote consumer/platform evidence; it does not claim the missing local worktree evidence was obtained.

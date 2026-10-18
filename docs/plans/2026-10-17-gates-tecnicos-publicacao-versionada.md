@@ -4,13 +4,13 @@
 |---|---|
 | Data | 2026-10-17 |
 | Tipo | Registro de evidência, somente documentação |
-| Estado | Decisões do dono registradas (2026-10-17). Spec `draft`. Tarefa-mãe `todo`. **Implementação não autorizada** |
+| Estado | Spec aprovada e implementação heavy autorizada pelo dono em 2026-10-18. Gates 1–5 continuam obrigatórios como critérios de implementação/aceitação. |
 | Base | `25882da` (main) |
 | Spec | [`2026-10-17-gira-versioned-publication.md`](../../specs/2026-10-17-gira-versioned-publication.md), `## Open questions` itens 1–5 |
 | Decisão | [`2026-10-17-decisao-arquitetural-publicacao-versionada.md`](2026-10-17-decisao-arquitetural-publicacao-versionada.md), `## Bloqueios antes da aprovação final`, itens 1–5 |
 | Tarefa-mãe | [`2026-10-17-gira-versioned-publication.md`](../../tasks/2026-10-17-gira-versioned-publication.md) |
 
-Este documento registra evidência e, no adendo ao final, as decisões do dono de 2026-10-17. Não aprova a spec, não adiciona `confirmed: heavy`, não cria ADR 0014 nem tarefas-filhas e não altera código de produto. Os achados técnicos continuam sujeitos aos testes de aceitação listados; Gate 5 é verificado dentro da primeira tarefa de implementação autorizada, não antes dela.
+Este documento registra evidência e decisões do dono. Atualização de 2026-10-18: o dono aprovou a spec, confirmou heavy e autorizou a criação das tarefas-filhas. Os achados continuam sujeitos aos testes de aceitação listados; Gate 5 é verificado na implementação e deve passar antes da aceitação/merge.
 
 ## Legenda das classes de evidência
 
@@ -516,3 +516,8 @@ Estas escolhas encerram as alternativas de produto nesta rodada. Elas **não** a
 - Gate 4 é aceito apenas para o perfil de runner testado; o teste de `git archive | tar -x` com tab permanece aberto.
 - Gate 5 pertence à verificação da implementação, se e quando houver autorização heavy.
 - A spec segue `draft`; a tarefa-mãe segue `todo`; nenhuma implementação, ADR 0014 ou tarefa-filha foi autorizada.
+
+
+## Owner authorization update (2026-10-18)
+
+A spec de publicação versionada foi aprovada e a implementação heavy autorizada. Este registro não transforma evidência antiga em teste executado: os Gates 1–5 seguem pendentes até que as tarefas-filhas registrem evidência atual no SHA integrado.

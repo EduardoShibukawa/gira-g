@@ -4,7 +4,7 @@
 |---|---|
 | Data | 2026-10-17 |
 | Tipo | Registro de decisões do dono, somente documentação |
-| Estado | Direções aprovadas; spec permanece `draft`; implementação não autorizada |
+| Estado | Direções e spec aprovadas; implementação heavy autorizada pelo dono em 2026-10-18 |
 | Base | `731cf4ba4fc10ad8d03e4571696975251ba8940c` |
 | Spec | [`2026-10-17-gira-versioned-publication.md`](../../specs/2026-10-17-gira-versioned-publication.md) |
 | Tarefa-mãe | [`2026-10-17-gira-versioned-publication.md`](../../tasks/2026-10-17-gira-versioned-publication.md) |
@@ -54,7 +54,7 @@ Estas decisões complementam N3/N4 e D1–D9c. São escolhas do dono, não autor
 3. **Identidade e eval:** implementar `source_identity`, política R2 e o fim do fallback de eval; testar `manifest_path_required`, bytes crus do manifesto, fontes sem evidência, ordenação e SHA/URL sem credenciais. Excluir `-ldflags` de `tool_id`, manter hash de exe em dev conforme decidido, testar builds com/sem `-trimpath`.
 4. **Windows:** testar SC7 em usuário não elevado/sem Developer Mode quando possível, com skip explícito de symlink se não puder criá-lo; testar `git archive | tar -x` com nome contendo tab no Windows antes da aprovação final da spec. Registrar as limitações do runner atual.
 5. **Gate 5, pós-autorização:** testes de falhas antes/depois do rename, fsync de diretório Unix, `visible_unconfirmed`, publicação parcial de `init --output`, preservação de artefatos e validação de hash em Linux/macOS/Windows. São critérios obrigatórios de aceitação da implementação.
-6. **Gate final:** spec permanece `draft`, tarefa-mãe `todo` e nenhum child de implementação inicia até os pontos 1–4 estarem evidenciados e existir autorização heavy explícita. O Gate 5 é obrigatório para aceitar a implementação, não para iniciar a primeira tarefa autorizada.
+6. **Gate final (atualizado em 2026-10-18):** o dono aprovou a spec e autorizou explicitamente heavy. As evidências 1–4 são obrigatórias nas tarefas-filhas e Gate 5 é obrigatório para aceitar a implementação. A autorização permite começar; não dispensa nem pré-aprova os testes.
 
 Status da evidência (2026-10-17): decisões dos gates 1–5 registradas no documento [gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md). A auditoria de consumidores e as provas por plataforma ainda não foram concluídas; Gate 5 será testado após autorização heavy, antes do aceite de implementação.
 
@@ -69,3 +69,11 @@ Status da evidência (2026-10-17): decisões dos gates 1–5 registradas no docu
 
 - 1.0 (2026-10-17): direções arquiteturais iniciais registradas; implementação bloqueada por auditorias de compatibilidade e verificações de plataforma.
 - 1.1 (2026-10-17): registra as nove decisões dos gates técnicos; spec continua `draft`, tarefa-mãe `todo` e implementação heavy não autorizada.
+
+
+## Owner authorization update (2026-10-18)
+
+- spec: approved
+- implementation: confirmed heavy by owner
+- child tasks: created in dependency order in the governance PR
+- remaining evidence: acceptance gates only; no test is considered passed by this authorization
