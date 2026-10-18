@@ -146,7 +146,7 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 func (cm *CacheManager) ListTree(ctx context.Context, repo manifest.RepositoryDeclaration) ([]FileEntry, error) {
 	repoDir := cm.RepoDir(repo)
 
-	args := []string{"--git-dir=" + repoDir, "ls-tree", "-r", "--full-name", repo.SHA}
+	args := []string{"--git-dir=" + repoDir, "ls-tree", "-r", "-z", "--full-tree", "--full-name", repo.SHA}
 	if repo.PathScope != "" && repo.PathScope != "." {
 		args = append(args, repo.PathScope)
 	}
@@ -161,34 +161,30 @@ func (cm *CacheManager) ListTree(ctx context.Context, repo manifest.RepositoryDe
 	}
 
 	var entries []FileEntry
-	lines := strings.Split(stdout.String(), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	// With -z, Git emits each record terminated by NUL and leaves pathname
+	// bytes unquoted. Newlines, tabs and backslashes in names are therefore
+	// data, not record delimiters or quoting syntax.
+	for _, record := range bytes.Split(stdout.Bytes(), []byte{0}) {
+		if len(record) == 0 {
 			continue
 		}
-		// Format: <mode> <type> <object>\t<file>
-		parts := strings.SplitN(line, "\t", 2)
+		// Format: <mode> <type> <object>\t<path>\0
+		parts := bytes.SplitN(record, []byte{'\t'}, 2)
 		if len(parts) != 2 {
+			return nil, fmt.Errorf("malformed git ls-tree record for repo %s", repo.ID)
+		}
+		metaParts := strings.Fields(string(parts[0]))
+		if len(metaParts) != 3 {
+			return nil, fmt.Errorf("malformed git ls-tree metadata for repo %s", repo.ID)
+		}
+		if metaParts[1] != "blob" {
 			continue
 		}
-		metaParts := strings.Fields(parts[0])
-		if len(metaParts) < 3 {
-			continue
-		}
-		mode := metaParts[0]
-		objType := metaParts[1]
-		sha := metaParts[2]
-		filePath := parts[1]
-
-		// ls-tree -r lists blobs
-		if objType == "blob" {
-			entries = append(entries, FileEntry{
-				Path: filePath,
-				Mode: mode,
-				SHA:  sha,
-			})
-		}
+		entries = append(entries, FileEntry{
+			Path: string(parts[1]),
+			Mode: metaParts[0],
+			SHA:  metaParts[2],
+		})
 	}
 
 	return entries, nil
@@ -245,12 +241,15 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("failed to start tar command: %w", err)
 	}
 
-	if err := archiveCmd.Run(); err != nil {
-		return fmt.Errorf("git archive failed: %s: %w", strings.TrimSpace(archiveStderr.String()), err)
+	archiveErr := archiveCmd.Run()
+	// Always reap tar, even if git archive fails. Otherwise the consumer may
+	// remain blocked on the pipe and leak a child process on the error path.
+	tarErr := tarCmd.Wait()
+	if archiveErr != nil {
+		return fmt.Errorf("git archive failed: %s: %w", strings.TrimSpace(archiveStderr.String()), archiveErr)
 	}
-
-	if err := tarCmd.Wait(); err != nil {
-		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), err)
+	if tarErr != nil {
+		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
 	return nil
