@@ -1,15 +1,17 @@
 ---
 schema: task/1
 tier: heavy
-status: todo
+status: active
 spec: 2026-10-17-gira-versioned-publication@1
 ---
 
-# Gira-G: publicação versionada de índices (proposta heavy)
+# Gira-G: publicação versionada de índices (heavy autorizado)
 
 ## Routing and approvals
 
-- tier: heavy (H1: contrato de `MacroMap`/proveniência e compatibilidade; H3: muda o contrato de `--output`, schema, layout do store e erros do resolvedor consumidos por skills, bench, tools e docs; H5: várias etapas em várias sessões). N3, N4, D1–D9c e as escolhas dos Gates 1–5 estão registradas em `docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md` e `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Permanecem trabalho técnico de validação; isso não é `confirmed: heavy`.
+- tier: heavy
+- confirmed: heavy by owner (2026-10-18, explicit user authorization in conversation; spec approval and implementation authorization recorded in `specs/2026-10-17-gira-versioned-publication.md`). Open technical evidence is retained as mandatory child-task acceptance criteria, not as a prohibition on starting implementation.
+- approved: spec v1 by owner (2026-10-18, explicit spec approval and heavy implementation authorization)
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 
@@ -53,27 +55,28 @@ Pacote de preparação para revisão: [compatibilidade e regressão da publicaç
 
 ## Plan
 
-Proposta. Este parent só fica `active` depois de `confirmed: heavy by owner`. Os children só existem depois de `approved: spec v1`.
+Autorizado pelo dono em 2026-10-18: spec aprovada e parent `active`/`confirmed: heavy`. Os children são criados em ordem de dependência; cada etapa continua sujeita aos próprios critérios de aceite e gates.
 
 Pré-condições, todas decisões do dono:
 1. ~~N1 (nome e sequência)~~: decidida (a), 2026-10-17;
 2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b); revisão adversarial concluída sem bloqueios materiais; aceite formal registrado em `2026-10-17-etapa-1-1-1-retro-acceptance` (`accepted`), merge da PR #19;
 3. N3, N4, D1–D9c e decisões dos Gates 1–5: direção escolhida e registrada; a auditoria dos consumidores/schema, testes de caminhos/ambiente Git, regressões de `tool_id`, teste de `git archive | tar -x` com tab no Windows e validação por plataforma ainda precisam de evidência. Gate 5 é critério obrigatório de aceitação da implementação após autorização, não pré-condição para começar a primeira tarefa autorizada.
 
-Children previstos, em ordem de dependência:
-1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a).
-2. `2026-10-17-gira-versioned-publication-02-gitcache-env`: leituras Git independentes do ambiente (2b). Pode sair como tarefa `standard` independente, antes da aprovação do spec, se o dono autorizar; nesse caso sai deste parent.
-3. `2026-10-17-gira-versioned-publication-03-locator`: locator normalizado (2c), depende de 01.
-4. `2026-10-17-gira-versioned-publication-04-keys`: chaves (2d), depende de 01, 02 e 03.
-5. `2026-10-17-gira-versioned-publication-05-locks`: travas M, S e P (2e), depende de 01; pode correr em paralelo com 03 e 04.
-6. `2026-10-17-gira-versioned-publication-06-publish`: publicação canônica e destacada (2f), depende de 04 e 05.
-7. `2026-10-17-gira-versioned-publication-07-resolver`: resolvedor (2g), depende de 06.
-8. `2026-10-17-gira-versioned-publication-08-cli`: `runIndex`/`runInit` (2h), depende de 05 e 07.
-9. `2026-10-17-gira-versioned-publication-09-docs`: documentação e consumidores (2i), depende de 08.
-10. Integrado: SC1–SC10, R1, V1 e revisão.
+Children criados, em ordem de dependência (todos inicialmente `todo`, ainda sem execução):
 
-Uma etapa concluída não autoriza a seguinte.
+0. `2026-10-18-gira-versioned-publication-00-audit-revalidation`: revalidar consumidores e limites de plataforma; antes da aceitação final.
+1. `2026-10-18-gira-versioned-publication-01-adr-0014`: ADR 0014 e consolidação do contrato; depende de 00.
+2. `2026-10-18-gira-versioned-publication-02-gitcache-env`: parsing NUL e isolamento Git; incorporar PR #28 sem duplicar mudanças.
+3. `2026-10-18-gira-versioned-publication-03-locator`: locator/raiz Git; depende de 01 e 02.
+4. `2026-10-18-gira-versioned-publication-04-keys`: source_key, tool_id e source_identity; depende de 01, 02 e 03.
+5. `2026-10-18-gira-versioned-publication-05-locks`: locks M→S→P; depende de 01, pode avançar em paralelo com 03/04.
+6. `2026-10-18-gira-versioned-publication-06-publish`: store versionado e durabilidade; depende de 04 e 05.
+7. `2026-10-18-gira-versioned-publication-07-resolver`: reader estrito; depende de 06 e 04.
+8. `2026-10-18-gira-versioned-publication-08-cli`: index/init/eval/skills; depende de 05 e 07.
+9. `2026-10-18-gira-versioned-publication-09-docs-consumers`: consumidores, fixtures e docs; depende de 08.
+10. `2026-10-18-gira-versioned-publication-10-integrated-acceptance`: SC1–SC10, CI e revisão final; depende de todas as anteriores.
 
+A tarefa separada `2026-10-17-m0-m6-retro-review` também foi autorizada como revisão read-only e ativa; não é dependência da publicação versionada.
 ## Review
 
 skip: roda depois que os children estiverem verificados
@@ -82,8 +85,16 @@ skip: roda depois que os children estiverem verificados
 
 - as of: 2026-10-17, branch `work/2026-10-17-gira-gate-owner-decisions`, base `731cf4ba`
 - done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas
-- status da spec: `draft`; tarefa-mãe `todo`; implementação heavy não autorizada e nenhuma tarefa-filha de implementação criada
+- checkpoint histórico de 2026-10-17: spec `draft`, tarefa-mãe `todo`, implementação não autorizada; esse estado foi substituído pela autorização explícita do dono em 2026-10-18
 - next: fechar a auditoria de consumidores/schema, testar o contrato estrito/anti-downgrade, caminhos/ambiente Git, identidade de eval e `tool_id`, e o caso `git archive | tar -x` com tab no Windows; então rever a aprovação da spec e pedir autorização heavy separadamente
 - open: evidência de compatibilidade de consumidores/schema; execução dos testes definidos pelas decisões; comportamento de tab em `git archive | tar -x` no Windows; W2 (symlink com usuário não elevado/sem Developer Mode, com skip justificado se não permitido); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: CI PR #21 (head `4c59c6a`) passou `test` nos três SOs, `validator`, `floor guard`, `gate-lint` e `docs build`; essas são verificações de documentação, não testes da implementação versionada
-- gates (2026-10-17): decisões registradas em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Gate 5 será testado no primeiro child autorizado e precisa passar antes de aceitar/mesclar a implementação. Status segue `todo`; spec `draft`; implementação não autorizada.
+- gates (2026-10-17): decisões registradas em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Atualização de 2026-10-18: spec aprovada, parent `active` e `confirmed: heavy`; Gate 5 continua obrigatório antes da aceitação/merge.
+
+
+## Owner authorization record (2026-10-18)
+
+- approved: `specs/2026-10-17-gira-versioned-publication.md` v1.3.
+- confirmed: heavy by owner; implementation may begin through the child tasks below.
+- scope remains limited to SC1–SC10 and steps 2a–2i. No task may claim unrun tests as passing or merge with required CI failing.
+- children are ordered by dependencies; a later stage does not become accepted merely because an earlier stage merged.
