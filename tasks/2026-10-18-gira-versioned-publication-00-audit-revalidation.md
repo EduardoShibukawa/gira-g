@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -40,11 +40,12 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Report aponta SHAs exatos e URLs das fontes atuais; não afirma checkout local nem testes locais que não ocorreram. | not run | | |
-| AC2 | Matriz de consumidores inclui todos os campos atuais e source_identity, com comportamento atual e risco de downgrade. | not run | | |
-| AC3 | Comportamento atual do fallback G-Ingá é revalidado no HEAD atual. | not run | | |
-| AC4 | Limite do git archive no Windows é documentado com política fail-closed e teste proposto. | not run | | |
-| AC5 | Relatório atualizado e auto-revisado; nenhum código de produto modificado. | not run | | |
+| AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Remote Gira-G/G-Ingá SHAs, PR #31 HEAD/base and CI links recorded. Local branch/HEAD/worktree was not accessible and is explicitly described as unobserved. |
+| AC2 | Consumer matrix includes all current fields plus proposed source_identity, the identified producer/copy/serialization/store/reader paths, current behavior and downgrade risks. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Report maps all eight current fields, CLI/MCP/skills/eval/scorecard/slices/bench/bundle/G-Ingá and marks unenumerated dynamic consumers/global fixtures as unknown rather than absent. Global local grep remains unavailable. |
+| AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Code/tests read at G-Ingá main e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0; strict string "1.0.0" validation and integer schema 2 rejection confirmed. CI run [39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) passed test and pre-commit/validation jobs. |
+| AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Experiment [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) records git archive exit 128 for a tab-containing path and tar exit 2. The report specifies an error/cleanup/fail-closed regression through callers; this task did not rerun that experiment. |
+| AC5 | Report is updated and self-reviewed; no product code changed. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Report matrix/links/statuses self-reviewed; PR #31 is documentation-only and no product source, test, fixture, spec or decision file was changed. |
+| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | The matrix distinguishes observed source, existing tests, actual CI evidence and unrun future SC tests; unknown consumers and local execution limits remain explicit. No SC was marked accepted. |
 
 ## Plan
 
@@ -58,22 +59,18 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 ## Checkpoint
 
 - as of: 2026-10-18
-- status: active; matriz remota expandida e AC1–AC5 em auto-revisão formal
-- next: registrar AC1–AC5 com evidência por commit, verificar esta tarefa contra o relatório atualizado e só então permitir a task 01/ADR 0014; task 02 deve reutilizar #28
-- revalidate: nenhum checkout ou teste local foi alegado; fontes remotas e CI têm SHAs/URLs explícitos
+- status: completed; AC1–AC5 and V1 recorded against the report commit
+- next: transition to verified with verified_at set to the evidence/report commit, then start task 01/ADR 0014 and task 02 in dependency-respecting branches
+- revalidate: report is remote-only; no checkout or local command is claimed
 
-## Remote revalidation progress (2026-10-18)
+## Remote revalidation update (2026-10-18)
 
-A partial read-only revalidation was performed against remote `main` and recorded in [the dated readiness audit](../docs/plans/2026-10-18-gira-versioned-publication-readiness-audit.md). It confirms these bases as of the report's remote snapshot:
+The earlier progress note below the initial checkpoint described the then-current partial state and is superseded by the expanded matrix in [the readiness audit](../docs/plans/2026-10-18-gira-versioned-publication-readiness-audit.md).
 
-- Gira-G `main`: `6c66d938148de56d460389f183bf9900f482f50f`; the main CI and docs workflows completed successfully.
-- G-Ingá `main`: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; validate workflow jobs `test` and `pre-commit` succeeded.
-- PR #28 is already merged into the Gira-G base. Reuse its `cloneMacroMap` diagnostic copying, NUL-delimited `ls-tree`, subprocess reaping, Git environment isolation, and staged-manifest behavior; do not duplicate those fixes.
-- Current Gira-G MacroMap still uses string schema `"1.0.0"` and has no `source_identity`; G-Ingá's fallback accepts only `"1.0.0"` and rejects integer schema `2`.
-- Known paths identified so far include the central CLI `loadIndex`, CLI `diff`, MCP `diff_maps`, the `gira-query` MCP/CLI bridge and its raw-file staleness check, internal evaluator/indexer, scorecard serialization, bench harness/fixtures, `tools/index-bundle/bootstrap.sh`, and G-Ingá's evaluator plus canonical fixture.
+- Report commit providing the evidence: `4163a9623cad03964bd0a8f9f64d3eba90b74498`.
+- Gira-G `main`: `6c66d938148de56d460389f183bf9900f482f50f`; G-Ingá `main`: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`.
+- PR #31 HEAD at the start of this revalidation: `7be227755fba688fac2dae602c352bab67e75408`. Its CI run [39136093491](https://github.com/EduardoShibukawa/gira-g/actions/runs/39136093491) passed all test OS jobs, validator and floor guard; docs run [39136093575](https://github.com/EduardoShibukawa/gira-g/actions/runs/39136093575) passed docs build. These runs precede the report-only matrix update commit and are not evidence for future product code.
+- AC1–AC5 and V1 are now recorded as `pass` for the **read-only audit task**, with explicit limits: no local checkout/tests, no exact required-check rules because branch-protection access returned HTTP 403, and unknown dynamic/global consumers that could not be listed through the available code-search interface.
+- This verification does not accept SC1–SC10 or assert schema-2 support. It records the current contract and makes the remaining implementation gates actionable.
+- Task 02 must reuse the merged PR #28 changes and separately close `GIT_PREFIX`/environment coverage and Git-for-Windows partial-extraction behavior. ADR 0014 must document already approved decisions without inventing new approvals.
 
-This is **partial progress, not task completion**. The full cross-consumer inventory and task acceptance criteria AC1–AC5 remain unverified; no tests were executed locally because this environment has no repository checkout. The GitHub API did not expose exact branch-protection required-check rules (HTTP 403). Keep this task `todo`, keep all AC rows `not run`, and finish the remaining consumer/source/test crosswalk before starting dependent ADR work.
-
-- report branch/PR: [PR #31](https://github.com/EduardoShibukawa/gira-g/pull/31)
-- no product source/test files modified
-- no SC marked accepted; no schema 2 support implemented
