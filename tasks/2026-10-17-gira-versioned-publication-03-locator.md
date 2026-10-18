@@ -11,6 +11,10 @@ depends_on:
 
 # Gira-G: locator canônico do manifesto
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Derivar locators de overrides de forma determinística e segura a partir dos bytes reais do manifesto e da raiz Git correta.
 
