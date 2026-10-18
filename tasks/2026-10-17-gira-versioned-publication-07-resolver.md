@@ -10,6 +10,10 @@ depends_on:
 
 # Gira-G: resolvedor fail-closed e compatibilidade de schema
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Resolver apenas uma versão compatível com manifesto e tool_id, com erros estáveis e sem tratar ausência/incompatibilidade como mapa vazio.
 
