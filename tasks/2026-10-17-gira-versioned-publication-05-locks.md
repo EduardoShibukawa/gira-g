@@ -10,6 +10,10 @@ depends_on:
 
 # Gira-G: locks M, S e P multiplataforma
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Implementar exclusão mútua fail-closed entre escritores locais, com ordem global M → S → P.
 
