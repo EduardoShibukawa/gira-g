@@ -1,7 +1,8 @@
 ---
 schema: task/1
 tier: heavy
-status: todo
+status: active
+confirmed: heavy
 spec: 2026-10-17-gira-versioned-publication@1
 ---
 
@@ -9,7 +10,7 @@ spec: 2026-10-17-gira-versioned-publication@1
 
 ## Routing and approvals
 
-- tier: heavy (H1: contrato de `MacroMap`/proveniência e compatibilidade; H3: muda o contrato de `--output`, schema, layout do store e erros do resolvedor consumidos por skills, bench, tools e docs; H5: várias etapas em várias sessões). N3, N4, D1–D9c e as escolhas dos Gates 1–5 estão registradas em `docs/plans/2026-10-17-decisao-arquitetural-publicacao-versionada.md` e `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Permanecem trabalho técnico de validação; isso não é `confirmed: heavy`.
+- tier: heavy (H1/H3/H5 conforme avaliação original). Confirmado pelo dono em 2026-10-18, por instrução explícita nesta sessão; a spec v1 está aprovada para implementação em etapas. Isso autoriza criar/iniciar os children, não aceitar os gates nem mesclar implementação sem evidência.
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 
@@ -53,7 +54,7 @@ Pacote de preparação para revisão: [compatibilidade e regressão da publicaç
 
 ## Plan
 
-Proposta. Este parent só fica `active` depois de `confirmed: heavy by owner`. Os children só existem depois de `approved: spec v1`.
+Autorizado pelo dono em 2026-10-18: parent `active`, `confirmed: heavy`; spec v1 `approved`. Os children abaixo estão criados nesta mudança e devem ser executados pela ordem de dependência. SC1–SC10, a política Windows e a revisão integrada continuam gates obrigatórios para aceite final.
 
 Pré-condições, todas decisões do dono:
 1. ~~N1 (nome e sequência)~~: decidida (a), 2026-10-17;
@@ -82,8 +83,8 @@ skip: roda depois que os children estiverem verificados
 
 - as of: 2026-10-17, branch `work/2026-10-17-gira-gate-owner-decisions`, base `731cf4ba`
 - done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas
-- status da spec: `draft`; tarefa-mãe `todo`; implementação heavy não autorizada e nenhuma tarefa-filha de implementação criada
-- next: fechar a auditoria de consumidores/schema, testar o contrato estrito/anti-downgrade, caminhos/ambiente Git, identidade de eval e `tool_id`, e o caso `git archive | tar -x` com tab no Windows; então rever a aprovação da spec e pedir autorização heavy separadamente
+- status atualizado em 2026-10-18: spec `approved`; tarefa-mãe `active`, `confirmed: heavy`; autorização explícita do dono registrada nesta sessão
+- next: executar children pela ordem de dependência; não marcar SCs como pass sem testes/CI reais; política Windows para caminho não materializável é fail-closed
 - open: evidência de compatibilidade de consumidores/schema; execução dos testes definidos pelas decisões; comportamento de tab em `git archive | tar -x` no Windows; W2 (symlink com usuário não elevado/sem Developer Mode, com skip justificado se não permitido); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
 - revalidate: CI PR #21 (head `4c59c6a`) passou `test` nos três SOs, `validator`, `floor guard`, `gate-lint` e `docs build`; essas são verificações de documentação, não testes da implementação versionada
 - gates (2026-10-17): decisões registradas em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Gate 5 será testado no primeiro child autorizado e precisa passar antes de aceitar/mesclar a implementação. Status segue `todo`; spec `draft`; implementação não autorizada.
