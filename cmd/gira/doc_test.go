@@ -405,7 +405,7 @@ func TestSCDocBannerAndStale(t *testing.T) {
 	}
 }
 
-// Unknown services error honestly; 
+// Unknown services error honestly;
 // unsupported formats error honestly.
 func TestSCDocUsageErrors(t *testing.T) {
 	index := docFixtureIndex(t)
