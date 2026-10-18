@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -352,4 +353,31 @@ func mapKeys(values map[string]bool) []string {
 		keys = append(keys, key)
 	}
 	return keys
+}
+
+
+func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-script process fixture is Unix-only")
+	}
+	binDir := t.TempDir()
+	fakeGit := filepath.Join(binDir, "git")
+	fakeTar := filepath.Join(binDir, "tar")
+	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\nexit 23\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\ncat >/dev/null\nexit 0\n"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir)
+
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoDecl := manifest.RepositoryDeclaration{ID: "archive-failure", SHA: "deadbeef"}
+	err = cm.ExportTree(context.Background(), repoDecl, filepath.Join(t.TempDir(), "target"))
+	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
+		t.Fatalf("ExportTree error = %v, want git archive failure", err)
+	}
 }
