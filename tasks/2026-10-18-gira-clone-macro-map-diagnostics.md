@@ -46,7 +46,7 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 | AC2 | nested evidence non-aliasing assertions | not run | | Await CI |
 | AC3 | nil-slice regression test | not run | | Await CI |
 | AC4 | unusual-path regression for `ListTree` | not run | | Await CI |
-| AC5 | `ExportTree` child cleanup reviewed; failure injection not yet covered | partial | | Await CI and follow-up failure-path test |
+| AC5 | fake `git`/`tar` subprocess regression for archive failure and child reaping | not run | | Await CI |
 | AC6 | Git environment isolation regression | not run | | Await CI |
 | AC7 | CI tests on Ubuntu/macOS/Windows, validator, floor guard | not run | | Await latest head CI |
 | V1 | self-review of diff against AC1–AC4 | not run | | Await final head SHA |
@@ -62,5 +62,5 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 ## Blockers
 
 - CI for the updated pull request is pending; local Go tests were not available in the execution environment.
-- `ExportTree` still needs a deterministic archive-failure regression test.
+- CI must confirm the new archive-failure test behaves as expected on supported Unix runners; Windows skips shell-script fixtures.
 - This fix does not implement the versioned-publication proposal or change its draft/todo governance.
