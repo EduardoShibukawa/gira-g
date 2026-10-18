@@ -4,7 +4,7 @@
 |---|---|
 | Versão | 1.4 |
 | Verificação | 2026-10-17 (-03) |
-| Código-base dos experimentos | `25882da` (sem mudanças de código de produto nas PRs documentais seguintes) |
+| Código-base dos experimentos | `25882da` (baseline das evidências iniciais; não substitui o estado atual de `origin/main` registrado abaixo) |
 | Estado remoto consultado | `main` = `f3fd4a2` (merge da PR #23; SHA completo `f3fd4a21b28fb0e313ac3861dd276bd46c4932e6`) |
 | Status | **[PROPOSTA]**. N1–N4, D1–D9c e as decisões dos Gates 1–5 têm direções registradas. Spec continua `draft`; tarefa-mãe `todo`; implementação heavy não autorizada enquanto faltam auditorias e testes de compatibilidade. |
 | Registro de decisões | [decisão arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md) e [decisões dos gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md) |
@@ -175,7 +175,7 @@ Critérios (a)–(e) de `Decisoes_E_Estado` §"Condição para avançar", avalia
 
 ### 3.4 Estado local
 
-O relatório anterior sobre a máquina do dono (checkout local desatualizado com alteração não compilável, índice residual de teste, commit `bfd3162` fora de `origin/main`, worktrees auxiliares com trabalho não integrado) foi revalidado nesta sessão. Os detalhes ficam no workspace de Work do dono, porque são estado de máquina, não do projeto. Resumo: todos os itens foram confirmados, e nada foi alterado ou apagado.
+O último inventário local informado (2026-10-17) indicava: checkout Gira-G em `0d5f248`, 29 commits atrás de `origin/main`, com `cmd/gira/main_test.go` modificado; checkout G-Ingá em `f33e945`, 28 commits atrás, limpo; 13 worktrees Gira-G e 10 G-Ingá mapeados e limpos. [RELATO] Esses detalhes locais não foram revalidados nesta atualização documental. O relatório informa que worktrees, stashes e patches foram preservados; nenhuma limpeza foi autorizada ou executada por esta frente. Detalhes da máquina permanecem fora do escopo operacional deste plano público.
 
 
 ### 3.5 Comportamento atual relevante para a Etapa 2
