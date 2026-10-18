@@ -539,31 +539,72 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	manifestPath := filepath.Join(absDir, "gira.yaml")
-	if _, err := os.Stat(manifestPath); err == nil {
-		if force {
-			if err := repinLocalManifest(manifestPath, head); err != nil {
-				return err
-			}
-			fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
-		} else {
-			fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
+	_, statErr := os.Stat(manifestPath)
+	manifestExists := statErr == nil
+	if statErr != nil && !os.IsNotExist(statErr) {
+		return fmt.Errorf("failed to inspect manifest %s: %w", manifestPath, statErr)
+	}
+
+	stagedNewManifest := !manifestExists
+	stagedRepin := manifestExists && force
+	loadPath := manifestPath
+	if stagedNewManifest {
+		// Build the manifest beside its final destination so relative paths have
+		// the same base, but do not publish it until indexing has succeeded.
+		tmp, err := os.CreateTemp(absDir, ".gira-init-manifest-*.yaml")
+		if err != nil {
+			return fmt.Errorf("failed to stage manifest: %w", err)
 		}
-	} else {
-		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+		loadPath = tmp.Name()
+		if err := tmp.Close(); err != nil {
+			_ = os.Remove(loadPath)
+			return fmt.Errorf("failed to close staged manifest: %w", err)
+		}
+		defer os.Remove(loadPath)
+		if err := writeLocalManifest(loadPath, toplevel, head); err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
 	}
 
-	m, err := manifest.ParseFile(manifestPath)
+	m, err := manifest.ParseFile(loadPath)
 	if err != nil {
-		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+		return fmt.Errorf("failed to parse manifest %s: %w", loadPath, err)
+	}
+	if stagedRepin {
+		if len(m.Repositories) != 1 {
+			return fmt.Errorf("gira init --force only repins single-repository manifests (found %d repositories in %s)", len(m.Repositories), manifestPath)
+		}
+		m.Repositories[0].SHA = head
+		if err := m.Validate(); err != nil {
+			return fmt.Errorf("failed to validate repinned manifest: %w", err)
+		}
 	}
 
-	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
+	// Capture the indexing output until the manifest is successfully published,
+	// so a failed manifest write does not print a misleading success message.
+	var indexOutput bytes.Buffer
+	if err := indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
 		AllowSymbolLoss: allowSymbolLoss,
 		RecoverCorrupt:  recoverCorrupt,
-	}, stdout)
+	}, &indexOutput); err != nil {
+		return err
+	}
+
+	if stagedRepin {
+		if err := repinLocalManifest(manifestPath, head); err != nil {
+			return fmt.Errorf("index was published, but repinning manifest %s failed: %w", manifestPath, err)
+		}
+		fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
+	} else if stagedNewManifest {
+		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+			return fmt.Errorf("index was published, but publishing manifest %s failed: %w", manifestPath, err)
+		}
+		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
+	} else {
+		fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
+	}
+	_, err = io.Copy(stdout, &indexOutput)
+	return err
 }
 
 // gitCommandEnv removes repository-redirection variables inherited from the
