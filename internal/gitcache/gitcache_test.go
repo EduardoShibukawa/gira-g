@@ -296,6 +296,9 @@ func TestCacheManager_ExportTree(t *testing.T) {
 
 
 func TestCacheManager_ListTreePreservesUnusualPathnames(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows filesystems forbid control characters and backslashes in filenames")
+	}
 	ctx := context.Background()
 	cacheDir := t.TempDir()
 	cm, err := gitcache.NewCacheManager(cacheDir)
