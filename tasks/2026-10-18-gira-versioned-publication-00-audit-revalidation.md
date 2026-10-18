@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -58,9 +58,9 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 ## Checkpoint
 
 - as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Nenhuma; executar antes de ADR 0014 e de decisões que dependam de detalhes do consumidor.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- status: active; matriz remota expandida e AC1–AC5 em auto-revisão formal
+- next: registrar AC1–AC5 com evidência por commit, verificar esta tarefa contra o relatório atualizado e só então permitir a task 01/ADR 0014; task 02 deve reutilizar #28
+- revalidate: nenhum checkout ou teste local foi alegado; fontes remotas e CI têm SHAs/URLs explícitos
 
 ## Remote revalidation progress (2026-10-18)
 
