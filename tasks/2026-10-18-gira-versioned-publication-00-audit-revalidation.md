@@ -61,3 +61,19 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 - status: todo; ainda não executada
 - next: Nenhuma; executar antes de ADR 0014 e de decisões que dependam de detalhes do consumidor.
 - revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+
+## Remote revalidation progress (2026-10-18)
+
+A partial read-only revalidation was performed against remote `main` and recorded in [the dated readiness audit](../docs/plans/2026-10-18-gira-versioned-publication-readiness-audit.md). It confirms these bases as of the report's remote snapshot:
+
+- Gira-G `main`: `6c66d938148de56d460389f183bf9900f482f50f`; the main CI and docs workflows completed successfully.
+- G-Ingá `main`: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; validate workflow jobs `test` and `pre-commit` succeeded.
+- PR #28 is already merged into the Gira-G base. Reuse its `cloneMacroMap` diagnostic copying, NUL-delimited `ls-tree`, subprocess reaping, Git environment isolation, and staged-manifest behavior; do not duplicate those fixes.
+- Current Gira-G MacroMap still uses string schema `"1.0.0"` and has no `source_identity`; G-Ingá's fallback accepts only `"1.0.0"` and rejects integer schema `2`.
+- Known paths identified so far include the central CLI `loadIndex`, CLI `diff`, MCP `diff_maps`, the `gira-query` MCP/CLI bridge and its raw-file staleness check, internal evaluator/indexer, scorecard serialization, bench harness/fixtures, `tools/index-bundle/bootstrap.sh`, and G-Ingá's evaluator plus canonical fixture.
+
+This is **partial progress, not task completion**. The full cross-consumer inventory and task acceptance criteria AC1–AC5 remain unverified; no tests were executed locally because this environment has no repository checkout. The GitHub API did not expose exact branch-protection required-check rules (HTTP 403). Keep this task `todo`, keep all AC rows `not run`, and finish the remaining consumer/source/test crosswalk before starting dependent ADR work.
+
+- report branch/PR: [PR #31](https://github.com/EduardoShibukawa/gira-g/pull/31)
+- no product source/test files modified
+- no SC marked accepted; no schema 2 support implemented
