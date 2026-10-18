@@ -93,7 +93,9 @@ func isGitRepo(dir string) bool {
 }
 
 func checkoutHasCommit(dir, sha string) bool {
-	return exec.Command("git", "-C", dir, "rev-parse", "--verify", "--quiet", sha+"^{commit}").Run() == nil
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--verify", "--quiet", sha+"^{commit}")
+	cmd.Env = gitCommandEnv()
+	return cmd.Run() == nil
 }
 
 // sourceSection renders the on-demand source excerpts for an evidence report,
