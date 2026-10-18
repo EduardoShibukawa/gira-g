@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -64,7 +65,9 @@ func humanBanner(stderr io.Writer, mm *domain.MacroMap, checkout string, format 
 }
 
 func gitHead(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "HEAD")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
@@ -85,11 +88,15 @@ func excerptFor(repoRoot string, loc domain.Locator) (string, bool) {
 }
 
 func isGitRepo(dir string) bool {
-	return exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree").Run() == nil
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	cmd.Env = gitCommandEnv()
+	return cmd.Run() == nil
 }
 
 func checkoutHasCommit(dir, sha string) bool {
-	return exec.Command("git", "-C", dir, "rev-parse", "--verify", "--quiet", sha+"^{commit}").Run() == nil
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--verify", "--quiet", sha+"^{commit}")
+	cmd.Env = gitCommandEnv()
+	return cmd.Run() == nil
 }
 
 // sourceSection renders the on-demand source excerpts for an evidence report,
@@ -539,35 +546,105 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	manifestPath := filepath.Join(absDir, "gira.yaml")
-	if _, err := os.Stat(manifestPath); err == nil {
-		if force {
-			if err := repinLocalManifest(manifestPath, head); err != nil {
-				return err
-			}
-			fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
-		} else {
-			fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
+	_, statErr := os.Stat(manifestPath)
+	manifestExists := statErr == nil
+	if statErr != nil && !os.IsNotExist(statErr) {
+		return fmt.Errorf("failed to inspect manifest %s: %w", manifestPath, statErr)
+	}
+
+	stagedNewManifest := !manifestExists
+	stagedRepin := manifestExists && force
+	loadPath := manifestPath
+	if stagedNewManifest {
+		// Build the manifest beside its final destination so relative paths have
+		// the same base, but do not publish it until indexing has succeeded.
+		tmp, err := os.CreateTemp(absDir, ".gira-init-manifest-*.yaml")
+		if err != nil {
+			return fmt.Errorf("failed to stage manifest: %w", err)
 		}
-	} else {
-		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+		loadPath = tmp.Name()
+		if err := tmp.Close(); err != nil {
+			_ = os.Remove(loadPath)
+			return fmt.Errorf("failed to close staged manifest: %w", err)
+		}
+		defer os.Remove(loadPath)
+		if err := writeLocalManifest(loadPath, toplevel, head); err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
 	}
 
-	m, err := manifest.ParseFile(manifestPath)
+	m, err := manifest.ParseFile(loadPath)
 	if err != nil {
-		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+		return fmt.Errorf("failed to parse manifest %s: %w", loadPath, err)
+	}
+	if stagedRepin {
+		if len(m.Repositories) != 1 {
+			return fmt.Errorf("gira init --force only repins single-repository manifests (found %d repositories in %s)", len(m.Repositories), manifestPath)
+		}
+		m.Repositories[0].SHA = head
+		if err := m.Validate(); err != nil {
+			return fmt.Errorf("failed to validate repinned manifest: %w", err)
+		}
 	}
 
-	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
+	// Capture the indexing output until the manifest is successfully published,
+	// so a failed manifest write does not print a misleading success message.
+	var indexOutput bytes.Buffer
+	if err := indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
 		AllowSymbolLoss: allowSymbolLoss,
 		RecoverCorrupt:  recoverCorrupt,
-	}, stdout)
+	}, &indexOutput); err != nil {
+		return err
+	}
+
+	if stagedRepin {
+		if err := repinLocalManifest(manifestPath, head); err != nil {
+			return fmt.Errorf("index was published, but repinning manifest %s failed: %w", manifestPath, err)
+		}
+		fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
+	} else if stagedNewManifest {
+		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+			return fmt.Errorf("index was published, but publishing manifest %s failed: %w", manifestPath, err)
+		}
+		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
+	} else {
+		fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
+	}
+	_, err = io.Copy(stdout, &indexOutput)
+	return err
+}
+
+// gitCommandEnv removes repository-redirection variables inherited from the
+// caller. A hostile or stale GIT_DIR/GIT_WORK_TREE must not redirect local
+// repository probes away from the path explicitly supplied with -C.
+func gitCommandEnv() []string {
+	blocked := map[string]bool{
+		"GIT_DIR": true,
+		"GIT_WORK_TREE": true,
+		"GIT_COMMON_DIR": true,
+		"GIT_INDEX_FILE": true,
+		"GIT_OBJECT_DIRECTORY": true,
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+		"GIT_NAMESPACE": true,
+		"GIT_CONFIG": true,
+		"GIT_CONFIG_COUNT": true,
+		"GIT_CONFIG_PARAMETERS": true,
+	}
+	env := make([]string, 0, len(os.Environ()))
+	for _, item := range os.Environ() {
+		key, _, ok := strings.Cut(item, "=")
+		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+			continue
+		}
+		env = append(env, item)
+	}
+	return env
 }
 
 func gitToplevel(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
@@ -575,7 +652,9 @@ func gitToplevel(dir string) string {
 }
 
 func gitDirty(toplevel string) bool {
-	out, err := exec.Command("git", "-C", toplevel, "status", "--porcelain").Output()
+	cmd := exec.Command("git", "-C", toplevel, "status", "--porcelain")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return false
 	}
