@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 ---
 
 # Gira-G: auditoria de compatibilidade dos consumidores do Macro Map
@@ -9,11 +9,12 @@ status: todo
 ## Routing and approvals
 
 - tier: standard (S1 holds: bounded evidence-backed inventory; S2 fails: trace producers, serialization, copies, readers and downstream consumers before recommending schema gates; S3 holds: one audit report; S4 holds: read-only inspection and report are reversible)
-- approved: standard audit-task planning by owner (2026-10-18, explicit request to prepare local execution tasks; this does not authorize schema-2 implementation)
+- approved: standard audit planning by owner (2026-10-18).
+- approved: use the published report as initial evidence for the heavy implementation tasks (2026-10-18); the report does not claim a local checkout or clean worktree.
 
 ## Objective
 
-Produce an evidence-backed audit of the current Gira-G Macro Map contract and relevant producers, serializers, copy paths, readers and downstream consumers. Close the consumer-compatibility evidence gap listed in `specs/2026-10-17-gira-versioned-publication.md`, `## Open questions`, before the owner considers approving that spec. This task is read-only with respect to production code and contracts.
+Produce an evidence-backed audit of the current Gira-G Macro Map contract and relevant producers, serializers, copy paths, readers and downstream consumers. Close the consumer-compatibility evidence gap listed in `specs/2026-10-17-gira-versioned-publication.md`, `## Open questions`, to support implementation planning; the owner approved the spec separately on 2026-10-18. This task is read-only with respect to production code and contracts.
 
 ## In scope
 
@@ -27,8 +28,8 @@ Produce an evidence-backed audit of the current Gira-G Macro Map contract and re
 
 - Production-code changes or changes to tests, fixtures, goldens or benchmark data.
 - Editing or approving the spec, ADRs, existing heavy parent task or recorded architectural decisions.
-- Creating implementation children for the heavy parent before the spec is approved and `confirmed: heavy` is explicitly recorded by the owner.
-- Implementing schema 2, changing publisher/reader contracts, releases, publishing, deployment, merge, or changing task/spec status to imply work was verified or accepted.
+- Revalidating a local checkout when no local checkout is exposed to this execution environment.
+- Implementing production changes in this read-only audit task.
 
 ## Acceptance criteria
 
@@ -66,8 +67,9 @@ Produce an evidence-backed audit of the current Gira-G Macro Map contract and re
 6. Create the named report as evidence for review, not as spec approval or implementation authorization.
 7. Review AC1–AC8. If a finding requires code, contract/ADR/spec changes, heavy authorization or implementation-child creation, stop and list the decision needed.
 
-## Blockers
+## Remaining limitations
 
-- The versioned-publication spec is `draft`; parent `tasks/2026-10-17-gira-versioned-publication.md` remains `todo` and explicitly lacks `confirmed: heavy`.
-- Consumer/schema compatibility and other gate evidence remain open in the existing parent and technical-gates plan. This audit does not approve the spec or authorize implementation.
+- The report's local-baseline check remains unverified because this environment exposed no local Git checkout. It explicitly avoids claiming a clean worktree or local test run.
+- The report is an initial evidence snapshot; implementation tasks must refresh source SHAs and rerun compatibility checks against the then-current branches.
+- The owner has separately approved the spec and confirmed heavy authorization on 2026-10-18; this task does not claim any implementation gate passed.
 - Preparation-time evidence: Gira-G `main` `22d12ee75a9af87cc44e837492b547dc5f0932e7`; G-Ingá `main` `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; G-Ingá PR #106 merge `887f25adfe9c55ccd1d1b80082ac86ecd53d846d`; strict-fallback PR #108 https://github.com/EduardoShibukawa/G-Inga/pull/108. Revalidate when the task starts.
