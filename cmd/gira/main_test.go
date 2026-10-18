@@ -659,7 +659,7 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 		t.Helper()
 		cmd := exec.Command("git", args...)
 		cmd.Dir = repoDir
-		cmd.Env = append(os.Environ(), "GIT_DIR=/definitely/not/a/repository", "GIT_WORK_TREE=/elsewhere", "GIT_INDEX_FILE=/tmp/redirected-index")
+		cmd.Env = gitCommandEnv()
 		if out, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
