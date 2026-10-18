@@ -64,16 +64,17 @@ Pré-condições, todas decisões do dono:
 3. N3, N4, D1–D9c e decisões dos Gates 1–5: direção escolhida e registrada; a auditoria dos consumidores/schema, testes de caminhos/ambiente Git, regressões de `tool_id`, teste de `git archive | tar -x` com tab no Windows e validação por plataforma ainda precisam de evidência. Gate 5 é critério obrigatório de aceitação da implementação após autorização, não pré-condição para começar a primeira tarefa autorizada.
 
 Children criados nesta branch, em ordem de dependência:
-1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a).
-2. `2026-10-17-gira-versioned-publication-02-gitcache-env`: leituras Git independentes do ambiente (2b). Pode sair como tarefa `standard` independente, antes da aprovação do spec, se o dono autorizar; nesse caso sai deste parent.
-3. `2026-10-17-gira-versioned-publication-03-locator`: locator normalizado (2c), depende de 01.
-4. `2026-10-17-gira-versioned-publication-04-keys`: chaves (2d), depende de 01, 02 e 03.
-5. `2026-10-17-gira-versioned-publication-05-locks`: travas M, S e P (2e), depende de 01; pode correr em paralelo com 03 e 04.
-6. `2026-10-17-gira-versioned-publication-06-publish`: publicação canônica e destacada (2f), depende de 04 e 05.
-7. `2026-10-17-gira-versioned-publication-07-resolver`: resolvedor (2g), depende de 06.
-8. `2026-10-17-gira-versioned-publication-08-cli`: `runIndex`/`runInit` (2h), depende de 05 e 07.
-9. `2026-10-17-gira-versioned-publication-09-docs`: documentação e consumidores (2i), depende de 08.
-10. [validação integrada](2026-10-17-gira-versioned-publication-10-integration.md): SC1–SC10, R1, V1 e revisão.
+0. `2026-10-18-gira-clone-macro-map-diagnostics`: correções de clonagem, gitcache, ambiente e ordem de manifesto; implementação está na PR #28 e precisa de CI verde/merge antes do child 02.
+1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a); pode correr em paralelo com 0.
+2. `2026-10-17-gira-versioned-publication-02-gitcache-env`: completar matriz de caminhos/ambiente Git e política Windows (2b); depende de 0.
+3. `2026-10-17-gira-versioned-publication-03-locator`: locator normalizado (2c), depende de 1 e 2.
+4. `2026-10-17-gira-versioned-publication-04-keys`: chaves e source_identity (2d), depende de 1, 2 e 3.
+5. `2026-10-17-gira-versioned-publication-05-locks`: travas M, S e P (2e), depende de 1; pode correr em paralelo com 3 e 4.
+6. `2026-10-17-gira-versioned-publication-06-publish`: publicação canônica e destacada (2f), depende de 4 e 5.
+7. `2026-10-17-gira-versioned-publication-07-resolver`: resolvedor (2g), depende de 6.
+8. `2026-10-17-gira-versioned-publication-08-cli`: runIndex/runInit (2h), depende de 5 e 7.
+9. `2026-10-17-gira-versioned-publication-09-docs`: documentação e consumidores (2i), depende de 8.
+10. `2026-10-17-gira-versioned-publication-10-integration`: SC1–SC10, R1, V1 e revisão adversarial final.
 
 Uma etapa concluída não autoriza a seguinte.
 
