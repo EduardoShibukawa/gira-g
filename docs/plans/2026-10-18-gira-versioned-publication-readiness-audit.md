@@ -11,7 +11,7 @@ Este é um adendo de revalidação. O relatório anterior [gira-schema-consumer-
 
 | Repositório | Branch padrão / SHA atual | CI mais recente observado na consulta | Conclusão |
 |---|---|---|---|
-| [Gira-G](https://github.com/EduardoShibukawa/gira-g) | `main` / `6c66d938148de56d460389f183bf9900f482f50f` | [CI run 39133987360](https://github.com/EduardoShibukawa/gira-g/actions/runs/39133987360): Ubuntu, macOS, validator, floor guard e gate-lint em sucesso; job Windows ainda `in_progress`. [Docs run 39133987482](https://github.com/EduardoShibukawa/gira-g/actions/runs/39133987482) em sucesso. | CI integral do SHA atual ainda não estava concluído no último snapshot. |
+| [Gira-G](https://github.com/EduardoShibukawa/gira-g) | `main` / `6c66d938148de56d460389f183bf9900f482f50f` | [CI run 39133987360](https://github.com/EduardoShibukawa/gira-g/actions/runs/39133987360): todos os jobs concluídos em sucesso, incluindo Ubuntu, macOS, Windows, validator, floor guard e gate-lint (atualizado em 2026-10-18T14:09:29Z). [Docs run 39133987482](https://github.com/EduardoShibukawa/gira-g/actions/runs/39133987482) em sucesso. | CI integral do SHA atual terminou com sucesso nos três SOs. Isso valida o código atual, não a implementação futura da publicação versionada. |
 | [G-Ingá](https://github.com/EduardoShibukawa/G-Inga) | `main` / `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0` | [Run 39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098): jobs `test` e `pre-commit` em sucesso. | CI existente do HEAD atual passou; isso não significa suporte ao schema 2. |
 
 No momento da consulta, as listas de PRs abertas estavam vazias nos dois repositórios. O endpoint de branch protection retornou HTTP 403 para a integração; embora `main` apareça como protegido nas listas de branches, a lista exata de checks obrigatórios não pôde ser inspecionada. Existem branches remotas históricas/experimentais, logo “nenhuma PR aberta” não significa “nenhuma branch”.
@@ -105,14 +105,14 @@ A redação normativa completa permanece na seção Acceptance Criteria da [spec
 | SC7 | Travas em três SOs: exclusão entre processos e grafias; liberação após morte de filho; timeout `index_locked`; erro injetado `lock_unavailable` sem gravação; ordem M→S→P. | Não há protocolo M→S→P nem matriz de concorrência da publicação versionada no código atual. | **Não implementado/não executado;** tasks 05 e 10. |
 | SC8 | Init que falha não cria manifesto; init --force rejeitado não altera manifesto/head/P; init --output produz snapshot canônico e P byte a byte iguais; index --output não toca store; mutação externa do manifesto em init dá conflito. | #28 já adicionou staging e testes para não publicar/repinar manifesto em falha de indexação. As semânticas de output/store versionado e conflito concorrente continuam sem evidência. | **Parcial no legado, gate não aceito;** tasks 06, 08 e 10. |
 | SC9 | README/CLI/skills/bench/tools descrevem comportamento implementado; gira-arch-diff, bench/phases, index-bundle e benchtest continuam funcionais; validador e docs build passam. | Build de docs atual passou, mas documenta a situação anterior à publicação versionada. Inventário total dos consumidores e fixtures ainda está aberto. | **Parcial, não aceito;** tasks 00 e 09. |
-| SC10 | `go test -race ./...` passa em Ubuntu/macOS/Windows; floor guard passa; nenhum teste escreve no cache real de usuário. | Ubuntu/macOS/floor guard verdes no run atual; Windows estava pendente. Não há prova de SC integrado nem hash do cache real antes/depois. | **Não aceito;** task 10. |
+| SC10 | `go test -race ./...` passa em Ubuntu/macOS/Windows; floor guard passa; nenhum teste escreve no cache real de usuário. | Ubuntu/macOS/Windows e floor guard passaram no run base atual. Não há prova de SC integrado nem hash do cache real antes/depois. | **Não aceito;** task 10. |
 
 A presença de um teste não equivale à sua execução nem à aprovação do SC. Os resultados acima nunca foram marcados como aceite de publicação versionada.
 
 ## Testes, setup e plataformas
 
 - Gira-G usa [`mise.toml`](https://github.com/EduardoShibukawa/gira-g/blob/main/mise.toml): Go 1.24.0, Bun 1.2.4; `mise run test` executa `go test -v -race ./...`, `mise run check` executa `go test -race ./...`, `mise run docs:build` constrói o site. Nenhum desses comandos foi executado localmente nesta sessão.
-- Gira-G CI tem jobs Ubuntu/macOS/Windows, validator e floor guard; gate-lint está configurado como warn-only/continue-on-error. O status atual ainda precisa de Windows em estado terminal.
+- Gira-G CI tem jobs Ubuntu/macOS/Windows, validator e floor guard; gate-lint está configurado como warn-only/continue-on-error. Todos os jobs base observados passaram; CI verde do código atual não equivale a SC1–SC10 aprovados.
 - G-Ingá `package.json` define testes Bun para validate/gate/eval/opencode-plugin e scripts de validação/typecheck; os jobs remotos existentes passaram no HEAD atual.
 - O endpoint de branch protection inacessível impede confirmar diretamente a lista exata de checks obrigatórios.
 
@@ -132,9 +132,8 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ### P2: bloqueia merge/aceitação final
 
-- **P2-1:** CI do HEAD Gira-G não finalizado no snapshot; aguardar Windows e registrar status terminal.
-- **P2-2:** confirmar required checks com permissão apropriada, pois API de proteção retornou 403.
-- **P2-3:** SC1–SC10 e verificação de cache real intacto seguem sem aceite; exigem testes no head integrado e nas plataformas aplicáveis.
+- **P2-1:** confirmar required checks com permissão apropriada, pois API de proteção retornou 403.
+- **P2-2:** SC1–SC10 e verificação de cache real intacto seguem sem aceite; exigem testes no head integrado e nas plataformas aplicáveis.
 
 ### P3: melhoria não bloqueante
 
@@ -149,7 +148,7 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 - [ ] Task 02 testa parsing NUL, environment Git, clone/fetch e falha fechada no Windows, reutilizando #28.
 - [ ] Grafo tasks 03–10 preservado; entradas, saídas e gates por tarefa claros.
 - [ ] Cada SC tem teste, plataforma, resultado, evidência e condição objetiva de aceite; nenhum SC aprovado por inferência.
-- [ ] CI de três SOs terminal e required checks confirmados antes do merge.
+- [ ] Required checks confirmados antes do merge; o CI de `main` atual está verde, mas a implementação futura precisará de sua própria evidência de plataforma.
 - [ ] Nenhuma implementação funcional/schema 2 foi alegada nesta fase.
 
 ## Primeiro passo operacional
