@@ -292,3 +292,64 @@ func TestCacheManager_ExportTree(t *testing.T) {
 		t.Errorf("exported pkg/service/main.go not found: %v", err)
 	}
 }
+
+
+func TestCacheManager_ListTreePreservesUnusualPathnames(t *testing.T) {
+	ctx := context.Background()
+	cacheDir := t.TempDir()
+	cm, err := gitcache.NewCacheManager(cacheDir)
+	if err != nil {
+		t.Fatalf("failed to init CacheManager: %v", err)
+	}
+
+	localRepoDir, _ := createTestLocalRepo(t)
+	oddNames := []string{"tab\tname.txt", "line\nbreak.txt", "back\\slash.txt"}
+	for _, name := range oddNames {
+		if err := os.WriteFile(filepath.Join(localRepoDir, name), []byte("unusual path\n"), 0644); err != nil {
+			t.Fatalf("write %q: %v", name, err)
+		}
+	}
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v, output: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	runGit("add", "--all")
+	runGit("commit", "-m", "Add unusual pathnames")
+	commitSHA := runGit("rev-parse", "HEAD")
+	repoDecl := manifest.RepositoryDeclaration{
+		ID: "odd-paths",
+		URL: "file://" + localRepoDir,
+		SHA: commitSHA,
+		PathScope: ".",
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("ensure repo: %v", err)
+	}
+	entries, err := cm.ListTree(ctx, repoDecl)
+	if err != nil {
+		t.Fatalf("ListTree: %v", err)
+	}
+	got := make(map[string]bool, len(entries))
+	for _, entry := range entries {
+		got[entry.Path] = true
+	}
+	for _, name := range oddNames {
+		if !got[name] {
+			t.Errorf("ListTree omitted or corrupted pathname %q; got %q", name, mapKeys(got))
+		}
+	}
+}
+
+func mapKeys(values map[string]bool) []string {
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	return keys
+}
