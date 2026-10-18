@@ -676,8 +676,14 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 	t.Setenv("GIT_DIR", "/definitely/not/a/repository")
 	t.Setenv("GIT_WORK_TREE", "/elsewhere")
 	t.Setenv("GIT_INDEX_FILE", "/tmp/redirected-index")
-	if got := gitToplevel(repoDir); got != repoDir {
-		t.Fatalf("gitToplevel() = %q, want %q despite redirecting env", got, repoDir)
+	// Git may report the physical path on platforms where the temp directory
+	// is reached through a symlink (for example, macOS /var -> /private/var).
+	wantRepoDir, err := filepath.EvalSymlinks(repoDir)
+	if err != nil {
+		t.Fatalf("resolve test repository path: %v", err)
+	}
+	if got := gitToplevel(repoDir); got != wantRepoDir {
+		t.Fatalf("gitToplevel() = %q, want %q despite redirecting env", got, wantRepoDir)
 	}
 	if gitDirty(repoDir) {
 		t.Fatal("gitDirty() reported clean repository as dirty due to redirected environment")
