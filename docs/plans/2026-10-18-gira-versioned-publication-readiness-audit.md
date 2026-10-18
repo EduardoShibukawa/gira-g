@@ -1,6 +1,6 @@
 # Gira-G / G-Ingá: auditoria de readiness para publicação versionada
 
-**Verificação remota:** 2026-10-18T14:16:31.300Z (UTC).  
+**Última atualização da evidência remota registrada:** 2026-10-18T14:25:24Z (UTC). A matriz e o veredito distinguem o estado de `main` dos checks desta PR documental.  
 **Escopo:** APIs do GitHub, branches, PRs, workflows e código/documentação dos dois repositórios.  
 **Limitação local:** o ambiente desta execução não contém checkout Git (`git rev-parse --show-toplevel` retorna “not a git repository”). Nenhum teste local foi executado; não é possível afirmar branch, HEAD ou limpeza do worktree na máquina do usuário.  
 **Alterações propostas neste branch:** correção documental do plano da task 00 e este relatório. Sem alterações de código/testes de produto, sem mudança de spec, sem aprovação de SC, sem merge/release.
@@ -30,6 +30,14 @@ No momento da consulta, as listas de PRs abertas estavam vazias nos dois reposit
 | [G-Ingá #105](https://github.com/EduardoShibukawa/G-Inga/pull/105) | merged; merge `860792469bf0c7b56d37d98c8dc07079ce816928` | Evidência documental. |
 | [G-Ingá #106](https://github.com/EduardoShibukawa/G-Inga/pull/106) | merged; merge `887f25adfe9c55ccd1d1b80082ac86ecd53d846d` | Contrato de compatibilidade fallback. |
 | [G-Ingá #108](https://github.com/EduardoShibukawa/G-Inga/pull/108) | merged; merge = HEAD atual | Validação estrita do fallback do evaluador. |
+
+## Branch de auditoria e CI da documentação
+
+- PR documental: [Gira-G #31](https://github.com/EduardoShibukawa/gira-g/pull/31), draft, aberta, sem merge; branch `audit/2026-10-18-versioned-publication-readiness`.
+- Snapshot em 2026-10-18T14:25:24Z: branch HEAD `0a364bc69143625ca5ab053d3962910be5af73ce`; o run de docs [39135912931](https://github.com/EduardoShibukawa/gira-g/actions/runs/39135912931) estava `in_progress` e CI [39135912845](https://github.com/EduardoShibukawa/gira-g/actions/runs/39135912845) estava `queued`.
+- Revisões anteriores desta mesma PR passaram: docs [39135819196](https://github.com/EduardoShibukawa/gira-g/actions/runs/39135819196) em sucesso para o commit `dab35757bd9c0df4e9f6d974044a3435138dc3e8`; CI [39135394343](https://github.com/EduardoShibukawa/gira-g/actions/runs/39135394343) em sucesso para `461d3ae73c5e5e16aaaac9842c3fee41895b5c19`. Estes sucessos não substituem o check do HEAD mais recente.
+- A PR contém apenas os dois arquivos preparatórios referidos no corpo: este relatório e a tarefa 00 corrigida para ser estritamente read-only. A tarefa 00 continua `todo`; seus ACs continuam `not run`.
+- Nenhum merge, alteração de `main`, mudança de código de produto, mudança de contrato ou suporte ao schema 2 foi realizado nesta fase.
 
 ## Evidências de código e contrato
 
