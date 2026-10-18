@@ -566,8 +566,37 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	}, stdout)
 }
 
+// gitCommandEnv removes repository-redirection variables inherited from the
+// caller. A hostile or stale GIT_DIR/GIT_WORK_TREE must not redirect local
+// repository probes away from the path explicitly supplied with -C.
+func gitCommandEnv() []string {
+	blocked := map[string]bool{
+		"GIT_DIR": true,
+		"GIT_WORK_TREE": true,
+		"GIT_COMMON_DIR": true,
+		"GIT_INDEX_FILE": true,
+		"GIT_OBJECT_DIRECTORY": true,
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+		"GIT_NAMESPACE": true,
+		"GIT_CONFIG": true,
+		"GIT_CONFIG_COUNT": true,
+		"GIT_CONFIG_PARAMETERS": true,
+	}
+	env := make([]string, 0, len(os.Environ()))
+	for _, item := range os.Environ() {
+		key, _, ok := strings.Cut(item, "=")
+		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+			continue
+		}
+		env = append(env, item)
+	}
+	return env
+}
+
 func gitToplevel(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--show-toplevel")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
@@ -575,7 +604,9 @@ func gitToplevel(dir string) string {
 }
 
 func gitDirty(toplevel string) bool {
-	out, err := exec.Command("git", "-C", toplevel, "status", "--porcelain").Output()
+	cmd := exec.Command("git", "-C", toplevel, "status", "--porcelain")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return false
 	}
