@@ -11,6 +11,10 @@ depends_on:
 
 # Gira-G: integrar init/index e semântica --output
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Integrar o store versionado à CLI sem publicar manifesto ou snapshots em estado parcial.
 
