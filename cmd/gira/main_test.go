@@ -651,3 +651,35 @@ repositories:
 		t.Errorf("expected ambiguity error when multiple systems exist in cache without gira.yaml, got: %v", err)
 	}
 }
+
+
+func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
+	repoDir := t.TempDir()
+	runGit := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		cmd.Env = append(os.Environ(), "GIT_DIR=/definitely/not/a/repository", "GIT_WORK_TREE=/elsewhere", "GIT_INDEX_FILE=/tmp/redirected-index")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v: %s", args, err, out)
+		}
+	}
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(repoDir, "README.md"), []byte("ok\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "README.md")
+	runGit("commit", "-m", "initial")
+
+	t.Setenv("GIT_DIR", "/definitely/not/a/repository")
+	t.Setenv("GIT_WORK_TREE", "/elsewhere")
+	t.Setenv("GIT_INDEX_FILE", "/tmp/redirected-index")
+	if got := gitToplevel(repoDir); got != repoDir {
+		t.Fatalf("gitToplevel() = %q, want %q despite redirecting env", got, repoDir)
+	}
+	if gitDirty(repoDir) {
+		t.Fatal("gitDirty() reported clean repository as dirty due to redirected environment")
+	}
+}
