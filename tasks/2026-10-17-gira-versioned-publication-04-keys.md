@@ -12,6 +12,10 @@ depends_on:
 
 # Gira-G: source_key, tool_id e source_identity
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Implementar identidade determinística de fonte e ferramenta, e propagar source_identity estritamente pelo modelo e todos os caminhos de cópia/serialização.
 
