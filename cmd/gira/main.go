@@ -64,7 +64,9 @@ func humanBanner(stderr io.Writer, mm *domain.MacroMap, checkout string, format 
 }
 
 func gitHead(dir string) string {
-	out, err := exec.Command("git", "-C", dir, "rev-parse", "HEAD").Output()
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "HEAD")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
 	if err != nil {
 		return ""
 	}
@@ -85,7 +87,9 @@ func excerptFor(repoRoot string, loc domain.Locator) (string, bool) {
 }
 
 func isGitRepo(dir string) bool {
-	return exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree").Run() == nil
+	cmd := exec.Command("git", "-C", dir, "rev-parse", "--is-inside-work-tree")
+	cmd.Env = gitCommandEnv()
+	return cmd.Run() == nil
 }
 
 func checkoutHasCommit(dir, sha string) bool {
