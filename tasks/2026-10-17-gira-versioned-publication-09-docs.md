@@ -10,6 +10,10 @@ depends_on:
 
 # Gira-G: documentação e consumidores
 
+## Routing and approvals
+
+- approved: implementação desta etapa autorizada pelo dono em 2026-10-18 sob o parent heavy; os critérios de aceitação continuam obrigatórios.
+
 ## Objective
 Atualizar consumidores e documentação para refletir o comportamento efetivamente implementado, sem prometer comportamento ainda não verificado.
 
