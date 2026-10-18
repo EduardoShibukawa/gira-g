@@ -12,6 +12,11 @@ import (
 // Hosts are the supported host families (spec A.3).
 var Hosts = []string{"claude", "cursor", "agents"}
 
+// InstallHint is printed to stderr after a successful install so agents
+// discover the MCP surface: above all get_doc, the single-service onboarding
+// doc that mirrors `gira doc`.
+const InstallHint = "hint: agents can fetch a single-service onboarding doc with the `get_doc` MCP tool ({service_id}) or `gira doc <service-id> [--format md|json|html]`."
+
 // Options configures an install.
 type Options struct {
 	// Root is the project directory the host files are written under.

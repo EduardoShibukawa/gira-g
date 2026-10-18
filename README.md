@@ -73,7 +73,7 @@ gira slice <node_id> [--tier summary|contracts|deep] [--view full|architecture|g
 gira explain [--node <id>] [--edge <id>] [--repo <dir>] [--source|--no-source] [--index <path>] [--format json|md]
 gira tour [--focus <node>] [--max-steps <n>] [--index <path>] [--format json|md]
 gira flows <entry> [--index <path>] [--format json|md]
-gira doc <service-id> --format md|json|html [--index <path>] [--checkout <dir>] [--budget <tokens>]
+gira doc <service-id> [--format md|json|html] [--index <path>] [--checkout <dir>] [--budget <tokens>]
 gira diff <index-a> <index-b> [--format json|md]
 gira locate <query> [--index <path>] [--format json|md]
 
