@@ -191,8 +191,9 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ### P0: bloqueia declarar readiness para iniciar implementação funcional
 
-**P0-1: fechar a task 00 no estado documental antes de prosseguir com ADR 0014.** A matriz remota agora cobre os caminhos de dados identificados e marca explicitamente como desconhecidas as ocorrências dinâmicas e o inventário global de goldens/docs que não puderam ser enumerados sem checkout. AC1–AC5 são avaliados separadamente acima; a limitação local não é apresentada como teste ou inspeção executada. Task 01 depende do status verificado da task 00.  
-**Ação restante:** preservar os desconhecidos como entradas para task 09 e qualquer grep local posterior; não ampliar a alegação de cobertura até haver checkout acessível.
+**P0 de auditoria documental: fechado no escopo verificável.** A task 00 tem a matriz remota e a auto-revisão AC1–AC5 registradas. As referências dinâmicas e a enumeração global de goldens/docs não observáveis sem checkout continuam explicitamente desconhecidas e passam para task 09, em vez de serem declaradas ausentes. Isso fecha a lacuna de planejamento da auditoria, não os gates técnicos do protocolo versionado.
+
+**Continua bloqueado declarar a publicação versionada funcionalmente aceita:** schema 2, source_identity, store/heads, reader anti-downgrade, locks, durabilidade e SC1–SC10 continuam sem implementação/evidência de aceitação. A próxima tarefa é ADR 0014; task 02 é o trabalho técnico paralelo permitido pela sua dependência própria, sempre em branch separado e reutilizando #28.
 
 ### P1: bloqueia tarefas específicas posteriores
 
@@ -213,8 +214,8 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ## Checklist de entrada
 
-- [ ] Task 00 AC1–AC5 evidenciados e inventário total de consumidores revisado.
-- [ ] Sem alegação sobre worktree/teste local que não tenha sido observado.
+- [x] Task 00 AC1–AC5 evidenciados; todos os consumidores identificados foram mapeados e os dinâmicos/globais desconhecidos foram marcados explicitamente.
+- [x] Sem alegação sobre worktree/teste local que não tenha sido observado.
 - [ ] ADR 0014 criado em `docs/adr` e consistente com a spec aprovada.
 - [ ] Task 02 testa parsing NUL, environment Git, clone/fetch e falha fechada no Windows, reutilizando #28.
 - [ ] Grafo tasks 03–10 preservado; entradas, saídas e gates por tarefa claros.
@@ -226,11 +227,11 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 **Próxima ordem:** (1) registrar formalmente o resultado e a auto-revisão AC1–AC5 na task 00; (2) após sua verificação formal, criar ADR 0014 em branch separado; (3) iniciar task 02 como trabalho técnico separado, reutilizando PR #28. Bases remotas desta retomada: Gira-G `6c66d938148de56d460389f183bf9900f482f50f`; G-Ingá `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; HEAD PR #31 `7be227755fba688fac2dae602c352bab67e75408`.
 
-1. Terminar inventário de leitores: `store.LoadFile/PublishFile`, CLI discovery e `--index`, MCP, skills install/check, bench, benchtest, bundle, eval/scorecard, fixtures, goldens e docs; mapear campos e erros em cada caminho.
-2. Cobrir o contrato legada v1 string, inteiro 2, schema desconhecido, estrutura inválida, arquivo ausente, mismatch de ferramenta e `source_identity` futuro separadamente.
-3. Reutilizar as correções e testes da #28; a auditoria não deve editar código nem testes de produto.
-4. Registrar testes existentes como existentes e resultados só quando houver execução por comando/plataforma/SHA. O experimento Windows mencionado é evidência externa ao HEAD, não aceite.
-5. Fechar AC1–AC5 e auto-revisar. Só então dar a task 01 como entrada para ADR 0014; avaliar task 02 conforme sua dependência explícita, sem reordenar silenciosamente o plano.
+1. Formalizar a transição da task 00 para `verified` usando a revisão documental como evidência e preservando os limites locais.
+2. Criar ADR 0014 em branch separado, consolidando apenas decisões já aprovadas e mantendo questões de plataforma/implementação visíveis.
+3. Iniciar task 02 em branch técnico separado: completar environment allowlist e provar a falha fechada/isolamento da extração Windows sem duplicar os fixes da #28.
+4. Deixar schema 2, source_identity, store versionado/heads, reader, locks, durabilidade e integração CLI para as tarefas 03–10, conforme as dependências existentes.
+5. Manter SC1–SC10 sem aceite até testes realmente executados no SHA integrado e nas plataformas exigidas.
 
 ## Veredito
 
