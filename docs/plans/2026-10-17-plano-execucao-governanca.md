@@ -2,10 +2,10 @@
 
 | Campo | Valor |
 |---|---|
-| Versão | 1.3 |
+| Versão | 1.4 |
 | Verificação | 2026-10-17 (-03) |
 | Código-base dos experimentos | `25882da` (sem mudanças de código de produto nas PRs documentais seguintes) |
-| Estado remoto consultado | `main` = `731cf4ba` depois da PR #21 |
+| Estado remoto consultado | `main` = `f3fd4a2` (merge da PR #23; SHA completo `f3fd4a21b28fb0e313ac3861dd276bd46c4932e6`) |
 | Status | **[PROPOSTA]**. N1–N4, D1–D9c e as decisões dos Gates 1–5 têm direções registradas. Spec continua `draft`; tarefa-mãe `todo`; implementação heavy não autorizada enquanto faltam auditorias e testes de compatibilidade. |
 | Registro de decisões | [decisão arquitetural](2026-10-17-decisao-arquitetural-publicacao-versionada.md) e [decisões dos gates técnicos](2026-10-17-gates-tecnicos-publicacao-versionada.md) |
 | Nota de rótulo | Nesses documentos, "Etapa 2" (e 2a–2i) denota a publicação versionada, agora posicionada como continuação do item 1 do plano aprovado (rótulo exemplo "Etapa 1.2"), conforme N1 (a). O item 2 aprovado (atualidade end-to-end e sync multi-repo) permanece reservado. A troca de rótulo nos documentos é um follow-up separado |
@@ -31,7 +31,7 @@ Este documento é a parte Gira-G de um plano de governança que cobria dois proj
 
 ## 1. Resumo executivo
 
-- `main` (`61b58c2`) está com o CI verde nos três sistemas operacionais [CI].
+- `origin/main` foi revalidada em `f3fd4a2` (merge da PR #23); este plano atualiza o retrato de estado para esse SHA. A conclusão de CI do SHA exato não foi reextraída nesta atualização documental [DESC].
 - A Etapa 2.0 (PR #17) está **[CONCLUÍDA]**.
 - As quatro pendências de endurecimento da Etapa 1.1 aparecem resolvidas no código [CÓDIGO]. A revisão adversarial de Etapa 1/1.1 não encontrou bloqueios materiais, e o aceite formal foi registrado na tarefa retroativa após PR #19.
 - A spec v2 foi localizada e é idêntica à mensagem em que o agente a apresentou (§2.1). Ela continua sendo **[PROPOSTA]**.
@@ -128,13 +128,13 @@ As propostas (spec v1/v2 e este plano) ficam abaixo de todas essas fontes até s
 
 | Item | Estado | Evidência |
 |---|---|---|
-| `origin/main` | `61b58c2` (merge da PR #17) | [CÓDIGO] `git ls-remote` |
-| `main` local | `0d5f248`, **2 commits atrás**; `M cmd/gira/main_test.go` (+12/−18) **não compila** | [TESTE EXECUTADO] `mise exec -- go vet ./cmd/gira/` → `cmd/gira/main_test.go:528:33: undefined: tmpHome`, exit 1. Causa: as linhas `t.Setenv` foram parar dentro do literal `composeContent` (diff contra `7054031`) |
-| PRs abertas | nenhuma | [CI] REST `pulls?state=open` |
+| `origin/main` | `f3fd4a2` (merge da PR #23, 2026-10-18T00:24:49Z) | [CÓDIGO] GitHub commit API, consultada em 2026-10-17 (-03) |
+| `main` local | Último inventário local informado: `0d5f248`, 29 commits atrás de `origin/main`; `cmd/gira/main_test.go` permanece modificado e preservado. Não foi aberto nem alterado por esta atualização documental. | [RELATO] inventário local de 2026-10-17; não revalidado neste ambiente |
+| PRs abertas | nenhuma no inventário recebido; busca de PRs abertas no GitHub nesta revisão retornou 0 resultados | [RELATO] inventário recebido + consulta atual de search; endpoint REST de listagem integral não foi reexecutado |
 | Issues abertas | #1 "Epic: Gira-G MVP Core & Context Harness" e #2 "RFC: Declare and fetch Target System repos", ambas de 13/out, sem atividade | [CI] |
-| Branches remotos | `fix/test-home-isolation` (0 à frente) e `work/ssd-04-doc-mcp-budget` (0 à frente), ambos já em `main` | [CI] compare |
+| Branches remotos | Inventário reportado: 97 branches remotas, 38 divergentes de `main`; 29 candidatas de archive/delete e 9 branches Claude a preservar. Nenhuma remoção foi autorizada nem executada. | [RELATO] `G-Inga-branch-review-2026-10-17.md`; este plano não replica a tabela completa de outro repositório |
 | Commits sem PR | `aa4e6fe` (M0–M6, 46 arquivos, +6157/−611), `4c2204c` (Etapa 1) e `0d5f248` (Etapa 1.1) não estão associados a nenhuma PR | [CI] `commits/<sha>/pulls` vazio |
-| Registros de tarefa | nenhum em `tasks/` para Etapa 1, 1.1, 2.0 ou M0–M6. Os últimos registros são de 16/out (single-service-docs e outros; parents `accepted`) | [CÓDIGO] `git ls-tree origin/main tasks/` |
+| Registros de tarefa | A Etapa 1/1.1 tem registro retroativo de aceite; a publicação versionada tem tarefa-mãe `todo`/`tier: heavy`; M0–M6 tem revisão retroativa separada em `todo`. | [CÓDIGO] árvore de `main` em `f3fd4a2`: `tasks/2026-10-17-etapa-1-1-1-retro-acceptance.md`, `tasks/2026-10-17-gira-versioned-publication.md`, `tasks/2026-10-17-m0-m6-retro-review.md` |
 
 ### 3.2 CI relevante
 
@@ -180,13 +180,13 @@ O relatório anterior sobre a máquina do dono (checkout local desatualizado com
 
 ### 3.5 Comportamento atual relevante para a Etapa 2
 
-Todas as linhas abaixo são [CÓDIGO] @61b58c2, salvo indicação.
+As referências históricas de comportamento foram coletadas inicialmente em `61b58c2`; os achados técnicos acrescentados abaixo foram revalidados em `origin/main` @`f3fd4a2` (2026-10-17, horário local -03), sem alteração de código.
 
 | Tema | Fato | Local |
 |---|---|---|
 | `index` com `--output` | `PublishFile(outputPath)`; gate contra o P anterior | `main.go:466-470`; `store.go:110` |
 | `index` sem `--output` | `~/.cache/gira/indexes/<sys>/macro-map.json` via `UserHomeDir`; `.gira/indexes` só se o home falhar | `main.go:473-484` |
-| Ordem do `init` | `writeLocalManifest` (552) **antes** de `indexManifest` (563): um build que falha deixa `gira.yaml` | `main.go:552,563` |
+| Ordem do `init` | Em `runInit`, cria ou re-pina `gira.yaml` antes de chamar `indexManifest`; uma falha posterior de build/gate pode deixar o manifesto criado/alterado. A ordem exigida em SC8 é manifesto por último. | `cmd/gira/main.go:541-566 @f3fd4a2` [CÓDIGO] |
 | Store e XDG | o store ignora `XDG_CACHE_HOME`; o `gitcache` respeita (`$XDG_CACHE_HOME/gira/repos`, senão `~/.cache/gira/repos`) | `main.go:474-476`; `gitcache/cache.go:31-45` |
 | Resolvedor | `--index` explícito; com `gira.yaml`, candidatos `<root>/.gira/indexes/<sys>`, `./.gira/indexes/<sys>`, `~/.cache/…/<sys>`; sem `gira.yaml`: `.gira/macro-map.json`, `.gira/index.json`, `macro-map.json`, `index.json`, e depois descoberta | `main.go:300-396` |
 | Erro de ambiguidade | `ambiguous index: multiple systems found …` **sem prefixo de código estável** | `main.go:393` |
@@ -194,7 +194,11 @@ Todas as linhas abaixo são [CÓDIGO] @61b58c2, salvo indicação.
 | Locator do manifesto | caminho como digitado (posicional/`--manifest`); absoluto quando vem de descoberta ou do `init`; `Locator{Path: manifestPath}` com `Repo` vazio | `main.go:423-426,541`; `pipeline.go:337-338,360,422-426`; `domain/models.go:56-62` |
 | Bytes do manifesto | `ParseFile` lê uma vez e não guarda os bytes; spans de linha via `yaml.Node` | `manifest.go:20-34,50,96,133,147-148` |
 | Identidade do binário | `version="0.1.0-dev"`, `commit="none"`, `date="unknown"`; goreleaser injeta `main.version`, `main.commit` e `main.date`; não há `ReadBuildInfo`; `DefaultExtractorVersion="1.0.0"` é constante | `main.go:128-130`; `.goreleaser.yaml:37-38`; `incremental.go:34-35` |
-| `gitcache` | `ls-tree -r --full-name` **sem `-z`**; `git show SHA:path`; sem isolamento de env; clone e fetch com a config do usuário | `cache.go:99,125,149,166-171,206` |
+| `gitcache.ListTree` | `git ls-tree -r --full-name` sem `-z`; saída dividida por newline e tab. Nomes com newline ou com C-quoting podem ser interpretados como caminhos diferentes do objeto Git. | `internal/gitcache/cache.go:146-194 @f3fd4a2` [CÓDIGO] |
+| `gitcache.ExportTree` | `git archive` alimenta `tar -x`; quando `archiveCmd.Run()` falha, a função retorna antes de `tarCmd.Wait()` e não remove explicitamente `targetDir`. Risco de recursos/processo não recolhidos ou extração parcial é [INF] até teste de falha injetada. | `internal/gitcache/cache.go:218-257 @f3fd4a2` [CÓDIGO]/[INF] |
+| Probes Git locais | `gitToplevel`, `gitHead` e `gitDirty` usam `exec.Command` herdando o ambiente; auditar `GIT_DIR`, `GIT_WORK_TREE`, `GIT_COMMON_DIR`, `GIT_INDEX_FILE`, `GIT_OBJECT_DIRECTORY` e `GIT_PREFIX`. Preservar configuração/credenciais de clone/fetch. | `cmd/gira/main.go:569-582 @f3fd4a2` [CÓDIGO]; impacto de redirecionamento [INF] |
+| `cloneMacroMap` | Copia campos de `MacroMap` manualmente e omite `UnresolvedRefs` e `Conflicts`; a futura `source_identity` também pode ser perdida se não for propagada explicitamente. | `internal/indexer/incremental.go:706-754 @f3fd4a2` [CÓDIGO]/[INF] |
+| `CanonicalJSON` | Recompõe a estrutura de serialização a partir de campos explícitos; a evolução do mapa exige que todo novo campo seja incluído e testado. | `internal/domain/models.go:286-347 @f3fd4a2` [CÓDIGO] |
 | ADR 0009 | delega ao `git` do host (credenciais) | `0009-…md:35-37` |
 | ADR 0007 | "Index Determinism: 100% identical index output across multiple runs from the same commit" | `0007-…md:55` |
 | Determinismo testado | `TestBuildIsDeterministicAcrossColdRuns` (uma fixture); `eval.Suite.Run` com 2 indexações frias | `indexer_test.go:49-50`; `eval.go:417-436` [TESTE DEFINIDO] |
@@ -482,8 +486,8 @@ flowchart TD
 | Objetivo | Bytes do índice independentes da gitconfig do usuário nas leituras; clone e fetch continuam com a config do usuário (ADR 0009:35-37) |
 | Escopo | `internal/gitcache/cache.go` e testes |
 | Pré-condições | Autorização própria. **Não depende** do ADR 0014 |
-| Tarefas | 1. `ls-tree -r -z --full-name` com parsing de NUL (`cache.go:149,166-171`); 2. Leitura por `cat-file blob <oid>` ou equivalente; 3. Env só para leituras: `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=<os.DevNull>`, `GIT_NO_REPLACE_OBJECTS=1`; 4. Testes |
-| Aceite | (i) Arquivo `proto/café.proto` e nome com tab indexam com `core.quotePath` padrão (era S5 da v1: falhava); (ii) `quotePath` true ou false → `sha256` do mapa idêntico; (iii) `refs/replace` no cache não muda os bytes; (iv) teste que confirma que clone e fetch ainda leem a config do usuário (por exemplo, `url.<x>.insteadOf` numa `GIT_CONFIG_GLOBAL` temporária); (v) passa nos 3 SO |
+| Tarefas | 1. `ls-tree -r -z --full-name` com parsing NUL-delimited; 2. Leitura por `cat-file blob <oid>` ou equivalente; 3. Isolar config de leituras (`GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=<os.DevNull>`, `GIT_NO_REPLACE_OBJECTS=1`) e sanear variáveis de redirecionamento de raiz/índice sem eliminar a configuração/credenciais de clone/fetch; 4. Regressões para nome não ASCII, tab e newline, mais `GIT_DIR`/`GIT_WORK_TREE`/`GIT_COMMON_DIR`/`GIT_INDEX_FILE`/`GIT_OBJECT_DIRECTORY`/`GIT_PREFIX`; 5. Injetar falha de `git archive`/`tar` e verificar wait/reap do filho e limpeza de extração parcial. |
+| Aceite | (i) arquivo não ASCII e nomes com tab/newline são enumerados e lidos sem perda por parser NUL-delimited; (ii) `quotePath` true ou false → `sha256` do mapa idêntico; (iii) `refs/replace` no cache não muda os bytes; (iv) variáveis de redirecionamento não sequestram probes/`init`; (v) clone e fetch ainda respeitam a config legítima do usuário (por exemplo, `url.<x>.insteadOf` numa `GIT_CONFIG_GLOBAL` temporária); (vi) falhas de archive/extract não deixam a extração parcial ser considerada sucesso nem recursos filhos sem recolha; (vii) passa nos 3 SO. O limite Win32 para materializar certos nomes, incluindo tab, permanece um caso explícito de erro e não é declarado resolvido pelo CI experimental. |
 | Comandos | `mise exec -- go test -count=1 -race ./internal/gitcache/... ./internal/indexer/...`; `mise run check` |
 | Riscos | `os.DevNull` no Windows (`NUL`) com o `git` do runner [DESC] |
 
@@ -549,7 +553,7 @@ flowchart TD
 | Objetivo | Integrar em `runIndex` e `runInit` |
 | Escopo | `cmd/gira/main.go` (`runIndex` 402-443, `runInit` 495-567, `indexManifest` 448-485); `init_test.go`; `main_test.go`; `e2e_test.go` |
 | Pré-condições | 2e, 2f, 2g; D1, D6, D8 |
-| Aceite | (i) Primeira inicialização com build falhando → `gira.yaml` **não** criado (hoje é criado, `main.go:552`); (ii) `init --force` rejeitado pelo gate → `gira.yaml`, head e P byte a byte inalterados; (iii) `init --output P` → versão canônica e P com o mesmo `sha256`, e o resolvedor encontra a versão sem `--index`; (iv) `index --output P` → listagem do store idêntica antes e depois; (v) sync não confirmado no Unix → manifesto não gravado, exit ≠ 0, e nova execução grava; (vi) manifesto alterado por fora entre a leitura e o rename → conflito; (vii) sobras `.tmp` e órfãs → tratadas conforme o contrato do ADR |
+| Aceite | (i) Primeira inicialização com build/gate falhando → `gira.yaml` não criado; (ii) `init --force` rejeitado pelo gate/build → manifesto existente, head e P ficam byte a byte inalterados; (iii) só depois de build, gate e publicação canônica bem-sucedidos o manifesto é confirmado por último, sem publicar estado parcial; (iv) `init --output P` → versão canônica e P com o mesmo `sha256`; (v) `index --output P` → store intacto; (vi) sync não confirmado no Unix → manifesto não gravado, exit ≠ 0 e nova execução grava; (vii) manifesto alterado por fora entre leitura e rename → conflito; (viii) sobras `.tmp`, extração parcial e órfãs são tratadas conforme o ADR. A sequência atual em `main.go:541-566 @f3fd4a2` ainda grava/repina antes do build e não satisfaz (i)–(iii) [CÓDIGO]. |
 | Comandos | `mise exec -- go test -count=1 -race ./cmd/gira/...`; `mise run check` |
 
 ### 2i. Documentação e consumidores
@@ -589,7 +593,7 @@ Todas estas operações exigem autorização explícita. Não são decisões té
 | `serve mcp` com mapa em memória | média | médio | documentar; reinício | — | futuro |
 | `nudge` engole erros | média | baixo | registrar | — | 2g |
 | Linhagem nova sem base de gate | média | médio | mensagem "baseline: none" | 2f | 2f |
-| Commits sem PR em `main` | ocorreu | médio | O6 aplicada (proteção de branch, 2026-10-17); N2 (b) em curso; M0–M6 em frente separada | você | feito / em curso |
+| Commits sem PR em `main` | ocorreu | médio | O6 aplicada; N2 (b) concluída e aceite da Etapa 1/1.1 registrado; M0–M6 permanece em frente retroativa separada | você | concluído / M0–M6 em aberto |
 | Documentação diverge do código hoje | ocorreu | médio: usuários seguem o README errado | 2i, ou correção antecipada se você quiser | — | 2i |
 
 ---
@@ -681,7 +685,7 @@ Kit inicial de Sources do projeto (fora do repositório), com hashes no §2.2. R
 | Próxima ação | Quem |
 |---|---|
 | N1/N2 respondidas; aceite da Etapa 1/1.1 registrado; direções N3/N4/D1–D9c e escolhas dos Gates 1–5 documentadas | feito |
-| Completar a auditoria de consumidores/schema, regressões de compatibilidade e a evidência Windows de `git archive | tar -x` com tab; depois solicitar decisão separada de autorização heavy | agente; autorização só do dono |
+| Achados de `cloneMacroMap`/`CanonicalJSON`, parsing de `git ls-tree`, limpeza de `ExportTree`, variáveis `GIT_*`, ordem de escrita do manifesto e execução Windows 39084138230 foram registrados na spec v1.3 e neste plano v1.4; nenhuma correção de produção ocorreu | documentação concluída; gates técnicos permanecem abertos |
 
 ---
 
@@ -729,3 +733,4 @@ No repositório G-Ingá.
 - 1.0 (2026-10-17): versão inicial, versionada a partir do plano do workspace de Work. Parte G-Ingá e estado de máquina removidos.
 - 1.1 (2026-10-17): N1 (a), N2 (b) e O6 registradas como decididas/aplicadas; intervalo da revisão do §10 corrigido; M0–M6 aberta como frente separada.
 - 1.2 (2026-10-17): corrige status de aceite formal da Etapa 1/1.1; registra direções arquiteturais e aponta para os gates de aprovação final.
+- 1.4 (2026-10-17): atualiza o retrato de `origin/main` para `f3fd4a2` e formaliza na spec/plano os achados de propagação do schema, parsing de caminhos Git, cleanup de `ExportTree`, ambiente `GIT_*`, ordem de escrita de `gira.yaml` e a evidência CI do limite de extração no Windows. Só documentação; spec `draft`, parent `todo` e implementação heavy continuam bloqueados.
