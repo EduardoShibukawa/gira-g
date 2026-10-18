@@ -10,6 +10,8 @@ spec: 2026-10-17-gira-versioned-publication@1
 
 ## Routing and approvals
 
+- confirmed: heavy by owner (2026-10-18, explicit instruction in this session to unblock the heavy work, approve the spec for implementation, and create the implementation tasks).
+
 - tier: heavy (H1/H3/H5 conforme avaliação original). Confirmado pelo dono em 2026-10-18, por instrução explícita nesta sessão; a spec v1 está aprovada para implementação em etapas. Isso autoriza criar/iniciar os children, não aceitar os gates nem mesclar implementação sem evidência.
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
@@ -61,7 +63,7 @@ Pré-condições, todas decisões do dono:
 2. N2 (aceite da Etapa 1/1.1 em `61b58c2`): decidida (b); revisão adversarial concluída sem bloqueios materiais; aceite formal registrado em `2026-10-17-etapa-1-1-1-retro-acceptance` (`accepted`), merge da PR #19;
 3. N3, N4, D1–D9c e decisões dos Gates 1–5: direção escolhida e registrada; a auditoria dos consumidores/schema, testes de caminhos/ambiente Git, regressões de `tool_id`, teste de `git archive | tar -x` com tab no Windows e validação por plataforma ainda precisam de evidência. Gate 5 é critério obrigatório de aceitação da implementação após autorização, não pré-condição para começar a primeira tarefa autorizada.
 
-Children previstos, em ordem de dependência:
+Children criados nesta branch, em ordem de dependência:
 1. `2026-10-17-gira-versioned-publication-01-adr-0014`: ADR 0014 consolidando as decisões aprovadas (2a).
 2. `2026-10-17-gira-versioned-publication-02-gitcache-env`: leituras Git independentes do ambiente (2b). Pode sair como tarefa `standard` independente, antes da aprovação do spec, se o dono autorizar; nesse caso sai deste parent.
 3. `2026-10-17-gira-versioned-publication-03-locator`: locator normalizado (2c), depende de 01.
@@ -71,7 +73,7 @@ Children previstos, em ordem de dependência:
 7. `2026-10-17-gira-versioned-publication-07-resolver`: resolvedor (2g), depende de 06.
 8. `2026-10-17-gira-versioned-publication-08-cli`: `runIndex`/`runInit` (2h), depende de 05 e 07.
 9. `2026-10-17-gira-versioned-publication-09-docs`: documentação e consumidores (2i), depende de 08.
-10. Integrado: SC1–SC10, R1, V1 e revisão.
+10. [validação integrada](2026-10-17-gira-versioned-publication-10-integration.md): SC1–SC10, R1, V1 e revisão.
 
 Uma etapa concluída não autoriza a seguinte.
 
