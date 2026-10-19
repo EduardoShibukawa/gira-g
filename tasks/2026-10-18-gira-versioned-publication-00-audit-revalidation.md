@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: completed
+status: active
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -40,12 +40,12 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Remote Gira-G/G-Ingá SHAs, PR #31 HEAD/base and CI links recorded. Local branch/HEAD/worktree was not accessible and is explicitly described as unobserved. |
-| AC2 | Consumer matrix includes all current fields plus proposed source_identity, the identified producer/copy/serialization/store/reader paths, current behavior and downgrade risks. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Report maps all eight current fields, CLI/MCP/skills/eval/scorecard/slices/bench/bundle/G-Ingá and marks unenumerated dynamic consumers/global fixtures as unknown rather than absent. Global local grep remains unavailable. |
-| AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Code/tests read at G-Ingá main e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0; strict string "1.0.0" validation and integer schema 2 rejection confirmed. CI run [39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) passed test and pre-commit/validation jobs. |
-| AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Experiment [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) records git archive exit 128 for a tab-containing path and tar exit 2. The report specifies an error/cleanup/fail-closed regression through callers; this task did not rerun that experiment. |
-| AC5 | Report is updated and self-reviewed; no product code changed. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | Report matrix/links/statuses self-reviewed; PR #31 is documentation-only and no product source, test, fixture, spec or decision file was changed. |
-| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | pass | 4163a9623cad03964bd0a8f9f64d3eba90b74498 | The matrix distinguishes observed source, existing tests, actual CI evidence and unrun future SC tests; unknown consumers and local execution limits remain explicit. No SC was marked accepted. |
+| AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | Remote Gira-G/G-Ingá SHAs and PR #31 state are recorded. Local branch/HEAD/worktree remains unobservable and is not represented as inspected. |
+| AC2 | Consumer matrix includes all current fields plus proposed source_identity, the identified producer/copy/serialization/store/reader paths, current behavior and downgrade risks. | blocked | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | Direct and indirect known consumers, scorecard, Layer 0, fixtures/goldens and current/historical docs are crosswalked; the full static symbol search is not reproducible because API code-search returned 0 with incomplete_results=true and no checkout exists for git grep. Unknown dynamic/reflection consumers cannot be excluded. Per owner instruction, keep this task open until that evidence gap is resolved. |
+| AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | Source/tests at G-Ingá main e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0 confirm strict string "1.0.0", rejection of integer 2 and malformed/invalid shapes. CI run [39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) passed test and pre-commit/validation. |
+| AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | Experiment [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) recorded archive exit 128 for a tab-containing path and tar exit 2. Cleanup/fail-closed regression is proposed, not claimed executed on current main. |
+| AC5 | Report is updated and self-reviewed; no product code changed. | pass | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | Report-only work; no product source, tests, fixtures, spec or ADR changed. CI for this exact report commit must be checked before treating the documentation update as validated. |
+| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | blocked | 44a7bb3f3f16db2cb5459f852ddaed1000e18fbb | AC2 remains blocked by the unavailable repository-wide source search/local checkout, so task-level self-review cannot be closed yet. |
 
 ## Plan
 
@@ -58,19 +58,17 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 7. Auto-revisar AC1–AC5, classificar gaps e propor testes quando faltarem. Esta tarefa é read-only: não implementar comportamento, não adicionar/alterar testes de produto, não alterar código de produto, não mudar a spec/decisões nem marcar a tarefa como concluída enquanto qualquer critério permanecer sem evidência.
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: completed; AC1–AC5 and V1 recorded against the report commit
-- next: transition to verified with verified_at set to the evidence/report commit, then start task 01/ADR 0014 and task 02 in dependency-respecting branches
+- as of: 2026-10-19
+- status: active; task remains open because AC2 and V1 are blocked
+- next: obtain a checkout or complete repository-wide symbol search to close AC2; do not start task 01/ADR 0014 until task 00 is verified. Task 02 may proceed only within its independent, explicitly stated dependency on remote audit revalidation and merged PR #28.
 - revalidate: report is remote-only; no checkout or local command is claimed
 
-## Remote revalidation update (2026-10-18)
+## Remote revalidation update (2026-10-19)
 
-The earlier progress note below the initial checkpoint described the then-current partial state and is superseded by the expanded matrix in [the readiness audit](../docs/plans/2026-10-18-gira-versioned-publication-readiness-audit.md).
-
-- Report commit providing the evidence: `4163a9623cad03964bd0a8f9f64d3eba90b74498`.
+- Current audit report commit: `44a7bb3f3f16db2cb5459f852ddaed1000e18fbb`; it inventories the full Git tree and adds classifications for the Layer 0 adapter, scorecard artefact, skills and versioned docs.
 - Gira-G `main`: `6c66d938148de56d460389f183bf9900f482f50f`; G-Ingá `main`: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`.
-- PR #31 HEAD at the start of this revalidation: `7be227755fba688fac2dae602c352bab67e75408`. Its CI run [39136093491](https://github.com/EduardoShibukawa/gira-g/actions/runs/39136093491) passed all test OS jobs, validator and floor guard; docs run [39136093575](https://github.com/EduardoShibukawa/gira-g/actions/runs/39136093575) passed docs build. These runs precede the report-only matrix update commit and are not evidence for future product code.
-- AC1–AC5 and V1 are now recorded as `pass` for the **read-only audit task**, with explicit limits: no local checkout/tests, no exact required-check rules because branch-protection access returned HTTP 403, and unknown dynamic/global consumers that could not be listed through the available code-search interface.
-- This verification does not accept SC1–SC10 or assert schema-2 support. It records the current contract and makes the remaining implementation gates actionable.
-- Task 02 must reuse the merged PR #28 changes and separately close `GIT_PREFIX`/environment coverage and Git-for-Windows partial-extraction behavior. ADR 0014 must document already approved decisions without inventing new approvals.
+- CI of the previous audit HEAD `94dbe2920b9bb5efe457813064d81bbf95f6209c` completed successfully in runs [39146546866](https://github.com/EduardoShibukawa/gira-g/actions/runs/39146546866) and [39146546868](https://github.com/EduardoShibukawa/gira-g/actions/runs/39146546868). CI for the newer report commit must be rechecked before its documentation changes are treated as validated.
+- AC2 remains `blocked`: the static matrix is substantially expanded, but GitHub code-search was incomplete and a local checkout is not available to run `git grep`. No absence claim is made for possible dynamic/reflection consumers.
+- Consequently task 00 remains `active`, not `verified`; task 01/ADR 0014 remains gated on task 00. No SC1–SC10 acceptance is claimed.
+- Task 02 can continue only in its own branch, reusing merged PR #28 and limiting scope to deterministic Git reads, environment isolation and fail-closed archive handling. No schema 2 or versioned store implementation is in scope.
 
