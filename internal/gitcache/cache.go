@@ -351,8 +351,8 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
-	// Preserve the legacy exported-root permissions while keeping partial trees
-	// private (MkdirTemp creates mode 0700) until publication is certain.
+	// MkdirTemp keeps the staging root private (0700). Restore the exported
+	// root's historical permissions only once the complete tree is ready.
 	if err := os.Chmod(stageDir, 0755); err != nil {
 		return fmt.Errorf("failed to set exported tree permissions: %w", err)
 	}
@@ -365,6 +365,9 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		if targetExists {
 			if restoreErr := os.Mkdir(cleanTarget, targetMode); restoreErr != nil {
 				return fmt.Errorf("publish failed (%v) and empty export target could not be restored: %w", err, restoreErr)
+			}
+			if chmodErr := os.Chmod(cleanTarget, targetMode); chmodErr != nil {
+				return fmt.Errorf("publish failed (%v) and restored target permissions could not be set: %w", err, chmodErr)
 			}
 		}
 		return fmt.Errorf("failed to publish extracted tree at %q: %w", cleanTarget, err)
