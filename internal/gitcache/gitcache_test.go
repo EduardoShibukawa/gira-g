@@ -396,10 +396,10 @@ func TestCacheManager_ListTreeAndReadFileIgnoreReplaceRefs(t *testing.T) {
 		t.Fatal(err)
 	}
 	localRepoDir, pinnedSHA := createTestLocalRepo(t)
-	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("# replaced tree\\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("# replaced tree\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(localRepoDir, "replacement-only.txt"), []byte("replacement\\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(localRepoDir, "replacement-only.txt"), []byte("replacement\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	runLocalGit := func(args ...string) string {
@@ -482,7 +482,7 @@ func TestCacheManager_ListTreeAndReadFileIgnoreReplaceRefs(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile with refs/replace present: %v", err)
 	}
-	if string(contents) != "# Hello World\\n" {
+	if string(contents) != "# Hello World\n" {
 		t.Fatalf("ReadFile followed refs/replace: got %q", contents)
 	}
 }
@@ -526,7 +526,7 @@ func TestCacheManager_ReadsIgnoreGitRedirectEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile failed under repository-redirection environment variables: %v", err)
 	}
-	if string(contents) != "# Hello World\\n" {
+	if string(contents) != "# Hello World\n" {
 		t.Fatalf("ReadFile contents = %q, want original pinned contents", contents)
 	}
 }
@@ -556,7 +556,7 @@ func TestCacheManager_ExportTreeDoesNotPublishPartialOutputWhenArchiveFails(t *t
 
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
-	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\\ncat \"$GIRA_ARCHIVE_FIXTURE\"\\nexit 23\\n"), 0755); err != nil {
+	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\ncat \"$GIRA_ARCHIVE_FIXTURE\"\nexit 23\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("GIRA_ARCHIVE_FIXTURE", archivePath)
@@ -613,8 +613,8 @@ func TestCacheManager_ExportTreeFailsClosedForUnmaterializablePath(t *testing.T)
 	if out, err := initCmd.CombinedOutput(); err != nil {
 		t.Fatalf("git init --bare: %v: %s", err, out)
 	}
-	blobSHA := runGit([]byte("contents\\n"), "hash-object", "-w", "--stdin")
-	treeInput := []byte(fmt.Sprintf("100644 blob %s\\tbad\\tname.txt\\x00", blobSHA))
+	blobSHA := runGit([]byte("contents\n"), "hash-object", "-w", "--stdin")
+	treeInput := []byte(fmt.Sprintf("100644 blob %s\tbad\tname.txt\x00", blobSHA))
 	treeSHA := runGit(treeInput, "mktree", "-z")
 	commitSHA := runGit(nil, "commit-tree", treeSHA, "-m", "tab path tree")
 	runGit(nil, "update-ref", "refs/heads/main", commitSHA)
