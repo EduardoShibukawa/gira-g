@@ -2,6 +2,7 @@ package extractors
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -425,7 +426,7 @@ func TestPipeline_ApplyOverrides_Metadata(t *testing.T) {
 		},
 	}
 
-	err := ApplyOverrides(mm, overrides, "")
+	err := ApplyOverrides(mm, overrides, "gira.yaml")
 	if err != nil {
 		t.Fatalf("ApplyOverrides failed: %v", err)
 	}
@@ -479,6 +480,16 @@ func TestPipeline_ApplyOverrides_NilAndEdgeCases(t *testing.T) {
 	mm := domain.NewMacroMap("test-sys")
 	if err := ApplyOverrides(mm, nil, ""); err != nil {
 		t.Errorf("expected nil error for nil overrides, got %v", err)
+	}
+
+	// Active overrides with empty manifest locator must return ErrManifestPathRequired
+	activeOverrides := &manifest.OverridesDeclaration{
+		Relationships: []manifest.RelationshipOverride{
+			{SourceID: "s1", TargetID: "s2", Verb: "consumes"},
+		},
+	}
+	if err := ApplyOverrides(mm, activeOverrides, ""); !errors.Is(err, manifest.ErrManifestPathRequired) {
+		t.Errorf("expected ErrManifestPathRequired, got %v", err)
 	}
 }
 

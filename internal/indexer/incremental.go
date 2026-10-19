@@ -594,6 +594,15 @@ func BuildIncremental(
 		return nil, nil, fmt.Errorf("cache manager cannot be nil")
 	}
 
+	var overrideLocator string
+	if m.HasDeclarativeOverrides() {
+		var err error
+		overrideLocator, err = manifest.ResolveManifestLocator(opts.ManifestPath)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	commitTimes := make(map[string]time.Time, len(m.Repositories))
 	var latest time.Time
 	var targetFiles []extractors.TargetFile
@@ -680,7 +689,7 @@ func BuildIncremental(
 			return nil, nil, fmt.Errorf("failed to extract files: %w", err)
 		}
 		if m.Overrides != nil {
-			if err := pipe.ApplyOverrides(mm, m.Overrides, opts.ManifestPath); err != nil {
+			if err := pipe.ApplyOverrides(mm, m.Overrides, overrideLocator); err != nil {
 				return nil, nil, fmt.Errorf("failed to apply overrides: %w", err)
 			}
 		}

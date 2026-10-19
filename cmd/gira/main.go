@@ -618,32 +618,7 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 // caller. A hostile or stale GIT_DIR/GIT_WORK_TREE must not redirect local
 // repository probes away from the path explicitly supplied with -C.
 func gitCommandEnv() []string {
-	blocked := map[string]bool{
-		"GIT_DIR": true,
-		"GIT_WORK_TREE": true,
-		"GIT_COMMON_DIR": true,
-		"GIT_INDEX_FILE": true,
-		"GIT_OBJECT_DIRECTORY": true,
-		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
-		"GIT_NAMESPACE": true,
-		"GIT_PREFIX": true,
-		"GIT_CEILING_DIRECTORIES": true,
-		"GIT_NO_REPLACE_OBJECTS": true,
-		"GIT_REPLACE_REF_BASE": true,
-		"GIT_CONFIG": true,
-	}
-	env := make([]string, 0, len(os.Environ()))
-	for _, item := range os.Environ() {
-		key, _, ok := strings.Cut(item, "=")
-		// Drop every Git config injection variable, not just the currently
-		// known subset. This keeps future GIT_CONFIG_* controls from becoming
-		// an unreviewed repository-discovery override.
-		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_") {
-			continue
-		}
-		env = append(env, item)
-	}
-	return env
+	return manifest.GitCommandEnv()
 }
 
 func gitToplevel(dir string) string {
