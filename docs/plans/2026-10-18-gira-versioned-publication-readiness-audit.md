@@ -237,7 +237,7 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ## Checklist de entrada
 
-- [x] Task 00 AC1–AC5 evidenciados; todos os consumidores identificados foram mapeados e os dinâmicos/globais desconhecidos foram marcados explicitamente.
+- [ ] Task 00 AC1–AC5 plenamente evidenciados; AC2/V1 continuam bloqueados enquanto a busca global de referências dinâmicas/reflexivas não tiver evidência reproduzível.
 - [x] Sem alegação sobre worktree/teste local que não tenha sido observado.
 - [ ] ADR 0014 criado em `docs/adr` e consistente com a spec aprovada.
 - [ ] Task 02 testa parsing NUL, environment Git, clone/fetch e falha fechada no Windows, reutilizando #28.
