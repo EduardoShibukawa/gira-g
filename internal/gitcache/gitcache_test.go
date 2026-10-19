@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -382,5 +383,225 @@ func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
 	err = cm.ExportTree(context.Background(), repoDecl, filepath.Join(t.TempDir(), "target"))
 	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
 		t.Fatalf("ExportTree error = %v, want git archive failure", err)
+	}
+}
+
+
+func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, initialSHA := createTestLocalRepo(t)
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("pinned README\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "café.proto"), []byte("syntax = \"proto3\";\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "--all")
+	runGit("commit", "-m", "second pinned version")
+	pinnedSHA := runGit("rev-parse", "HEAD")
+
+	repoDecl := manifest.RepositoryDeclaration{
+		ID: "pinned-source",
+		URL: "file://" + filepath.ToSlash(localRepoDir),
+		SHA: pinnedSHA,
+		PathScope: ".",
+	}
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("EnsureRepo: %v", err)
+	}
+	cacheDir := cm.RepoDir(repoDecl)
+	replace := exec.Command("git", "--git-dir="+cacheDir, "replace", pinnedSHA, initialSHA)
+	if out, err := replace.CombinedOutput(); err != nil {
+		t.Fatalf("create replace ref: %v: %s", err, out)
+	}
+
+	configTrue := filepath.Join(t.TempDir(), "quote-true.gitconfig")
+	configFalse := filepath.Join(t.TempDir(), "quote-false.gitconfig")
+	if err := os.WriteFile(configTrue, []byte("[core]\n\tquotePath = true\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configFalse, []byte("[core]\n\tquotePath = false\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	type snapshot struct {
+		entries []gitcache.FileEntry
+		readme string
+		proto string
+		exportedReadme string
+		exportedProto string
+	}
+	readSnapshot := func(configPath, suffix string) snapshot {
+		t.Helper()
+		t.Setenv("GIT_CONFIG_GLOBAL", configPath)
+		t.Setenv("GIT_CONFIG_NOSYSTEM", "0")
+		t.Setenv("GIT_NO_REPLACE_OBJECTS", "0")
+		t.Setenv("GIT_PREFIX", "redirected/")
+		t.Setenv("GIT_CEILING_DIRECTORIES", localRepoDir)
+
+		entries, err := cm.ListTree(ctx, repoDecl)
+		if err != nil {
+			t.Fatalf("ListTree with config %q: %v", configPath, err)
+		}
+		foundProto := false
+		for _, entry := range entries {
+			if entry.Path == "café.proto" {
+				foundProto = true
+			}
+		}
+		if !foundProto {
+			t.Fatalf("pinned tree omitted café.proto with replace ref present: %#v", entries)
+		}
+		readme, err := cm.ReadFile(ctx, repoDecl, "README.md")
+		if err != nil {
+			t.Fatalf("ReadFile README with config %q: %v", configPath, err)
+		}
+		proto, err := cm.ReadFile(ctx, repoDecl, "café.proto")
+		if err != nil {
+			t.Fatalf("ReadFile non-ASCII path with config %q: %v", configPath, err)
+		}
+		if string(readme) != "pinned README\n" {
+			t.Fatalf("ReadFile used replacement tree: got %q", readme)
+		}
+
+		exportDir := filepath.Join(t.TempDir(), "export-"+suffix)
+		if err := cm.ExportTree(ctx, repoDecl, exportDir); err != nil {
+			t.Fatalf("ExportTree with config %q: %v", configPath, err)
+		}
+		exportedReadme, err := os.ReadFile(filepath.Join(exportDir, "README.md"))
+		if err != nil {
+			t.Fatalf("read exported README: %v", err)
+		}
+		exportedProto, err := os.ReadFile(filepath.Join(exportDir, "café.proto"))
+		if err != nil {
+			t.Fatalf("read exported café.proto: %v", err)
+		}
+		return snapshot{entries: entries, readme: string(readme), proto: string(proto), exportedReadme: string(exportedReadme), exportedProto: string(exportedProto)}
+	}
+	gotTrue := readSnapshot(configTrue, "true")
+	gotFalse := readSnapshot(configFalse, "false")
+	if !reflect.DeepEqual(gotTrue, gotFalse) {
+		t.Fatalf("pinned reads changed with global config\nquotePath=true: %#v\nquotePath=false: %#v", gotTrue, gotFalse)
+	}
+	if gotTrue.proto != "syntax = \"proto3\";\n" || gotTrue.exportedProto != gotTrue.proto || gotTrue.exportedReadme != gotTrue.readme {
+		t.Fatalf("pinned file reads/export differ: %#v", gotTrue)
+	}
+}
+
+func TestCacheManager_PreservesUserURLRewriteForCloneAndFetch(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, initialSHA := createTestLocalRepo(t)
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	fileURL := "file://" + filepath.ToSlash(localRepoDir)
+	if runtime.GOOS == "windows" {
+		fileURL = "file:///" + filepath.ToSlash(localRepoDir)
+	}
+	configPath := filepath.Join(t.TempDir(), "user.gitconfig")
+	config := "[url \"" + fileURL + "\"]\n\tinsteadOf = https://example.invalid/gira/repo\n"
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIT_CONFIG_GLOBAL", configPath)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+	repoDecl := manifest.RepositoryDeclaration{ID: "rewrite", URL: "https://example.invalid/gira/repo", SHA: initialSHA}
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("clone should respect user url.insteadOf config: %v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(localRepoDir, "new-after-clone.txt"), []byte("fetch proof\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "--all")
+	runGit("commit", "-m", "new commit for fetch")
+	fetchedSHA := runGit("rev-parse", "HEAD")
+	repoDecl.SHA = fetchedSHA
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("fetch should respect user url.insteadOf config: %v", err)
+	}
+	if !cm.HasCommit(ctx, cm.RepoDir(repoDecl), fetchedSHA) {
+		t.Fatalf("fetched pinned commit %s is not present in cache", fetchedSHA)
+	}
+}
+
+func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Git for Windows path-materialization behavior is the subject of this test")
+	}
+	repoDecl := manifest.RepositoryDeclaration{ID: "windows-tab-path"}
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoDir := cm.RepoDir(repoDecl)
+	if err := os.MkdirAll(repoDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	runGit := func(input string, args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"--git-dir=" + repoDir}, args...)...)
+		cmd.Env = gitcache.GitEnvForRead()
+		cmd.Stdin = strings.NewReader(input)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	runGit("", "init", "--bare")
+	runGit("", "config", "user.name", "Test Runner")
+	runGit("", "config", "user.email", "test@example.com")
+	goodBlob := runGit("good file\n", "hash-object", "-w", "--stdin")
+	badBlob := runGit("unmaterializable file\n", "hash-object", "-w", "--stdin")
+	treeInput := "100644 blob " + goodBlob + "\ta.txt\x00100644 blob " + badBlob + "\tb\tbad.txt\x00"
+	treeSHA := runGit(treeInput, "mktree", "-z")
+	commitSHA := runGit("", "commit-tree", treeSHA, "-m", "tab path fixture")
+	repoDecl.SHA = commitSHA
+
+	parent := t.TempDir()
+	targetDir := filepath.Join(parent, "export")
+	err = cm.ExportTree(context.Background(), repoDecl, targetDir)
+	if err == nil {
+		t.Fatal("ExportTree unexpectedly accepted a tree with a tab pathname")
+	}
+	if !strings.Contains(err.Error(), "archive failed") && !strings.Contains(err.Error(), "tar extract failed") {
+		t.Fatalf("ExportTree error is not diagnostic: %v", err)
+	}
+	if _, statErr := os.Stat(targetDir); !os.IsNotExist(statErr) {
+		t.Fatalf("failed export left a target directory / partial tree: stat error = %v", statErr)
+	}
+	leftovers, readErr := os.ReadDir(parent)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if len(leftovers) != 0 {
+		t.Fatalf("failed export left staging artifacts: %#v", leftovers)
 	}
 }

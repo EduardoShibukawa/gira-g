@@ -125,7 +125,9 @@ func StampEvidence(mm *domain.MacroMap, commitTimes map[string]time.Time, fallba
 }
 
 func commitTime(ctx context.Context, repoDir, sha string) (time.Time, error) {
-	out, err := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "show", "-s", "--format=%cI", sha).Output()
+	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "show", "-s", "--format=%cI", sha)
+	cmd.Env = gitcache.GitEnvForRead()
+	out, err := cmd.Output()
 	if err != nil {
 		return time.Time{}, fmt.Errorf("git show %s: %w", sha, err)
 	}

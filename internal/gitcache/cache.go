@@ -26,6 +26,60 @@ type CacheManager struct {
 	BaseDir string
 }
 
+// gitRedirectEnv contains variables that can redirect repository/object lookup
+// or change the interpretation of path arguments. They must not influence
+// reads from a pinned repository. Clone/fetch keep user Git configuration, but
+// still discard these redirection variables.
+var gitRedirectEnv = map[string]bool{
+	"GIT_DIR": true,
+	"GIT_WORK_TREE": true,
+	"GIT_COMMON_DIR": true,
+	"GIT_INDEX_FILE": true,
+	"GIT_OBJECT_DIRECTORY": true,
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
+	"GIT_NAMESPACE": true,
+	"GIT_PREFIX": true,
+	"GIT_CEILING_DIRECTORIES": true,
+	"GIT_NO_REPLACE_OBJECTS": true,
+	"GIT_REPLACE_REF_BASE": true,
+}
+
+// GitEnvForRead returns an environment for deterministic reads from pinned Git
+// objects. It ignores user/system config and replacement refs, while preserving
+// non-Git environment needed to run the process.
+func GitEnvForRead() []string {
+	return gitEnvironment(false)
+}
+
+// GitEnvForNetwork returns an environment for clone/fetch. It strips repository
+// redirection variables but preserves user Git config and credential settings.
+func GitEnvForNetwork() []string {
+	return gitEnvironment(true)
+}
+
+func gitEnvironment(allowUserConfig bool) []string {
+	env := make([]string, 0, len(os.Environ())+3)
+	for _, item := range os.Environ() {
+		key, _, ok := strings.Cut(item, "=")
+		if !ok || gitRedirectEnv[key] {
+			continue
+		}
+		if !allowUserConfig && (key == "GIT_CONFIG" || strings.HasPrefix(key, "GIT_CONFIG_")) {
+			continue
+		}
+		env = append(env, item)
+	}
+	if !allowUserConfig {
+		// os.DevNull is "NUL" on Windows and "/dev/null" on Unix.
+		env = append(env,
+			"GIT_CONFIG_GLOBAL="+os.DevNull,
+			"GIT_CONFIG_NOSYSTEM=1",
+			"GIT_NO_REPLACE_OBJECTS=1",
+		)
+	}
+	return env
+}
+
 // NewCacheManager initializes a CacheManager with the provided base directory,
 // or defaults to $XDG_CACHE_HOME/gira/repos or ~/.cache/gira/repos.
 func NewCacheManager(baseDir string) (*CacheManager, error) {
@@ -73,6 +127,7 @@ func (cm *CacheManager) RepoDir(repo manifest.RepositoryDeclaration) string {
 // HasCommit checks whether the bare repository at repoDir contains the specified commit SHA.
 func (cm *CacheManager) HasCommit(ctx context.Context, repoDir, commitSHA string) bool {
 	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "cat-file", "-e", commitSHA+"^{commit}")
+	cmd.Env = GitEnvForRead()
 	return cmd.Run() == nil
 }
 
@@ -97,6 +152,7 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 
 		// Clone bare repository
 		cmd := exec.CommandContext(ctx, "git", "clone", "--bare", repo.URL, repoDir)
+		cmd.Env = GitEnvForNetwork()
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
 		if err := cmd.Run(); err != nil {
@@ -123,6 +179,7 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 
 	// Fetch updates from origin
 	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "fetch", "origin")
+	cmd.Env = GitEnvForNetwork()
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
@@ -152,6 +209,7 @@ func (cm *CacheManager) ListTree(ctx context.Context, repo manifest.RepositoryDe
 	}
 
 	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Env = GitEnvForRead()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -200,6 +258,7 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 
 	target := fmt.Sprintf("%s:%s", repo.SHA, cleanPath)
 	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "show", target)
+	cmd.Env = GitEnvForRead()
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -212,20 +271,47 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 }
 
 // ExportTree checks out the contents of the tree at pinned commit SHA into targetDir.
+// Extraction is staged in a sibling temporary directory; targetDir becomes visible
+// only after both git archive and tar succeed. A failed archive therefore cannot
+// leave a partial checkout that a caller might mistake for success.
 func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.RepositoryDeclaration, targetDir string) error {
 	repoDir := cm.RepoDir(repo)
-
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
+	parentDir := filepath.Dir(targetDir)
+	if err := os.MkdirAll(parentDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target parent directory: %w", err)
 	}
 
-	// Use git archive piped to tar extraction in targetDir
+	targetExists := false
+	if info, err := os.Stat(targetDir); err == nil {
+		if !info.IsDir() {
+			return fmt.Errorf("export target %q is not a directory", targetDir)
+		}
+		contents, err := os.ReadDir(targetDir)
+		if err != nil {
+			return fmt.Errorf("failed to inspect export target %q: %w", targetDir, err)
+		}
+		if len(contents) != 0 {
+			return fmt.Errorf("export target directory %q is not empty", targetDir)
+		}
+		targetExists = true
+	} else if !os.IsNotExist(err) {
+		return fmt.Errorf("failed to inspect export target %q: %w", targetDir, err)
+	}
+
+	stageDir, err := os.MkdirTemp(parentDir, ".gira-export-*")
+	if err != nil {
+		return fmt.Errorf("failed to create staging directory: %w", err)
+	}
+	defer os.RemoveAll(stageDir)
+
+	// Use git archive piped to tar extraction in the staging directory.
 	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "archive", repo.SHA)
+	archiveCmd.Env = GitEnvForRead()
 	if repo.PathScope != "" && repo.PathScope != "." {
 		archiveCmd.Args = append(archiveCmd.Args, repo.PathScope)
 	}
 
-	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", targetDir)
+	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", stageDir)
 
 	pipe, err := archiveCmd.StdoutPipe()
 	if err != nil {
@@ -252,5 +338,13 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
+	if targetExists {
+		if err := os.Remove(targetDir); err != nil {
+			return fmt.Errorf("failed to replace empty export target %q: %w", targetDir, err)
+		}
+	}
+	if err := os.Rename(stageDir, targetDir); err != nil {
+		return fmt.Errorf("failed to publish extracted tree at %q: %w", targetDir, err)
+	}
 	return nil
 }
