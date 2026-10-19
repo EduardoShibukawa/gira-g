@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: todo
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -41,11 +41,11 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
 | AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | Remote Gira-G/G-Ingá SHAs and PR #31 refs recorded; local branch/HEAD/worktree not available and not claimed. |
-| AC2 | Consumer matrix includes all current fields plus proposed source_identity, current behavior and downgrade risks for producer/copy/serializer/store/readers, with unknown paths explicit. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | At Gira-G main tree 6c66d938148de56d460389f183bf9900f482f50f, all 96 first-party source/script files and 94 test files were fetched remotely and searched for MacroMap/schema/store/consumer signatures. Matrix covers identified CLI/MCP/skills/eval/scorecard/slices/bench/Layer0/bundle/fixtures/docs and all eight current fields plus future source_identity. Reflection/dynamic references remain explicitly unknown because code-search is incomplete; the criterion asks to record such unknowns, not claim there are none. |
+| AC2 | Consumer matrix includes all current fields plus proposed source_identity, current behavior and downgrade risks for producer/copy/serializer/store/readers, with unknown paths explicit. | blocked | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | Static remote inventory and all eight current fields plus source_identity are documented. However, reflection/dynamic consumers and full symbol-reference coverage remain unverified without a usable local checkout or complete code-search. Keep task todo until these paths are ruled in/out with reproducible evidence. |
 | AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | Source/tests at G-Ingá main e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0 confirm strict string "1.0.0", integer schema 2 rejection and malformed/invalid structure cases. CI run [39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) passed test and pre-commit/validation. |
 | AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | Experiment [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) recorded archive exit 128 for a tab-containing path and tar exit 2. Regression proposal requires diagnostic failure and no published/partial target; this task did not rerun that experiment. |
 | AC5 | Report is updated and self-reviewed; no product code changed. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | PR #31 changes only the report and task record. No product source/test/fixture/spec/decision file changed. The docs build run [39255348675](https://github.com/EduardoShibukawa/gira-g/actions/runs/39255348675) passed. |
-| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | pass | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | Reviewed the full consumer crosswalk, source/test scan coverage, report links/SHAs, CI evidence, distinction between observed code/tests and unrun future SCs, and explicit dynamic-consumer uncertainty. No SC1–SC10 acceptance claimed. |
+| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | blocked | 53f7e22b6ecd4b0787ee167c69b5189cad1ce3e9 | The document was self-reviewed, but AC2's dynamic/reflection consumer coverage remains open; therefore the task-level self-review gate is not complete. No SC1–SC10 acceptance claimed. |
 
 ## Plan
 
@@ -59,11 +59,13 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 ## Checkpoint
 
 - as of: 2026-10-19
-- status: active; task remains open because AC2 and V1 are blocked
+- status: todo; task remains open because AC2 and V1 are blocked
 - next: obtain a checkout or complete repository-wide symbol search to close AC2; do not start task 01/ADR 0014 until task 00 is verified. Task 02 may proceed only within its independent, explicitly stated dependency on remote audit revalidation and merged PR #28.
 - revalidate: report is remote-only; no checkout or local command is claimed
 
 ## Remote revalidation update (2026-10-19)
+
+- State correction: AC2 and V1 are explicitly `blocked`, and the task frontmatter is `todo`; earlier table wording that marked AC2/V1 `pass` contradicted the checkpoint and is superseded by this record.
 
 - Current audit report commit: `44a7bb3f3f16db2cb5459f852ddaed1000e18fbb`; it inventories the full Git tree and adds classifications for the Layer 0 adapter, scorecard artefact, skills and versioned docs.
 - Gira-G `main`: `6c66d938148de56d460389f183bf9900f482f50f`; G-Ingá `main`: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`.
