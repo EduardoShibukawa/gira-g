@@ -673,16 +673,56 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 	runGit("add", "README.md")
 	runGit("commit", "-m", "initial")
 
-	t.Setenv("GIT_DIR", "/definitely/not/a/repository")
-	t.Setenv("GIT_WORK_TREE", "/elsewhere")
-	t.Setenv("GIT_INDEX_FILE", "/tmp/redirected-index")
+	nestedDir := filepath.Join(repoDir, "nested")
+	if err := os.MkdirAll(nestedDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Exercise every repository/config redirection variable covered by
+	// gitCommandEnv, including GIT_CEILING_DIRECTORIES from this nested cwd.
+	redirectedConfig := filepath.Join(t.TempDir(), "missing-gitconfig")
+	for key, value := range map[string]string{
+		"GIT_DIR":                           filepath.Join(t.TempDir(), "not-a-repository"),
+		"GIT_WORK_TREE":                     filepath.Join(t.TempDir(), "elsewhere"),
+		"GIT_COMMON_DIR":                    filepath.Join(t.TempDir(), "common"),
+		"GIT_INDEX_FILE":                    filepath.Join(t.TempDir(), "redirected-index"),
+		"GIT_OBJECT_DIRECTORY":              filepath.Join(t.TempDir(), "objects"),
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES":  filepath.Join(t.TempDir(), "alternate-objects"),
+		"GIT_NAMESPACE":                     "audit-test-namespace",
+		"GIT_PREFIX":                        "injected-prefix/",
+		"GIT_CEILING_DIRECTORIES":           nestedDir,
+		"GIT_CONFIG":                        redirectedConfig,
+		"GIT_CONFIG_COUNT":                  "1",
+		"GIT_CONFIG_KEY_0":                  "core.bare",
+		"GIT_CONFIG_VALUE_0":                "true",
+		"GIT_CONFIG_PARAMETERS":              "core.bare=true",
+	} {
+		t.Setenv(key, value)
+	}
+
+	blockedKeys := []string{
+		"GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
+		"GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
+		"GIT_PREFIX", "GIT_CEILING_DIRECTORIES", "GIT_CONFIG", "GIT_CONFIG_COUNT",
+		"GIT_CONFIG_PARAMETERS", "GIT_CONFIG_KEY_0", "GIT_CONFIG_VALUE_0",
+	}
+	for _, item := range gitCommandEnv() {
+		for _, key := range blockedKeys {
+			if strings.HasPrefix(item, key+"=") ||
+				(strings.HasPrefix(key, "GIT_CONFIG_KEY_") && strings.HasPrefix(item, "GIT_CONFIG_KEY_")) ||
+				(strings.HasPrefix(key, "GIT_CONFIG_VALUE_") && strings.HasPrefix(item, "GIT_CONFIG_VALUE_")) {
+				t.Fatalf("gitCommandEnv() leaked %q", item)
+			}
+		}
+	}
+
 	// Compare filesystem identity, not path spelling: Git may return a physical
 	// path on macOS or a slash/long-name path on Windows.
 	wantInfo, err := os.Stat(repoDir)
 	if err != nil {
 		t.Fatalf("stat test repository path: %v", err)
 	}
-	got := gitToplevel(repoDir)
+	got := gitToplevel(nestedDir)
 	gotInfo, err := os.Stat(filepath.FromSlash(got))
 	if err != nil {
 		t.Fatalf("stat gitToplevel path %q: %v", got, err)
