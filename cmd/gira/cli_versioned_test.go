@@ -257,13 +257,55 @@ func TestAC3_InitFailureDoesNotCreateOrModifyManifest(t *testing.T) {
 	_ = sha
 }
 
+func createShortRepoWithFiles(t *testing.T, files map[string]string) (string, string) {
+	t.Helper()
+	repoDir, err := os.MkdirTemp(os.TempDir(), "g-r-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(repoDir) })
+
+	runGit := func(args ...string) string {
+		cmd := exec.Command("git", args...)
+		cmd.Dir = repoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v, out: %s", args, err, string(out))
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+
+	for relPath, content := range files {
+		fullPath := filepath.Join(repoDir, relPath)
+		if err := os.MkdirAll(filepath.Dir(fullPath), 0755); err != nil {
+			t.Fatalf("failed to mkdir: %v", err)
+		}
+		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
+			t.Fatalf("failed to write file %s: %v", relPath, err)
+		}
+	}
+
+	runGit("add", ".")
+	runGit("commit", "-m", "Initial commit")
+	commitSHA := runGit("rev-parse", "HEAD")
+	return repoDir, commitSHA
+}
+
 // AC4: Alteração concorrente do manifesto durante init gera conflito sem publicar estado misto.
 func TestAC4_InitConcurrentManifestModificationGeneratesConflict(t *testing.T) {
-	tmpHome := t.TempDir()
+	tmpHome, err := os.MkdirTemp(os.TempDir(), "g-h-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(tmpHome) })
 	t.Setenv("HOME", tmpHome)
 	t.Setenv("USERPROFILE", tmpHome)
 
-	repoDir, _ := createGitRepoWithFiles(t, map[string]string{
+	repoDir, _ := createShortRepoWithFiles(t, map[string]string{
 		"go.mod":  "module example.com/ac4\n\ngo 1.24\n",
 		"main.go": "package main\n\nfunc main() {}\n",
 	})
@@ -401,8 +443,23 @@ func TestAC6_SkillsInstallAndCheckLegacyWarningAndAbsolutePath(t *testing.T) {
 		t.Fatalf("failed reading .mcp.json: %v", err)
 	}
 	absLegacy, _ := filepath.Abs(relLegacy)
-	if !strings.Contains(string(mcpData), absLegacy) {
-		t.Errorf("expected absolute path %q in .mcp.json, got: %s", absLegacy, string(mcpData))
+	var mcpCfg struct {
+		McpServers map[string]struct {
+			Args []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(mcpData, &mcpCfg); err != nil {
+		t.Fatalf("failed unmarshaling .mcp.json: %v", err)
+	}
+	found := false
+	for _, arg := range mcpCfg.McpServers["gira"].Args {
+		if filepath.Clean(arg) == filepath.Clean(absLegacy) {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("expected absolute path %q in .mcp.json args, got: %s", absLegacy, string(mcpData))
 	}
 
 	// 2. skills check with relative path to legacy index

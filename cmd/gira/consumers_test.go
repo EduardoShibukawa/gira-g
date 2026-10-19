@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -19,6 +20,10 @@ import (
 // Verifies that bootstrap.sh runs against gira, creates a bundle cache,
 // and produces an offline-capable Schema 2 macro-map.json.
 func TestConsumer_IndexBundleBootstrap(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("bootstrap.sh is a POSIX shell script, not directly executable on Windows without bash")
+	}
+
 	// Build a gira binary for testing bootstrap.sh
 	tmpDir := t.TempDir()
 	binPath := filepath.Join(tmpDir, "gira")
