@@ -102,6 +102,60 @@ func TestCacheManager_New(t *testing.T) {
 	}
 }
 
+func TestCacheManager_CloneAndFetchRespectUserGitConfig(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, firstSHA := createTestLocalRepo(t)
+	remoteURL := "https://example.invalid/gira-g-user-config.git"
+	localURL := "file://" + filepath.ToSlash(localRepoDir)
+	configPath := filepath.Join(t.TempDir(), "gitconfig")
+	config := "[url \"" + localURL + "\"]\n\tinsteadOf = " + remoteURL + "\n"
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// A host Git URL rewrite must remain active for clone/fetch. Local probes
+	// use gitCommandEnv separately; CacheManager transport commands inherit this
+	// user config by design (ADR 0009).
+	t.Setenv("GIT_CONFIG_GLOBAL", configPath)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	decl := manifest.RepositoryDeclaration{ID: "user-config", URL: remoteURL, SHA: firstSHA, PathScope: "."}
+	if err := cm.EnsureRepo(ctx, decl, false); err != nil {
+		t.Fatalf("clone through configured URL rewrite failed: %v", err)
+	}
+	bareDir := cm.RepoDir(decl)
+	if !cm.HasCommit(ctx, bareDir, firstSHA) {
+		t.Fatalf("clone did not cache pinned commit %s", firstSHA)
+	}
+
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "second.txt"), []byte("second commit\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "second.txt")
+	runGit("commit", "-m", "second commit")
+	secondSHA := runGit("rev-parse", "HEAD")
+	decl.SHA = secondSHA
+	if err := cm.EnsureRepo(ctx, decl, false); err != nil {
+		t.Fatalf("fetch through configured URL rewrite failed: %v", err)
+	}
+	if !cm.HasCommit(ctx, bareDir, secondSHA) {
+		t.Fatalf("fetch did not cache commit %s", secondSHA)
+	}
+}
+
 func TestCacheManager_EnsureRepo_OfflineAndOnline(t *testing.T) {
 	ctx := context.Background()
 	cacheDir := t.TempDir()
