@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -41,12 +41,14 @@ NUL-delimited ls-tree; sanitização de variáveis GIT_* para probes locais; pre
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Nomes não ASCII/tab/newline são parseados corretamente onde materializáveis. | not run | | |
-| AC2 | core.quotePath e refs/replace não alteram bytes do índice. | not run | | |
-| AC3 | GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR, GIT_INDEX_FILE, GIT_OBJECT_DIRECTORY, GIT_ALTERNATE_OBJECT_DIRECTORIES, GIT_NAMESPACE, GIT_PREFIX e GIT_CONFIG_* não sequestram probes locais. | not run | | |
-| AC4 | Clone/fetch continuam respeitando configuração/credenciais necessárias. | not run | | |
-| AC5 | Windows falha fechado e com diagnóstico claro quando o caminho não pode ser materializado; não aceita extração parcial. | not run | | |
-| AC6 | Testes e CI dos três SOs passam. | not run | | |
+| AC1 | Nomes não ASCII/tab/newline são parseados corretamente onde materializáveis. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | CI [39258639643](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639643) passou nos 3 SOs. `TestCacheManager_ListTreePreservesUnusualPathnames` passou em Ubuntu/macOS; Windows pula nomes de controle que não materializa, mas lê o nome não ASCII via `ListTree/ReadFile` e a exportação só publica árvore completa ou retorna erro claro. `TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath` passou no Windows sem deixar target/staging. |
+| AC2 | `core.quotePath` e `refs/replace` não mudam bytes/entradas de leitura do commit fixado. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | `TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig` passou em Ubuntu/macOS/Windows: compara `ListTree` com quotePath true/false, instala replace ref e verifica leitura do blob do SHA fixado, isolando config global. |
+| AC3 | Variáveis Git de redirecionamento, prefixo e config não sequestram probes/leitura local. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | `TestGitProbesIgnoreRepositoryRedirectEnvironment` passou nos 3 SOs; `TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig` também passou sob variáveis adversariais, incluindo `GIT_PREFIX`, `GIT_CONFIG_*` e pathspec/attribute env. |
+| AC4 | Clone/fetch continuam respeitando configuração de usuário necessária. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | `TestCacheManager_PreservesUserURLRewriteForCloneAndFetch` passou em Ubuntu/macOS/Windows, comprovando a distinção entre ambiente de leitura estrito e ambiente de rede que preserva `url.insteadOf`. |
+| AC5 | No Windows, caminhos não materializáveis falham fechado; extração parcial não é publicada. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | `TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath` passou no Windows. `ExportTree` agora valida os membros do archive e sua materialização no staging antes de promover o diretório; Ubuntu/macOS passaram `TestCacheManager_ExportTreeDoesNotPublishPartialArchive`, que faz o tar materializar conteúdo e terminar com erro e confere limpeza/target ausente. |
+| AC6 | Testes e CI nos três SOs passam. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | [CI run 39258639643](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639643): `test (ubuntu-latest)`, `test (macos-latest)`, `test (windows-latest)`, validator, floor guard e gate-lint concluídos em sucesso. [Docs run 39258639578](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639578): docs build em sucesso; deploy `skipped` em PR. |
+| V1 | Auto-revisão do diff integrado contra AC1–AC6 e limites de escopo. | pass | 4162d47d1b207a0a40b77b9602805f3c9366b857 | Revisado o diff de `cmd/gira`, `internal/gitcache`, indexer, testes e task. A PR reutiliza #28 e não implementa schema 2, `source_identity`, store/head versionado, resolver, locks ou durabilidade da publicação. Nenhum teste local foi alegado. |
+
 
 ## Plan
 
@@ -59,7 +61,8 @@ NUL-delimited ls-tree; sanitização de variáveis GIT_* para probes locais; pre
 ## Checkpoint
 
 - as of: 2026-10-19
-- status: active; implementação delimitada iniciada nesta branch
-- next: executar CI e revisar os resultados por sistema operacional; corrigir qualquer falha antes de considerar ACs aprovados
-- branch: `work/2026-10-19-gitcache-env-fail-closed`, base `6c66d938148de56d460389f183bf9900f482f50f`
-- revalidate: nenhum teste local foi executado; as verificações ficam `not run` até CI do head integrado
+- status: completed; AC1–AC6 and V1 passed on `4162d47d1b207a0a40b77b9602805f3c9366b857`
+- branch/PR: `work/2026-10-19-gitcache-env-fail-closed`, [PR #32](https://github.com/EduardoShibukawa/gira-g/pull/32), draft/open/no merge
+- evidence: [CI 39258639643](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639643), [docs 39258639578](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639578)
+- next: complete formal task-state verification; keep PR draft until review/merge authorization. Task 03 remains blocked on ADR 0014 and this task reaching `verified`.
+- revalidate: no local checkout or local tests; product implementation beyond task 02 remains out of scope
