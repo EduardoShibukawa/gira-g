@@ -177,3 +177,59 @@ func TestGroundTruthComponentTable(t *testing.T) {
 		t.Fatalf("the shared proto belongs to no Component, got %q", got)
 	}
 }
+
+// TestBenchPhasesArmB validates that bench/phases.json specifies valid Arm B commands
+// for gira (gira index --output and gira serve mcp --index).
+func TestBenchPhasesArmB(t *testing.T) {
+	phasesPath := filepath.Join("..", "phases.json")
+	phasesData, err := os.ReadFile(phasesPath)
+	if err != nil {
+		t.Fatalf("failed reading phases.json: %v", err)
+	}
+
+	var phases struct {
+		Schema string `json:"schema"`
+		Arms   []struct {
+			ID    string `json:"id"`
+			Tool  string `json:"tool"`
+			Build struct {
+				Command []string `json:"command"`
+			} `json:"build"`
+			Query struct {
+				Command []string `json:"command"`
+			} `json:"query"`
+		} `json:"arms"`
+	}
+	if err := json.Unmarshal(phasesData, &phases); err != nil {
+		t.Fatalf("failed unmarshaling phases.json: %v", err)
+	}
+
+	var armB *struct {
+		ID    string `json:"id"`
+		Tool  string `json:"tool"`
+		Build struct {
+			Command []string `json:"command"`
+		} `json:"build"`
+		Query struct {
+			Command []string `json:"command"`
+		} `json:"query"`
+	}
+	for i := range phases.Arms {
+		if phases.Arms[i].ID == "B" && phases.Arms[i].Tool == "gira" {
+			armB = &phases.Arms[i]
+			break
+		}
+	}
+	if armB == nil {
+		t.Fatalf("Arm B (tool: gira) not found in phases.json")
+	}
+
+	buildCmd := strings.Join(armB.Build.Command, " ")
+	if !strings.Contains(buildCmd, "gira index") || !strings.Contains(buildCmd, "--output") {
+		t.Errorf("expected Arm B build command to use 'gira index ... --output', got: %s", buildCmd)
+	}
+	queryCmd := strings.Join(armB.Query.Command, " ")
+	if !strings.Contains(queryCmd, "gira serve mcp --index") {
+		t.Errorf("expected Arm B query command to use 'gira serve mcp --index', got: %s", queryCmd)
+	}
+}
