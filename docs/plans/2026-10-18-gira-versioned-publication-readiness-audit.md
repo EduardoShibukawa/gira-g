@@ -397,7 +397,7 @@ Todos os 72 arquivos de código executável não-teste de Gira-G foram inventari
 - 13 arquivos de benchmark (`bench/layer*`, `bench/cmd/layer1`): harness e adaptadores de teste comparativo.
 - 6 arquivos de MCP e skills (`internal/mcp`, `internal/skills`, `internal/tools`).
 - 4 arquivos de avaliação e gate (`internal/eval`, `internal/gate`).
-- Ocorrências de `reflect.`: **0** em código executável não-teste.
+- Ocorrências textuais diretas de `reflect.`: **0** em código Go executável não-teste pesquisado (evidência da ausência de chamadas diretas ao pacote reflect em runtime de produto nos caminhos rastreados).
 
 ---
 
@@ -477,7 +477,7 @@ Ambiente de execução dos probes:
 ### 5. Limites de escopo declarados e incerteza residual
 
 1. **Hosts MCP externos e scripts de terceiros:** Instalações de Claude Desktop, Cursor ou agentes externos interagem exclusivamente pela interface CLI (`gira slice`, `gira diff`) e stdio JSON-RPC (`gira serve mcp`). Esses pontos de interface foram integralmente mapeados na matriz acima. Não é possível enumerar instalações ou scripts arbitrários em máquinas de usuários fora dos repositórios rastreados; esses casos ficam formalmente delimitados como **fronteira externa de escopo**, não como lacuna de auditoria interna.
-2. **Invocação reflexiva/dinâmica interna:** A busca global por `reflect.` em código Go executável retornou zero ocorrências fora de testes. Todos os leitores de JSON em código de produção foram auditados.
+2. **Invocação reflexiva/dinâmica interna:** Zero ocorrências textuais diretas de `reflect.` no código executável pesquisado constituem evidência específica do padrão buscado no código de primeira parte, não prova absoluta da inexistência de consumidores dinâmicos ou reflexivos indiretos. A conclusão permanece estritamente limitada aos caminhos de desserialização e decodificação JSON identificados e auditados no repositório.
 
 ---
 
