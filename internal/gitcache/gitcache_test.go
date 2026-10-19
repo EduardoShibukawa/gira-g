@@ -389,18 +389,110 @@ func TestCacheManager_ListTreePreservesUnusualPathnames(t *testing.T) {
 	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
 		t.Fatalf("ensure repo: %v", err)
 	}
-	entries, err := cm.ListTree(ctx, repoDecl)
-	if err != nil {
-		t.Fatalf("ListTree: %v", err)
+	bareDir := cm.RepoDir(repoDecl)
+	var baseline []gitcache.FileEntry
+	for _, quotePath := range []string{"true", "false"} {
+		configCmd := exec.Command("git", "--git-dir="+bareDir, "config", "core.quotePath", quotePath)
+		if out, err := configCmd.CombinedOutput(); err != nil {
+			t.Fatalf("set core.quotePath=%s: %v: %s", quotePath, err, out)
+		}
+		entries, err := cm.ListTree(ctx, repoDecl)
+		if err != nil {
+			t.Fatalf("ListTree with core.quotePath=%s: %v", quotePath, err)
+		}
+		if baseline == nil {
+			baseline = append([]gitcache.FileEntry(nil), entries...)
+			continue
+		}
+		if len(entries) != len(baseline) {
+			t.Fatalf("core.quotePath changed entry count: true=%d false=%d", len(baseline), len(entries))
+		}
+		for i := range baseline {
+			if entries[i] != baseline[i] {
+				t.Fatalf("core.quotePath changed entry %d: true=%+v false=%+v", i, baseline[i], entries[i])
+			}
+		}
 	}
-	got := make(map[string]bool, len(entries))
-	for _, entry := range entries {
+	got := make(map[string]bool, len(baseline))
+	for _, entry := range baseline {
 		got[entry.Path] = true
 	}
 	for _, name := range oddNames {
 		if !got[name] {
 			t.Errorf("ListTree omitted or corrupted pathname %q; got %q", name, mapKeys(got))
 		}
+	}
+}
+
+func TestCacheManager_PinnedReadsIgnoreReplaceRefs(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, firstSHA := createTestLocalRepo(t)
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("replacement README\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "new-only.txt"), []byte("second tree only\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "--all")
+	runGit("commit", "-m", "replacement tree")
+	secondSHA := runGit("rev-parse", "HEAD")
+
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoDecl := manifest.RepositoryDeclaration{
+		ID: "replace-refs",
+		URL: "file://" + filepath.ToSlash(localRepoDir),
+		SHA: firstSHA,
+		PathScope: ".",
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("ensure repo: %v", err)
+	}
+	bareDir := cm.RepoDir(repoDecl)
+	replaceCmd := exec.Command("git", "--git-dir="+bareDir, "replace", firstSHA, secondSHA)
+	if out, err := replaceCmd.CombinedOutput(); err != nil {
+		t.Fatalf("create replacement ref: %v: %s", err, out)
+	}
+
+	entries, err := cm.ListTree(ctx, repoDecl)
+	if err != nil {
+		t.Fatalf("ListTree for pinned commit: %v", err)
+	}
+	for _, entry := range entries {
+		if entry.Path == "new-only.txt" {
+			t.Fatal("ListTree followed refs/replace instead of the pinned commit")
+		}
+	}
+	readme, err := cm.ReadFile(ctx, repoDecl, "README.md")
+	if err != nil {
+		t.Fatalf("ReadFile for pinned commit: %v", err)
+	}
+	if string(readme) != "# Hello World\n" {
+		t.Fatalf("ReadFile followed refs/replace: got %q", readme)
+	}
+
+	exportDir := filepath.Join(t.TempDir(), "export")
+	if err := cm.ExportTree(ctx, repoDecl, exportDir); err != nil {
+		t.Fatalf("ExportTree for pinned commit: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(exportDir, "new-only.txt")); !os.IsNotExist(err) {
+		t.Fatalf("ExportTree followed refs/replace; unexpected path stat error=%v", err)
+	}
+	exportedReadme, err := os.ReadFile(filepath.Join(exportDir, "README.md"))
+	if err != nil || string(exportedReadme) != "# Hello World\n" {
+		t.Fatalf("ExportTree did not use pinned commit: got=%q err=%v", exportedReadme, err)
 	}
 }
 
