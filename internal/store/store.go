@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
@@ -26,6 +27,12 @@ type PublishOptions struct {
 	AllowSymbolLoss bool
 	// RecoverCorrupt explicitly authorizes overwriting a corrupted or invalid existing index file.
 	RecoverCorrupt bool
+	// ManifestPath is an optional path to gira.yaml for M lock acquisition.
+	ManifestPath string
+	// LockTimeout overrides default lock acquisition timeout.
+	LockTimeout time.Duration
+	// InjectedLockError simulates platform locking failure returning ErrLockUnavailable.
+	InjectedLockError error
 	// BeforeRenameError is an optional hook (used by tests) invoked after the temporary
 	// file is synced and closed, immediately before os.Rename promotes it.
 	BeforeRenameError func() error
@@ -224,7 +231,8 @@ func (s *Store) LoadFile(filePath string) (*domain.MacroMap, error) {
 	return &mm, nil
 }
 
-// List returns all target system names under BaseDir containing a macro-map.json file.
+// List returns all target system / lineage names under BaseDir containing either
+// a legacy macro-map.json file, a .head pointer, or a versions/ directory.
 func (s *Store) List() ([]string, error) {
 	entries, err := os.ReadDir(s.BaseDir)
 	if err != nil {
@@ -234,12 +242,32 @@ func (s *Store) List() ([]string, error) {
 		return nil, fmt.Errorf("failed to list systems in base dir %s: %w", s.BaseDir, err)
 	}
 
+	seen := make(map[string]bool)
 	var systems []string
 	for _, entry := range entries {
 		if entry.IsDir() {
-			candidate := filepath.Join(s.BaseDir, entry.Name(), "macro-map.json")
-			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-				systems = append(systems, entry.Name())
+			name := entry.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
+			}
+			legacyCandidate := filepath.Join(s.BaseDir, name, "macro-map.json")
+			headCandidate := filepath.Join(s.BaseDir, name, ".head")
+			versionsCandidate := filepath.Join(s.BaseDir, name, "versions")
+			if fi, err := os.Stat(legacyCandidate); err == nil && !fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
+			} else if fi, err := os.Stat(headCandidate); err == nil && !fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
+			} else if fi, err := os.Stat(versionsCandidate); err == nil && fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
 			}
 		}
 	}

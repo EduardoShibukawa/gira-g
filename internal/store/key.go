@@ -20,9 +20,10 @@ import (
 
 // Domain tags for cryptographic namespace separation.
 const (
-	TagSourceKey = "gira.index.source/v1"
-	TagToolID    = "gira.index.tool/v1"
-	TagVersionID = "gira.index.version/v1"
+	TagSourceKey  = "gira.index.source/v1"
+	TagToolID     = "gira.index.tool/v1"
+	TagVersionID  = "gira.index.version/v1"
+	TagLineageKey = "gira.index.lineage/v1"
 )
 
 // ErrNonDeterministicBuild indicates that re-indexing produced divergent canonical
@@ -330,6 +331,27 @@ func ComputeVersionID(sourceKey, toolID string) string {
 	enc := NewInjectiveEncoder(TagVersionID)
 	enc.WriteString(sourceKey)
 	enc.WriteString(toolID)
+	return enc.SumHex()
+}
+
+// ComputeLineageKey computes the deterministic lineage identifier based on target_system
+// name and sorted source repository identities (N1, ADR 0014 §3).
+func ComputeLineageKey(targetSystem string, sources []domain.SourceRepoIdentity) string {
+	enc := NewInjectiveEncoder(TagLineageKey)
+	enc.WriteString(targetSystem)
+
+	sortedSources := make([]domain.SourceRepoIdentity, len(sources))
+	copy(sortedSources, sources)
+	sort.Slice(sortedSources, func(i, j int) bool {
+		return sortedSources[i].RepoID < sortedSources[j].RepoID
+	})
+
+	enc.WriteUint64(uint64(len(sortedSources)))
+	for _, src := range sortedSources {
+		enc.WriteString(src.RepoID)
+		enc.WriteString(src.URLSHA256)
+	}
+
 	return enc.SumHex()
 }
 
