@@ -371,33 +371,48 @@ func mapKeys(values map[string]bool) []string {
 }
 
 
-func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
+func TestCacheManager_ExportTreeDoesNotStartExtractorWhenArchiveFails(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell-script process fixture is Unix-only")
+		t.Skip("shell-backed process fixture is Unix-only")
 	}
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
 	fakeTar := filepath.Join(binDir, "tar")
-	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\nexit 23\n"), 0755); err != nil {
+	tarMarker := filepath.Join(t.TempDir(), "tar-was-run")
+	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\\nexit 23\\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\nwhile IFS= read -r line; do :; done\nexit 0\n"), 0755); err != nil {
+	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\\necho called > \"$TAR_CALLED\"\\nexit 0\\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("TAR_CALLED", tarMarker)
 	t.Setenv("PATH", binDir)
 
 	cm, err := gitcache.NewCacheManager(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
+	parent := t.TempDir()
+	targetDir := filepath.Join(parent, "target")
 	repoDecl := manifest.RepositoryDeclaration{ID: "archive-failure", SHA: "deadbeef"}
-	err = cm.ExportTree(context.Background(), repoDecl, filepath.Join(t.TempDir(), "target"))
+	err = cm.ExportTree(context.Background(), repoDecl, targetDir)
 	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
 		t.Fatalf("ExportTree error = %v, want git archive failure", err)
 	}
+	if _, err := os.Stat(targetDir); !os.IsNotExist(err) {
+		t.Fatalf("target was published despite archive failure: %v", err)
+	}
+	if _, err := os.Stat(tarMarker); !os.IsNotExist(err) {
+		t.Fatalf("tar extractor ran after git archive failed: %v", err)
+	}
+	entries, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("temporary extraction artifacts leaked after archive failure: %#v", entries)
+	}
 }
-
-
 func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(t *testing.T) {
 	ctx := context.Background()
 	// Keep this fixture directly under os.TempDir. t.TempDir includes the
@@ -616,7 +631,7 @@ func TestCacheManager_PreservesUserURLRewriteForCloneAndFetch(t *testing.T) {
 
 func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
 	if runtime.GOOS == "windows" {
-		t.Skip("shell-backed partial archive fixture is Unix-only")
+		t.Skip("shell-backed partial extraction fixture is Unix-only")
 	}
 	ctx := context.Background()
 	archivePath := filepath.Join(t.TempDir(), "partial.tar")
@@ -636,13 +651,23 @@ func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	realTar, err := exec.LookPath("tar")
+	if err != nil {
+		t.Fatalf("find real tar executable: %v", err)
+	}
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
-	script := "#!/bin/sh\ncat \"$GIRA_ARCHIVE_FIXTURE\"\nexit 23\n"
-	if err := os.WriteFile(fakeGit, []byte(script), 0755); err != nil {
+	fakeTar := filepath.Join(binDir, "tar")
+	gitScript := "#!/bin/sh\\ncat \"$GIRA_ARCHIVE_FIXTURE\"\\nexit 0\\n"
+	tarScript := "#!/bin/sh\\n\"$REAL_TAR\" \"$@\"\\nexit 23\\n"
+	if err := os.WriteFile(fakeGit, []byte(gitScript), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(fakeTar, []byte(tarScript), 0755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("GIRA_ARCHIVE_FIXTURE", archivePath)
+	t.Setenv("REAL_TAR", realTar)
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	cacheRoot, err := os.MkdirTemp(os.TempDir(), "gira-partial-cache-")
@@ -663,21 +688,20 @@ func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
 	repoDecl := manifest.RepositoryDeclaration{ID: "partial-stream", SHA: "deadbeef"}
 
 	err = cm.ExportTree(ctx, repoDecl, targetDir)
-	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
-		t.Fatalf("ExportTree error = %v, want git archive failure", err)
+	if err == nil || !strings.Contains(err.Error(), "tar extract failed") {
+		t.Fatalf("ExportTree error = %v, want tar extraction failure", err)
 	}
 	if _, statErr := os.Stat(targetDir); !os.IsNotExist(statErr) {
-		t.Fatalf("partial archive became visible at targetDir; stat error = %v", statErr)
+		t.Fatalf("partial extraction became visible at targetDir; stat error = %v", statErr)
 	}
 	leftovers, err := os.ReadDir(parent)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(leftovers) != 0 {
-		t.Fatalf("staging directory leaked after failed archive: %v", leftovers)
+		t.Fatalf("staging/archive artifacts leaked after failed extraction: %v", leftovers)
 	}
 }
-
 func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("Git for Windows path-materialization behavior is the subject of this test")
