@@ -62,11 +62,8 @@ func GitCommandEnv() []string {
 		"GIT_ICASE_PATHSPECS":              true,
 		"GIT_ATTR_SOURCE":                  true,
 		"GIT_CONFIG":                       true,
-		"GIT_CONFIG_GLOBAL":                true,
-		"GIT_CONFIG_SYSTEM":                true,
-		"GIT_CONFIG_NOSYSTEM":              true,
 	}
-	env := make([]string, 0, len(os.Environ())+3)
+	env := make([]string, 0, len(os.Environ()))
 	for _, item := range os.Environ() {
 		key, _, ok := strings.Cut(item, "=")
 		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_") {
@@ -74,11 +71,6 @@ func GitCommandEnv() []string {
 		}
 		env = append(env, item)
 	}
-	env = append(env,
-		"GIT_CONFIG_GLOBAL="+os.DevNull,
-		"GIT_CONFIG_NOSYSTEM=1",
-		"GIT_NO_REPLACE_OBJECTS=1",
-	)
 	return env
 }
 

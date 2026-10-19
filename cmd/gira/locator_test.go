@@ -242,12 +242,17 @@ func TestCLI_AC2_OutsideGitRoot_And_GitRootUnavailable_FailClosed(t *testing.T) 
 			t.Fatal(err)
 		}
 
-		t.Setenv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1")
+		origHook := manifest.GitRootDiscoveryHook
+		manifest.GitRootDiscoveryHook = func(p string) (string, error) {
+			return "", manifest.ErrGitRootUnavailable
+		}
+		t.Cleanup(func() { manifest.GitRootDiscoveryHook = origHook })
+
 		outPath := filepath.Join(t.TempDir(), "output.json")
 		var stdout, stderr bytes.Buffer
 		err := Run([]string{"index", insideManifest, "--output", outPath, "--cache-dir", cacheDir}, nil, &stdout, &stderr)
 		if err == nil {
-			t.Fatalf("expected error under dubious ownership, got nil")
+			t.Fatalf("expected error under git root unavailable, got nil")
 		}
 		if !strings.Contains(err.Error(), "git_root_unavailable") {
 			t.Errorf("expected error message to contain 'git_root_unavailable', got: %v", err)

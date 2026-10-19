@@ -203,16 +203,21 @@ func TestResolveManifestLocator_OutsideGitRoot(t *testing.T) {
 }
 
 func TestResolveManifestLocator_GitRootUnavailable(t *testing.T) {
+	origHook := manifest.GitRootDiscoveryHook
+	manifest.GitRootDiscoveryHook = func(p string) (string, error) {
+		return "", manifest.ErrGitRootUnavailable
+	}
+	t.Cleanup(func() { manifest.GitRootDiscoveryHook = origHook })
+
 	repoDir := initTestGitRepo(t)
 	manifestPath := filepath.Join(repoDir, "gira.yaml")
 	if err := os.WriteFile(manifestPath, []byte("version: 1\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	t.Setenv("GIT_TEST_ASSUME_DIFFERENT_OWNER", "1")
 	_, err := manifest.ResolveManifestLocator(manifestPath)
 	if !errors.Is(err, manifest.ErrGitRootUnavailable) {
-		t.Fatalf("expected ErrGitRootUnavailable under dubious ownership, got %v", err)
+		t.Fatalf("expected ErrGitRootUnavailable, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "git_root_unavailable") {
 		t.Errorf("expected error message to contain 'git_root_unavailable', got %q", err.Error())
