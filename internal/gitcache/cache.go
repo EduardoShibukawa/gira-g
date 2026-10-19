@@ -221,6 +221,9 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 	}
 	repoDir := cm.RepoDir(repo)
 	cleanTarget := filepath.Clean(targetDir)
+	if cleanTarget == "." || filepath.Dir(cleanTarget) == cleanTarget {
+		return fmt.Errorf("refusing to replace the current directory or filesystem root")
+	}
 	parentDir := filepath.Dir(cleanTarget)
 	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target directory parent: %w", err)
