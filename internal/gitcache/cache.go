@@ -7,12 +7,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strings"
-	"io"
 
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
@@ -317,7 +317,7 @@ func readArchiveMembers(archivePath string) ([]archiveMember, error) {
 		if filepath.IsAbs(platformPath) || filepath.VolumeName(platformPath) != "" {
 			return nil, fmt.Errorf("unsafe archive entry path %q", header.Name)
 		}
-		if os.PathSeparator == '\\' && strings.Contains(name, "\\\\") {
+		if os.PathSeparator == '\\' && strings.ContainsRune(name, '\\') {
 			return nil, fmt.Errorf("archive entry %q cannot be materialized on Windows because backslashes are path separators", header.Name)
 		}
 
@@ -333,7 +333,7 @@ func readArchiveMembers(archivePath string) ([]archiveMember, error) {
 			if linkName != header.Linkname || linkName == ".." || strings.HasPrefix(linkName, "../") || path.IsAbs(header.Linkname) || filepath.IsAbs(linkPath) || filepath.VolumeName(linkPath) != "" {
 				return nil, fmt.Errorf("unsafe archive hard-link target %q for %q", header.Linkname, header.Name)
 			}
-			if os.PathSeparator == '\\' && strings.Contains(header.Linkname, "\\\\") {
+			if os.PathSeparator == '\\' && strings.ContainsRune(header.Linkname, '\\') {
 				return nil, fmt.Errorf("archive hard-link target %q cannot be materialized on Windows", header.Linkname)
 			}
 		}
