@@ -72,7 +72,7 @@ func (cm *CacheManager) RepoDir(repo manifest.RepositoryDeclaration) string {
 
 // HasCommit checks whether the bare repository at repoDir contains the specified commit SHA.
 func (cm *CacheManager) HasCommit(ctx context.Context, repoDir, commitSHA string) bool {
-	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "cat-file", "-e", commitSHA+"^{commit}")
+	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "--no-replace-objects", "cat-file", "-e", commitSHA+"^{commit}")
 	return cmd.Run() == nil
 }
 
@@ -146,7 +146,7 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 func (cm *CacheManager) ListTree(ctx context.Context, repo manifest.RepositoryDeclaration) ([]FileEntry, error) {
 	repoDir := cm.RepoDir(repo)
 
-	args := []string{"--git-dir=" + repoDir, "ls-tree", "-r", "-z", "--full-tree", "--full-name", repo.SHA}
+	args := []string{"--git-dir=" + repoDir, "--no-replace-objects", "ls-tree", "-r", "-z", "--full-tree", "--full-name", repo.SHA}
 	if repo.PathScope != "" && repo.PathScope != "." {
 		args = append(args, repo.PathScope)
 	}
@@ -199,7 +199,7 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 	cleanPath = strings.TrimPrefix(cleanPath, "/")
 
 	target := fmt.Sprintf("%s:%s", repo.SHA, cleanPath)
-	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "show", target)
+	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "--no-replace-objects", "show", target)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -236,7 +236,7 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 	defer os.RemoveAll(stageDir)
 
 	// Use git archive piped to tar extraction in the isolated staging directory.
-	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "archive", repo.SHA)
+	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "--no-replace-objects", "archive", repo.SHA)
 	if repo.PathScope != "" && repo.PathScope != "." {
 		archiveCmd.Args = append(archiveCmd.Args, repo.PathScope)
 	}
