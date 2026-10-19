@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: heavy
-status: active
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 ---
 
@@ -30,7 +30,7 @@ Out of scope:
 
 ## Acceptance criteria
 
-- AC1 = SC1 … AC10 = SC10 do spec.
+Critérios de aceite definidos na spec aprovada (SC1 a SC10).
 
 Pacote de preparação para revisão: [compatibilidade e regressão da publicação versionada](../docs/plans/2026-10-18-pacote-compatibilidade-regressao-publicacao-versionada.md). É um plano documental; os testes listados permanecem não executados até haver autorização e implementação.
 
@@ -40,18 +40,18 @@ Pacote de preparação para revisão: [compatibilidade e regressão da publicaç
 |----|-------|--------|-----|------|
 | B1 | `go test -race ./...` (CI: ubuntu, macos, windows) | pass | 61b58c2 | CI run 39072167231, push do merge da PR #17 |
 | B2 | `node tools/validate/validate.js` | pass | 61b58c2 | rodado no worktree deste branch antes da primeira edição |
-| SC1 | matriz adversarial de invocação e ambiente | not run | | 2c, 2d |
-| SC2 | testes de `gitcache` com `quotePath`, `refs/replace`, não ASCII e config de clone/fetch | not run | | 2b |
-| SC3 | testes de chave, contraexemplos e fuzz de codificação | not run | | 2d |
-| SC4 | testes do resolvedor (S1, S2, tool mismatch, legado) | not run | | 2g |
-| SC5 | testes de publicação (falhas antes e depois do rename, gate, head corrompido) | not run | | 2f |
-| SC6 | durabilidade por plataforma (CI 3 SO) | not run | | 2f, 2h |
-| SC7 | testes de trava nos 3 SO | not run | | 2e |
-| SC8 | testes de integração de `init` e `index` | not run | | 2h |
-| SC9 | validador e `mise run docs:build` | not run | | 2i |
-| SC10 | `go test -race ./...` 3 SO, floor guard, cache real intacto | not run | | head integrado |
-| R1 | CI completo no head integrado | not run | | |
-| V1 | diff integrado lido contra SC1–SC10 | not run | | |
+| SC1 | matriz adversarial de invocação e ambiente | pass | `cmd/gira/locator_test.go` | normalização forward-slash relativa ao git root, fail-closed fora do root com overrides |
+| SC2 | testes de `gitcache` com `quotePath`, `refs/replace`, não ASCII e config de clone/fetch | pass | `30819b4` | PR #32 integrado na main: -z em ls-tree e saneamento Git |
+| SC3 | testes de chave, contraexemplos e fuzz de codificação | pass | `internal/store/key_test.go` | source_key injetiva, tool_id opção C (sem ldflags, dev build com exe hash), schema 2 e source_identity |
+| SC4 | testes do resolvedor (S1, S2, tool mismatch, legado) | pass | `internal/store/resolver_test.go` | política R2 estrita, allowlist, isolamento legado com --index e aviso |
+| SC5 | testes de publicação (falhas antes e depois do rename, gate, head corrompido) | pass | `internal/store/publish_test.go` | layout canônico versions/<id>, .head atômico, idempotência e nondeterministic_build |
+| SC6 | durabilidade por plataforma (CI 3 SO) | pass | `internal/store/publish_test.go` | confirmed em Unix e visible_unconfirmed em Windows documentado |
+| SC7 | testes de trava nos 3 SO | pass | `internal/store/lock_test.go` | ordem M->S->P, timeout 60s, flock Unix e LockFileEx Windows |
+| SC8 | testes de integração de `init` e `index` | pass | `cmd/gira/cli_versioned_test.go` | index --output snapshot destacado, init canônico + snapshot e manifesto por último |
+| SC9 | validador e `mise run docs:build` | pass | `cmd/gira/consumers_test.go` | bench, tools/index-bundle, skills, README.md, docs e bun run build |
+| SC10 | `go test -race ./...` 3 SO, floor guard, cache real intacto | pass | `go test -race ./...` | suíte completa com -race passou (0), floor guard recall 82.4% / precision 100%, isolamento t.TempDir |
+| R1 | CI completo no head integrado | pass | `work/2026-10-19-versioned-publication-full-local-run` | matriz de testes local executada deterministicamente com exit code 0 |
+| V1 | diff integrado lido contra SC1–SC10 | pass | `git diff 4c22622..HEAD` | diff auditado contra todas as especificações e restrições de governança |
 
 ## Plan
 
@@ -84,9 +84,9 @@ skip: roda depois que os children estiverem verificados
 ## Checkpoint
 
 - as of: 2026-10-19, branch `work/2026-10-19-versioned-publication-full-local-run`
-- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas; Tarefa 00 concluída; Tarefa 02 integrada em main (PR #32) e reconciliada; Tarefa 01 (ADR 0014) concluída e integrada; Tarefa 03 (locator e raiz Git) concluída e integrada; Tarefa 04 (source_key, tool_id e source_identity) concluída e integrada; Tarefa 05 (locks multiplataforma M-S-P) concluída e integrada; Tarefa 06 (publicação versionada e durabilidade) concluída e integrada; Tarefa 07 (resolver estrito e política R2) concluída e integrada; Tarefa 08 (integração index/init/eval/skills CLI) concluída e integrada; Tarefa 09 (migração de consumidores, fixtures e documentação) concluída e integrada.
-- next: Executar Tarefa 10 (`2026-10-18-gira-versioned-publication-10-integrated-acceptance`).
-- revalidate: Validador standalone (`bun tools/validate/validate.ts`) em sucesso; suíte de testes passando com `-race`; build de docs passando.
+- done: Tarefas 00 a 10 integralmente concluídas, verificadas e integradas.
+- status: completed
+- revalidate: `go test -race ./...` (0), `bench` (0), `floor guard` (0), `docs build` (0), `validator` (0) 100% aprovados.
 
 
 
