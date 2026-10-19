@@ -59,7 +59,7 @@ func gitReadEnvironment() []string {
 }
 
 func newGitReadCommand(ctx context.Context, args ...string) *exec.Cmd {
-	cmd := newGitReadCommand(ctx, args...)
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Env = gitReadEnvironment()
 	return cmd
 }
