@@ -389,7 +389,13 @@ func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
 
 func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(t *testing.T) {
 	ctx := context.Background()
-	localRepoDir, initialSHA := createTestLocalRepo(t)
+	// Keep this fixture directly under os.TempDir. t.TempDir includes the
+	// long test name on Windows and can push Git's pack .keep path over MAX_PATH.
+	localRepoDir, err := os.MkdirTemp(os.TempDir(), "gira-repo-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(localRepoDir) })
 	runGit := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("git", args...)
@@ -400,6 +406,15 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		}
 		return strings.TrimSpace(string(out))
 	}
+	runGit("init")
+	runGit("config", "user.name", "Test Runner")
+	runGit("config", "user.email", "test@example.com")
+	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("# Hello World\\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "README.md")
+	runGit("commit", "-m", "Initial commit")
+	initialSHA := runGit("rev-parse", "HEAD")
 	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("pinned README\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -416,7 +431,12 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		SHA: pinnedSHA,
 		PathScope: ".",
 	}
-	cm, err := gitcache.NewCacheManager(t.TempDir())
+	cacheBase, err := os.MkdirTemp(os.TempDir(), "gira-cache-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(cacheBase) })
+	cm, err := gitcache.NewCacheManager(cacheBase)
 	if err != nil {
 		t.Fatal(err)
 	}
