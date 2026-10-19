@@ -350,9 +350,6 @@ func TestCacheManager_ExportTree(t *testing.T) {
 
 
 func TestCacheManager_ListTreePreservesUnusualPathnames(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("Windows filesystems forbid control characters and backslashes in filenames")
-	}
 	ctx := context.Background()
 	cacheDir := t.TempDir()
 	cm, err := gitcache.NewCacheManager(cacheDir)
@@ -361,7 +358,10 @@ func TestCacheManager_ListTreePreservesUnusualPathnames(t *testing.T) {
 	}
 
 	localRepoDir, _ := createTestLocalRepo(t)
-	oddNames := []string{"tab\tname.txt", "line\nbreak.txt", "back\\slash.txt"}
+	oddNames := []string{"café-東京.txt"}
+	if runtime.GOOS != "windows" {
+		oddNames = append(oddNames, "tab\tname.txt", "line\nbreak.txt", "back\\slash.txt")
+	}
 	for _, name := range oddNames {
 		if err := os.WriteFile(filepath.Join(localRepoDir, name), []byte("unusual path\n"), 0644); err != nil {
 			t.Fatalf("write %q: %v", name, err)
