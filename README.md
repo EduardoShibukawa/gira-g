@@ -32,26 +32,105 @@ Com cosign instalado, `--cosign` verifica o bundle Sigstore keyless antes.
 
 > **Nota sobre `GITHUB_TOKEN` (opcional):** Downloads públicos não exigem token. Exporte `GITHUB_TOKEN="$(gh auth token)"` se desejar limites de rate autenticados na API do GitHub ou ao instalar a partir de forks privados.
 
-## Quickstart Reproduzível e Resolução de Índice
+## Quickstart Reproduzível e Publicação Versionada de Índice
 
-O `gira` suporta dois modos de entrada:
-1. **Zero-config (repositório único):** `gira init [dir]` gera `gira.yaml` fixado no `HEAD` local e indexa o repositório imediatamente.
-2. **Multi-repositório (orientado por manifesto):** `gira index [manifest]` lê `gira.yaml` declarando múltiplos repositórios e commits.
+O `gira` suporta dois modos de entrada determinísticos:
+1. **Zero-config (repositório único):** `gira init [dir]` inspeciona o repositório Git local, constrói o Macro Map e publica canonicamente no store versionado. O manifesto `gira.yaml` fixado no `HEAD` local é gravado por **último** — se o build ou gates falharem, nenhum manifesto quebrado fica no disco.
+2. **Multi-repositório (orientado por manifesto):** `gira index [manifest]` lê `gira.yaml` declarando repositórios e commits fixados, publicando a versão imutável correspondente no store.
 
-**Onde o índice fica salvo (`--output` vs cache padrão):**
-- Sem `--output`, o `gira` grava o Macro Map em `~/.cache/gira/indexes/<system>/macro-map.json` (ou `.gira/indexes/<system>/macro-map.json` como fallback).
-- Quando `--index` é omitido nos comandos de consulta, o `gira` resolve automaticamente na ordem: `.gira/macro-map.json`, `macro-map.json` e o índice em `~/.cache/gira/indexes/`.
-- Para fixar um caminho explícito no projeto (ex.: `.gira/macro-map.json` ou `.gira/index.json`), passe `--output .gira/macro-map.json` na indexação e `--index .gira/macro-map.json` nas consultas.
+### Semântica de `--output` e Snapshots Destacados (D1)
+
+- **`gira index [manifest] --output P`:** Grava exclusivamente um **snapshot destacado** (detached snapshot) no caminho `P`. Não altera o store versionado, não move ponteiros `.head` e não modifica `gira.yaml`. A CLI emite aviso em `stderr` alertando que `P` é um snapshot destacado e não o índice ativo.
+- **`gira init [dir] --output P`:** Executa a publicação canônica no store versionado, atualiza `.head` da linhagem e grava uma cópia byte a byte idêntica do snapshot em `P`. O manifesto `gira.yaml` é gravado apenas após a conclusão bem-sucedida da publicação. Se a publicação canônica for concluída mas a cópia para `P` falhar, é reportado erro de publicação parcial.
+- **Sem `--output`:** Tanto `gira init` quanto `gira index` publicam canonicamente no store versionado do usuário.
+
+### Layout do Store Versionado e Hierarquia D2
+
+A resolução do diretório-raiz do store de índices segue a ordem de precedência:
+1. `$XDG_CACHE_HOME/gira/indexes`
+2. `~/.cache/gira/indexes`
+3. `<raiz-do-projeto>/.gira/indexes` (fallback)
+
+Cada alvo indexado reside em uma linhagem imutável com versionamento atômico:
+```text
+<store_root>/
+  <lineage_id>/
+    .head                # Ponteiro atômico para o version_id ativo
+    versions/
+      <version_id>/
+        macro-map.json   # Macro Map canônico imutável (Schema 2)
+        meta.json        # Metadados estritos de publicação
+```
+Cada versão é endereçada determinística e unicamente por `version_id = SHA-256(source_key || tool_id)[:16]`, onde `source_key` é derivada dos bytes crus exatos do manifesto e `tool_id` identifica o binário `gira` e suas ferramentas de extração.
+
+### Formato Canônico Schema 2 e Proveniência Embutida (`source_identity`)
+
+O formato do índice utiliza `schema_version: 2` (inteiro). Tanto índices canônicos publicados quanto snapshots destacados carregam metadados autocontidos de proveniência:
+```json
+"source_identity": {
+  "schema_version": 2,
+  "manifest_sha256": "<64-hex SHA-256 dos bytes crus do manifesto>",
+  "extractors": [
+    { "id": "<extractor-id>", "version": "<semver>" }
+  ],
+  "sources": [
+    {
+      "repo_id": "<repo-id>",
+      "sha": "<40-hex commit SHA>",
+      "path_scope": "<path>",
+      "url_sha256": "<hash do repositório>"
+    }
+  ]
+}
+```
+URLs cruas com credenciais ou caminhos absolutos locais nunca são serializados.
+
+### Política Estrita R2 e Isolamento do Legado Schema 1 (`"1.0.0"`)
+
+- Índices legados com string `"1.0.0"` são estritamente isolados: **nunca** são carregados implicitamente quando um `gira.yaml` existe no projeto.
+- O formato legado é aceito exclusivamente em modo somente leitura via `--index <path>` explícito, emitindo aviso visível em `stderr` (`[WARN] Reading legacy index format...`).
+- Índices legados nunca são modificados nem atualizados in-place, e downgrades de schema são estritamente rejeitados pelo publicador.
+- Leitores aplicam allowlist estrita: schemas desconhecidos ou mal tipados falham fechado com `index_schema_unsupported` (distinto de arquivo corrompido `index_corrupt`).
+
+### Travas entre Processos (M -> S -> P) e Durabilidade
+
+- **Exclusão mútua entre processos:** Escritores adquirem travas obrigatórias na sequência estrita:
+  $$\mathbf{M} \text{ (Manifest Lock)} \longrightarrow \mathbf{S} \text{ (Store Lock)} \longrightarrow \mathbf{P} \text{ (Snapshot Lock)}$$
+- **Primitivas nativas:** Utiliza `flock` (Linux/macOS) e `LockFileEx` (Windows) indexadas pela identidade física do descritor de arquivo (`os.SameFile`), imune a evasão por symlinks, hardlinks ou grafias relativas/absolutas.
+- **Timeout uniforme de 60 segundos:** Concorrência não resolvida dentro de 60s retorna `index_locked`. Arquivos em sistemas de arquivos de rede sem suporte a travas retornam `lock_unavailable`.
+- **Garantias de durabilidade:**
+  - **Linux / macOS:** Sincronização atômica de arquivos e do diretório-pai (`fsync`) com status `confirmed`. Falhas de sync reportam `visible_unconfirmed` com código diferente de zero e cancelam gravação de `gira.yaml`.
+  - **Windows:** Sem garantia de flush de metadados de diretório pelo Win32, reporta `visible_unconfirmed` com exit 0 e aviso explicativo em `stderr`.
+
+### Taxonomia de Erros e Troubleshooting
+
+| Código de Erro | Causa e Resolução |
+|---|---|
+| `index_missing` | Versão ou linhagem do índice não encontrada no store. Execute `gira index` ou `gira init`. |
+| `index_tool_mismatch` | O índice em cache foi construído por versão incompatível do binário. Reindexe com o binário atual. |
+| `index_schema_unsupported` | Versão de schema inválida ou não suportada. Atualize o índice para Schema 2. |
+| `index_corrupt` | Arquivo truncado, JSON malformado ou hash divergente. Recupere ou recrie o índice. |
+| `index_ambiguous` | Descoberta sem manifesto encontrou múltiplos índices concorrentes. Forneça `--index` ou execute em pasta com `gira.yaml`. |
+| `manifest_outside_git_root` | Manifesto contendo overrides está fora da raiz Git. Mova o manifesto para dentro da worktree Git. |
+| `git_root_unavailable` | Sonda de repositório Git falhou ou ownership é ambíguo. Verifique status e permissões do Git. |
+| `manifest_path_required` | Avaliação de overrides requer o caminho real do manifesto; fallback implícito não é permitido. |
+| `nondeterministic_build` | Re-indexação do mesmo `version_id` produziu bytes diferentes. Falha fechada sem sobrescrita. |
+| `index_locked` | Timeout de concorrência (60s) atingido ao aguardar locks M/S/P. |
+| `lock_unavailable` | Sistema de arquivos não suporta travas de arquivo obrigatórias (ex.: NFS/SMB/FUSE). |
 
 ### Exemplo executável (zero-config ou fixture do repositório)
 
 ```bash
-# Opção A: Zero-config em qualquer repositório Git (ex.: este próprio checkout)
-gira init . --output .gira/macro-map.json
-gira tour --format md --index .gira/macro-map.json
-gira locate Order --format md --index .gira/macro-map.json
+# Opção A: Zero-config em qualquer repositório Git (publica no store canônico)
+gira init .
+gira tour --format md
+gira locate Order --format md
 
-# Opção B: Inicializar um repositório local a partir da fixture testdata/dogfood/services
+# Opção B: Snapshot destacado para inspeção isolada sem alterar store ativo
+gira index --output .gira/snapshot.json
+gira impact service:order --format md --index .gira/snapshot.json
+
+# Opção C: Inicializar a partir da fixture testdata/dogfood/services com cópia de snapshot
 cp -r testdata/dogfood/services /tmp/gira-demo && git -C /tmp/gira-demo init -q && \
   git -C /tmp/gira-demo add -A && git -C /tmp/gira-demo -c user.name=demo -c user.email=demo@local commit -q -m "init"
 gira init /tmp/gira-demo --output /tmp/gira-demo/.gira/macro-map.json

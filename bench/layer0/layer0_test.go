@@ -63,6 +63,57 @@ func TestAdaptersGolden(t *testing.T) {
 	}
 }
 
+// AC1, AC2: FromGIRA adapter correctly processes Schema 2 MacroMaps with embedded source_identity.
+func TestFromGIRASchema2(t *testing.T) {
+	in, err := os.ReadFile(filepath.Join("testdata", "gira", "macro-map.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Transform golden sample into Schema 2 with embedded source_identity
+	var raw map[string]any
+	if err := json.Unmarshal(in, &raw); err != nil {
+		t.Fatal(err)
+	}
+	raw["schema_version"] = 2
+	raw["source_identity"] = map[string]any{
+		"schema_version":  2,
+		"manifest_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		"extractors": []map[string]any{
+			{"id": "go", "version": "1.0.0"},
+		},
+		"sources": []map[string]any{
+			{
+				"repo_id":    "opentelemetry-demo",
+				"sha":        "dedc0178918e260823323b8d95005a8cb924b007",
+				"path_scope": ".",
+				"url_sha256": "c83c589000000000000000000000000000000000000000000000000000000000",
+			},
+		},
+	}
+	schema2Bytes, err := json.Marshal(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nag, err := FromGIRA(schema2Bytes)
+	if err != nil {
+		t.Fatalf("FromGIRA failed on Schema 2 index: %v", err)
+	}
+	got, err := nag.CanonicalJSON()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want, err := os.ReadFile(filepath.Join("testdata", "gira", "expected.nag.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(got, want) {
+		t.Fatalf("Schema 2 NAG differs from golden\n got:\n%s\nwant:\n%s", got, want)
+	}
+}
+
 func TestLifterLongestPrefix(t *testing.T) {
 	l := NewLifter([]ComponentPath{{"src/frontend/", "service:frontend"}, {"src/frontend-proxy/", "service:frontend-proxy"}})
 	for p, want := range map[string]string{

@@ -12,6 +12,7 @@
 #     [--cache-dir DIR] [--output macro-map.json] [--skip-index]
 set -euo pipefail
 
+GIRA_BIN="${GIRA_BIN:-bin/gira}"
 MANIFEST="gira.yaml"
 CACHE_DIR=""
 OUTPUT="macro-map.json"
@@ -39,12 +40,12 @@ if [ -n "$CACHE_DIR" ]; then
 fi
 
 echo "1/2: populating cache from $MANIFEST (needs network once)..."
-bin/gira index "$MANIFEST" "${CACHE_ARGS[@]}" --output "$OUTPUT"
+"$GIRA_BIN" index "$MANIFEST" "${CACHE_ARGS[@]}" --output "$OUTPUT"
 
 if [ "$SKIP_INDEX" = "1" ]; then
   exit 0
 fi
 
 echo "2/2: verifying offline reproducibility..."
-bin/gira index "$MANIFEST" "${CACHE_ARGS[@]}" --offline --output "$OUTPUT"
+"$GIRA_BIN" index "$MANIFEST" "${CACHE_ARGS[@]}" --offline --output "$OUTPUT"
 echo "offline index ok: $OUTPUT"
