@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -12,7 +12,7 @@ parent: 2026-10-17-gira-versioned-publication
 
 - tier: standard (escopo e critérios de aceite limitados abaixo)
 - approved: criação da tarefa e plano de execução pelo dono (2026-10-18, instrução explícita para desbloquear e criar tasks)
-- dependencies: Pode começar após revalidar a auditoria; incorporar/aguardar merge da PR #28 antes de duplicar seus fixes.
+- dependencies: Auditoria remota atualizada na PR #31; a PR #28 já está incorporada em main (6c66d938). Trabalho restrito a lacunas remanescentes; não duplicar seus fixes.
 
 ## Objective
 
@@ -50,15 +50,22 @@ NUL-delimited ls-tree; sanitização de variáveis GIT_* para probes locais; pre
 
 ## Plan
 
-1. Revalidar instruções do repositório, branch/HEAD e estado do worktree antes de alterações; nunca resetar, limpar ou sobrescrever mudanças do usuário.
-2. Ler a spec aprovada, os registros de decisão e as tarefas upstream/downstream.
-3. Implementar apenas o comportamento delimitado e seus testes de regressão.
-4. Executar testes focados e depois as verificações obrigatórias; registrar SHA, comandos, plataforma e resultados exatos.
-5. Revisar o diff integrado contra cada critério e atualizar esta tarefa apenas com resultados sustentados por evidência.
+1. Revalidar o estado remoto e trabalhar em branch separado, sem reset/clean nem escrita em `main`.
+2. Reutilizar a PR #28: manter `ls-tree -z`, cópia de diagnostics, child reaping e o isolamento atual de probes; não reconstruir as mesmas correções.
+3. Estender o saneamento de probes para cobrir `GIT_PREFIX` e variáveis de descoberta/replace relevantes; adicionar testes adversariais com valores reais e inexistentes.
+4. Tornar as leituras da cache determinísticas: ignorar `refs/replace` em comandos por SHA e filtrar as variáveis Git que redirecionam a leitura. Deixar clone/fetch com o ambiente do usuário intacto.
+5. Reforçar `ExportTree`: extrair para staging isolado, esperar/recolher os subprocessos em todos os caminhos de erro e não deixar um destino parcial visível como resultado bem-sucedido. Preservar um destino preexistente ou falhar antes de tocá-lo.
+6. Adicionar regressões para `core.quotePath`, `refs/replace`, variáveis de ambiente e erro de archive depois de emitir bytes; uma prova específica Windows deve demonstrar que um caminho não materializável falha fechado.
+7. Executar os testes focados e deixar CI executar suite/validator nos três SOs. Registrar somente resultados realmente observados com commit/run.
+8. Revisar os diffs e fechar ACs; não alegar que `ExportTree` é exercitado por produção se não houver chamador no repositório.
 
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Pode começar após revalidar a auditoria; incorporar/aguardar merge da PR #28 antes de duplicar seus fixes.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- as of: 2026-10-19
+- status: active; escopo técnico começou em branch isolado
+- branch: `work/2026-10-19-gira-versioned-publication-02-gitcache-env`
+- base: Gira-G `main` `6c66d938148de56d460389f183bf9900f482f50f`
+- evidence: PR #28 merged; remote audit PR #31 has static consumer matrix, while external/dynamic consumers and local checkout remain unobservable
+- finding: `ExportTree` has no production callsite in the Go source files inspected so far; method is in `internal/gitcache`. Keep this distinction explicit and retain direct regression coverage for the method itself.
+- next: implement focused gap fixes and validate them with remote CI
+- revalidate: AC1–AC6 remain not run until exact-head CI completes
