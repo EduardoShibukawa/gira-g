@@ -673,9 +673,33 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 	runGit("add", "README.md")
 	runGit("commit", "-m", "initial")
 
-	t.Setenv("GIT_DIR", "/definitely/not/a/repository")
-	t.Setenv("GIT_WORK_TREE", "/elsewhere")
-	t.Setenv("GIT_INDEX_FILE", "/tmp/redirected-index")
+	for key, value := range map[string]string{
+		"GIT_DIR": "/definitely/not/a/repository",
+		"GIT_WORK_TREE": "/elsewhere",
+		"GIT_COMMON_DIR": "/elsewhere/.git",
+		"GIT_INDEX_FILE": "/tmp/redirected-index",
+		"GIT_OBJECT_DIRECTORY": "/tmp/redirected-objects",
+		"GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/redirected-alternates",
+		"GIT_NAMESPACE": "redirected",
+		"GIT_PREFIX": "redirected-prefix/",
+		"GIT_CEILING_DIRECTORIES": filepath.Dir(repoDir),
+		"GIT_NO_REPLACE_OBJECTS": "0",
+		"GIT_CONFIG_GLOBAL": filepath.Join(repoDir, "missing-global-config"),
+		"GIT_CONFIG_SYSTEM": filepath.Join(repoDir, "missing-system-config"),
+		"GIT_CONFIG_NOSYSTEM": "0",
+		"GIT_CONFIG_COUNT": "1",
+		"GIT_CONFIG_KEY_0": "core.worktree",
+		"GIT_CONFIG_VALUE_0": "/elsewhere",
+	} {
+		t.Setenv(key, value)
+	}
+	for _, item := range gitCommandEnv() {
+		key, _, _ := strings.Cut(item, "=")
+		if strings.HasPrefix(key, "GIT_CONFIG_") || key == "GIT_PREFIX" || key == "GIT_CEILING_DIRECTORIES" {
+			t.Fatalf("gitCommandEnv() retained unsafe variable %q", key)
+		}
+	}
+
 	// Compare filesystem identity, not path spelling: Git may return a physical
 	// path on macOS or a slash/long-name path on Windows.
 	wantInfo, err := os.Stat(repoDir)

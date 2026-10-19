@@ -626,14 +626,19 @@ func gitCommandEnv() []string {
 		"GIT_OBJECT_DIRECTORY": true,
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
 		"GIT_NAMESPACE": true,
+		"GIT_PREFIX": true,
+		"GIT_CEILING_DIRECTORIES": true,
+		"GIT_NO_REPLACE_OBJECTS": true,
+		"GIT_REPLACE_REF_BASE": true,
 		"GIT_CONFIG": true,
-		"GIT_CONFIG_COUNT": true,
-		"GIT_CONFIG_PARAMETERS": true,
 	}
 	env := make([]string, 0, len(os.Environ()))
 	for _, item := range os.Environ() {
 		key, _, ok := strings.Cut(item, "=")
-		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
+		// Drop every Git config injection variable, not just the currently
+		// known subset. This keeps future GIT_CONFIG_* controls from becoming
+		// an unreviewed repository-discovery override.
+		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_") {
 			continue
 		}
 		env = append(env, item)
