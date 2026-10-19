@@ -455,6 +455,27 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		t.Fatalf("EnsureRepo: %v", err)
 	}
 	cacheDir := cm.RepoDir(repoDecl)
+	cachedGit := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"--git-dir=" + cacheDir}, args...)...)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git --git-dir=%s %v failed: %v: %s", cacheDir, args, err, out)
+		}
+	}
+	cachedGit("config", "core.quotePath", "true")
+	quotedEntries, err := cm.ListTree(ctx, repoDecl)
+	if err != nil {
+		t.Fatalf("ListTree with repository core.quotePath=true: %v", err)
+	}
+	cachedGit("config", "core.quotePath", "false")
+	plainEntries, err := cm.ListTree(ctx, repoDecl)
+	if err != nil {
+		t.Fatalf("ListTree with repository core.quotePath=false: %v", err)
+	}
+	if !reflect.DeepEqual(quotedEntries, plainEntries) {
+		t.Fatalf("NUL-delimited pinned tree changed with core.quotePath: true=%#v false=%#v", quotedEntries, plainEntries)
+	}
 	replace := exec.Command("git", "--git-dir="+cacheDir, "replace", pinnedSHA, initialSHA)
 	if out, err := replace.CombinedOutput(); err != nil {
 		t.Fatalf("create replace ref: %v: %s", err, out)
