@@ -1,6 +1,7 @@
 package gitcache
 
 import (
+	"archive/tar"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -8,8 +9,10 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+	"io"
 
 	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
@@ -275,10 +278,105 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 	return stdout.Bytes(), nil
 }
 
+// archiveMember records one entry that git archive encoded in the tar stream.
+type archiveMember struct {
+	name string
+	kind byte
+	size int64
+}
+
+// readArchiveMembers validates archive paths before handing the tar to an
+// external extractor. It also records the exact member names to check after
+// extraction, since some platform tar builds can silently alter or omit names.
+func readArchiveMembers(archivePath string) ([]archiveMember, error) {
+	file, err := os.Open(archivePath)
+	if err != nil {
+		return nil, fmt.Errorf("open archive for validation: %w", err)
+	}
+	defer file.Close()
+
+	reader := tar.NewReader(file)
+	var members []archiveMember
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("read archive header: %w", err)
+		}
+		name := strings.TrimSuffix(header.Name, "/")
+		if name == "" || name == "." {
+			continue
+		}
+		clean := path.Clean(name)
+		if clean != name || clean == ".." || strings.HasPrefix(clean, "../") || path.IsAbs(name) {
+			return nil, fmt.Errorf("unsafe archive entry path %q", header.Name)
+		}
+		platformPath := filepath.FromSlash(name)
+		if filepath.IsAbs(platformPath) || filepath.VolumeName(platformPath) != "" {
+			return nil, fmt.Errorf("unsafe archive entry path %q", header.Name)
+		}
+		if os.PathSeparator == '\\' && strings.Contains(name, "\\\\") {
+			return nil, fmt.Errorf("archive entry %q cannot be materialized on Windows because backslashes are path separators", header.Name)
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir, tar.TypeReg, tar.TypeRegA, tar.TypeSymlink, tar.TypeLink:
+			// These are the entry types expected from a Git tree archive.
+		default:
+			return nil, fmt.Errorf("unsupported archive entry type %d for %q", header.Typeflag, header.Name)
+		}
+		if header.Typeflag == tar.TypeLink {
+			linkName := path.Clean(header.Linkname)
+			linkPath := filepath.FromSlash(header.Linkname)
+			if linkName != header.Linkname || linkName == ".." || strings.HasPrefix(linkName, "../") || path.IsAbs(header.Linkname) || filepath.IsAbs(linkPath) || filepath.VolumeName(linkPath) != "" {
+				return nil, fmt.Errorf("unsafe archive hard-link target %q for %q", header.Linkname, header.Name)
+			}
+			if os.PathSeparator == '\\' && strings.Contains(header.Linkname, "\\\\") {
+				return nil, fmt.Errorf("archive hard-link target %q cannot be materialized on Windows", header.Linkname)
+			}
+		}
+		members = append(members, archiveMember{name: name, kind: header.Typeflag, size: header.Size})
+	}
+	return members, nil
+}
+
+// verifyArchiveMaterialized confirms that every non-directory archive member
+// exists under the staging root with the expected type and file size. A tar
+// implementation that exits 0 but cannot represent a pathname must fail closed.
+func verifyArchiveMaterialized(stageDir string, members []archiveMember) error {
+	for _, member := range members {
+		fullPath := filepath.Join(stageDir, filepath.FromSlash(member.name))
+		info, err := os.Lstat(fullPath)
+		if err != nil {
+			return fmt.Errorf("archive extraction incomplete: entry %q was not materialized: %w", member.name, err)
+		}
+		switch member.kind {
+		case tar.TypeDir:
+			if !info.IsDir() {
+				return fmt.Errorf("archive extraction incomplete: directory entry %q was materialized as a non-directory", member.name)
+			}
+		case tar.TypeReg, tar.TypeRegA, tar.TypeLink:
+			if !info.Mode().IsRegular() {
+				return fmt.Errorf("archive extraction incomplete: regular entry %q was materialized as mode %s", member.name, info.Mode())
+			}
+			if member.kind != tar.TypeLink && info.Size() != member.size {
+				return fmt.Errorf("archive extraction incomplete: entry %q size is %d bytes, archive declared %d", member.name, info.Size(), member.size)
+			}
+		case tar.TypeSymlink:
+			if info.Mode()&os.ModeSymlink == 0 {
+				return fmt.Errorf("archive extraction incomplete: symlink entry %q was materialized as mode %s", member.name, info.Mode())
+			}
+		}
+	}
+	return nil
+}
+
 // ExportTree checks out the contents of the tree at pinned commit SHA into targetDir.
 // Extraction is staged in a sibling temporary directory; targetDir becomes visible
-// only after both git archive and tar succeed. A failed archive therefore cannot
-// leave a partial checkout that a caller might mistake for success.
+// only after git archive, tar extraction, and an entry-by-entry materialization check
+// succeed. This prevents partial or platform-mangled trees from being published.
 func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.RepositoryDeclaration, targetDir string) error {
 	if strings.TrimSpace(targetDir) == "" {
 		return fmt.Errorf("export target path cannot be empty")
@@ -318,37 +416,44 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 	}
 	defer os.RemoveAll(stageDir)
 
-	// Keep incomplete extraction private until both child processes succeed.
+	archiveFile, err := os.CreateTemp(parentDir, ".gira-archive-*.tar")
+	if err != nil {
+		return fmt.Errorf("failed to create archive staging file: %w", err)
+	}
+	archivePath := archiveFile.Name()
+	defer os.Remove(archivePath)
+
 	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "archive", repo.SHA)
 	archiveCmd.Env = GitEnvForRead()
 	if repo.PathScope != "" && repo.PathScope != "." {
 		archiveCmd.Args = append(archiveCmd.Args, repo.PathScope)
 	}
-
-	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", stageDir)
-	pipe, err := archiveCmd.StdoutPipe()
-	if err != nil {
-		return fmt.Errorf("failed to create stdout pipe: %w", err)
-	}
-	tarCmd.Stdin = pipe
-
-	var archiveStderr, tarStderr bytes.Buffer
+	var archiveStderr bytes.Buffer
+	archiveCmd.Stdout = archiveFile
 	archiveCmd.Stderr = &archiveStderr
-	tarCmd.Stderr = &tarStderr
-
-	if err := tarCmd.Start(); err != nil {
-		return fmt.Errorf("failed to start tar command: %w", err)
-	}
 
 	archiveErr := archiveCmd.Run()
-	// Always reap tar even when git archive fails: it may have consumed a
-	// valid prefix of the archive. All such files remain in the private stage.
-	tarErr := tarCmd.Wait()
+	closeErr := archiveFile.Close()
 	if archiveErr != nil {
 		return fmt.Errorf("git archive failed: %s: %w", strings.TrimSpace(archiveStderr.String()), archiveErr)
 	}
-	if tarErr != nil {
-		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
+	if closeErr != nil {
+		return fmt.Errorf("failed to close staged archive: %w", closeErr)
+	}
+
+	members, err := readArchiveMembers(archivePath)
+	if err != nil {
+		return fmt.Errorf("failed to validate git archive: %w", err)
+	}
+
+	var tarStderr bytes.Buffer
+	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", stageDir, "-f", archivePath)
+	tarCmd.Stderr = &tarStderr
+	if err := tarCmd.Run(); err != nil {
+		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), err)
+	}
+	if err := verifyArchiveMaterialized(stageDir, members); err != nil {
+		return err
 	}
 
 	// MkdirTemp keeps the staging root private (0700). Restore the exported
