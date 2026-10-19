@@ -212,20 +212,36 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 }
 
 // ExportTree checks out the contents of the tree at pinned commit SHA into targetDir.
+// Extraction happens in a sibling staging directory. The target is replaced only
+// after both git archive and tar succeed, so an unmaterializable pathname or a
+// truncated archive cannot leave a partial tree at the path used by callers.
 func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.RepositoryDeclaration, targetDir string) error {
+	if strings.TrimSpace(targetDir) == "" {
+		return fmt.Errorf("target directory path cannot be empty")
+	}
 	repoDir := cm.RepoDir(repo)
-
-	if err := os.MkdirAll(targetDir, 0755); err != nil {
-		return fmt.Errorf("failed to create target directory: %w", err)
+	cleanTarget := filepath.Clean(targetDir)
+	if cleanTarget == "." || filepath.Dir(cleanTarget) == cleanTarget {
+		return fmt.Errorf("refusing to replace the current directory or filesystem root")
+	}
+	parentDir := filepath.Dir(cleanTarget)
+	if err := os.MkdirAll(parentDir, 0755); err != nil {
+		return fmt.Errorf("failed to create target directory parent: %w", err)
 	}
 
-	// Use git archive piped to tar extraction in targetDir
+	stageDir, err := os.MkdirTemp(parentDir, "."+filepath.Base(cleanTarget)+".archive-*")
+	if err != nil {
+		return fmt.Errorf("failed to create archive staging directory: %w", err)
+	}
+	defer os.RemoveAll(stageDir)
+
+	// Use git archive piped to tar extraction in the isolated staging directory.
 	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "archive", repo.SHA)
 	if repo.PathScope != "" && repo.PathScope != "." {
 		archiveCmd.Args = append(archiveCmd.Args, repo.PathScope)
 	}
 
-	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", targetDir)
+	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", stageDir)
 
 	pipe, err := archiveCmd.StdoutPipe()
 	if err != nil {
@@ -252,5 +268,49 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
+	if err := publishExtractedTree(stageDir, cleanTarget); err != nil {
+		return fmt.Errorf("failed to publish extracted tree to %s: %w", cleanTarget, err)
+	}
+	return nil
+}
+
+// publishExtractedTree swaps a completely extracted tree into place. If an
+// earlier target exists, it is moved aside first and restored if promotion of
+// the staged tree fails. Both paths are siblings, so renames stay on one volume.
+func publishExtractedTree(stageDir, targetDir string) error {
+	info, err := os.Lstat(targetDir)
+	if os.IsNotExist(err) {
+		return os.Rename(stageDir, targetDir)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("target exists and is not a directory")
+	}
+
+	parentDir := filepath.Dir(targetDir)
+	backupDir, err := os.MkdirTemp(parentDir, "."+filepath.Base(targetDir)+".previous-*")
+	if err != nil {
+		return fmt.Errorf("failed to allocate previous-tree path: %w", err)
+	}
+	if err := os.Remove(backupDir); err != nil {
+		_ = os.RemoveAll(backupDir)
+		return fmt.Errorf("failed to prepare previous-tree path: %w", err)
+	}
+
+	if err := os.Rename(targetDir, backupDir); err != nil {
+		return fmt.Errorf("failed to preserve previous target: %w", err)
+	}
+	if err := os.Rename(stageDir, targetDir); err != nil {
+		restoreErr := os.Rename(backupDir, targetDir)
+		if restoreErr != nil {
+			return fmt.Errorf("promotion failed (%v) and previous target could not be restored from %s: %w", err, backupDir, restoreErr)
+		}
+		return fmt.Errorf("failed to promote staged tree: %w", err)
+	}
+	if err := os.RemoveAll(backupDir); err != nil {
+		return fmt.Errorf("new tree is visible at %s, but previous tree %s could not be removed: %w", targetDir, backupDir, err)
+	}
 	return nil
 }
