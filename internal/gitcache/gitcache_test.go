@@ -295,6 +295,22 @@ func TestCacheManager_ExportTree(t *testing.T) {
 	if _, err := os.Stat(mainPath); err != nil {
 		t.Errorf("exported pkg/service/main.go not found: %v", err)
 	}
+
+	// Re-exporting to an existing destination must fail without mutating it.
+	before, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cm.ExportTree(ctx, repoDecl, exportDir); err == nil {
+		t.Fatal("ExportTree accepted an existing destination directory")
+	}
+	after, err := os.ReadFile(readmePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(after, before) {
+		t.Fatalf("existing destination changed after rejected export: before=%q after=%q", before, after)
+	}
 }
 
 
@@ -411,6 +427,9 @@ func TestCacheManager_ListTreeAndReadFileIgnoreReplaceRefs(t *testing.T) {
 			t.Fatalf("git %v: %v: %s", args, err, out)
 		}
 		return strings.TrimSpace(string(out))
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "你好.txt"), []byte("unicode path\\n"), 0644); err != nil {
+		t.Fatal(err)
 	}
 	runLocalGit("add", "--all")
 	runLocalGit("commit", "-m", "replacement tree")
