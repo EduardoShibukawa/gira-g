@@ -420,7 +420,7 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 	runGit("init")
 	runGit("config", "user.name", "Test Runner")
 	runGit("config", "user.email", "test@example.com")
-	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("# Hello World\\n"), 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(localRepoDir, "README.md"), []byte("# Hello World\n"), 0644); err != nil {
 		t.Fatal(err)
 	}
 	runGit("add", "README.md")
@@ -611,7 +611,7 @@ func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
 
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
-	script := "#!/bin/sh\\ncat \"$GIRA_ARCHIVE_FIXTURE\"\\nexit 23\\n"
+	script := "#!/bin/sh\ncat \"$GIRA_ARCHIVE_FIXTURE\"\nexit 23\n"
 	if err := os.WriteFile(fakeGit, []byte(script), 0755); err != nil {
 		t.Fatal(err)
 	}
