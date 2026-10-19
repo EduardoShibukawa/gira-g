@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -142,13 +143,101 @@ type ConflictRecord struct {
 	Evidence    []EvidenceRecord `json:"evidence"`
 }
 
+// ExtractorIdentity captures the identifier and SemVer version of an architectural extractor.
+type ExtractorIdentity struct {
+	ID      string `json:"id"`
+	Version string `json:"version"`
+}
+
+// ExtractorList is a slice of ExtractorIdentity supporting flexible unmarshaling
+// from both JSON arrays of objects and JSON key-value maps.
+type ExtractorList []ExtractorIdentity
+
+func (el *ExtractorList) UnmarshalJSON(data []byte) error {
+	trimmed := bytes.TrimSpace(data)
+	if len(trimmed) == 0 || string(trimmed) == "null" {
+		*el = nil
+		return nil
+	}
+	if trimmed[0] == '[' {
+		var list []ExtractorIdentity
+		if err := json.Unmarshal(trimmed, &list); err != nil {
+			return err
+		}
+		*el = list
+		return nil
+	}
+	if trimmed[0] == '{' {
+		var m map[string]string
+		if err := json.Unmarshal(trimmed, &m); err != nil {
+			return err
+		}
+		list := make([]ExtractorIdentity, 0, len(m))
+		for k, v := range m {
+			list = append(list, ExtractorIdentity{ID: k, Version: v})
+		}
+		sort.Slice(list, func(i, j int) bool {
+			return list[i].ID < list[j].ID
+		})
+		*el = list
+		return nil
+	}
+	return fmt.Errorf("invalid extractors JSON: expected array or object")
+}
+
+// SourceRepoIdentity captures the cryptographic provenance of a source repository
+// declared in the manifest, without leaking raw clone URLs.
+type SourceRepoIdentity struct {
+	RepoID    string `json:"repo_id"`
+	CommitSHA string `json:"commit_sha,omitempty"`
+	SHA       string `json:"sha,omitempty"`
+	PathScope string `json:"path_scope,omitempty"`
+	URLSHA256 string `json:"url_sha256"`
+}
+
+func (s *SourceRepoIdentity) UnmarshalJSON(data []byte) error {
+	type Alias SourceRepoIdentity
+	var aux Alias
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	*s = SourceRepoIdentity(aux)
+	if s.CommitSHA == "" && s.SHA != "" {
+		s.CommitSHA = s.SHA
+	}
+	if s.SHA == "" && s.CommitSHA != "" {
+		s.SHA = s.CommitSHA
+	}
+	return nil
+}
+
+// SourceIdentity defines the self-contained cryptographic provenance metadata
+// embedded within a Schema 2 MacroMap index or detached snapshot.
+type SourceIdentity struct {
+	SchemaVersion  int                  `json:"schema_version"`
+	ManifestSHA256 string               `json:"manifest_sha256"`
+	Extractors     ExtractorList        `json:"extractors"`
+	Sources        []SourceRepoIdentity `json:"sources"`
+}
+
+func (si *SourceIdentity) ExtractorsMap() map[string]string {
+	if si == nil || len(si.Extractors) == 0 {
+		return nil
+	}
+	m := make(map[string]string, len(si.Extractors))
+	for _, ext := range si.Extractors {
+		m[ext.ID] = ext.Version
+	}
+	return m
+}
+
 // MacroMap represents the complete architectural graph for a Target System.
 type MacroMap struct {
-	SchemaVersion string                `json:"schema_version"`
-	TargetSystem  string                `json:"target_system"`
-	Nodes         []Node                `json:"nodes"`
-	Relationships []Relationship        `json:"relationships"`
-	Unsupported   []UnsupportedBoundary `json:"unsupported,omitempty"`
+	SchemaVersion         any                   `json:"schema_version"`
+	TargetSystem          string                `json:"target_system"`
+	Nodes                 []Node                `json:"nodes"`
+	Relationships         []Relationship        `json:"relationships"`
+	Unsupported           []UnsupportedBoundary `json:"unsupported,omitempty"`
 	// UnsupportedConstructs lists the paths whose Unsupported row is an
 	// unsupported construct inside a file an Extractor did parse, as opposed
 	// to a file no Extractor parses. The row stays in Unsupported (briefings
@@ -156,6 +245,31 @@ type MacroMap struct {
 	UnsupportedConstructs []string              `json:"unsupported_constructs,omitempty"`
 	UnresolvedRefs        []UnresolvedReference `json:"unresolved_refs,omitempty"`
 	Conflicts             []ConflictRecord      `json:"conflicts,omitempty"`
+	SourceIdentity        *SourceIdentity       `json:"source_identity,omitempty"`
+}
+
+func (m *MacroMap) UnmarshalJSON(data []byte) error {
+	type Alias MacroMap
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(m),
+	}
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.UseNumber()
+	if err := dec.Decode(&aux); err != nil {
+		return err
+	}
+	if num, ok := m.SchemaVersion.(json.Number); ok {
+		if intVal, err := num.Int64(); err == nil {
+			m.SchemaVersion = int(intVal)
+		} else {
+			m.SchemaVersion = num.String()
+		}
+	} else if f, ok := m.SchemaVersion.(float64); ok && f == float64(int(f)) {
+		m.SchemaVersion = int(f)
+	}
+	return nil
 }
 
 // IsUnsupportedConstruct reports whether the Unsupported row at path is an
@@ -204,17 +318,66 @@ func NewMacroMap(targetSystem string) *MacroMap {
 	}
 }
 
+// NewMacroMapV2 initializes an empty Schema 2 MacroMap with embedded SourceIdentity.
+func NewMacroMapV2(targetSystem string, si *SourceIdentity) *MacroMap {
+	return &MacroMap{
+		SchemaVersion:  2,
+		TargetSystem:   targetSystem,
+		Nodes:          make([]Node, 0),
+		Relationships:  make([]Relationship, 0),
+		Unsupported:    make([]UnsupportedBoundary, 0),
+		SourceIdentity: si,
+	}
+}
+
 // Validate checks structural invariants of the MacroMap so corrupted or incomplete
 // index files cannot be loaded or published as valid state.
 func (m *MacroMap) Validate() error {
 	if m == nil {
 		return fmt.Errorf("macro map is nil")
 	}
-	if m.SchemaVersion == "" {
+	if m.SchemaVersion == nil {
 		return fmt.Errorf("macro map missing schema_version")
+	}
+	switch v := m.SchemaVersion.(type) {
+	case int:
+		if v <= 0 {
+			return fmt.Errorf("macro map invalid integer schema_version %d", v)
+		}
+	case float64:
+		if v != float64(int(v)) || v <= 0 {
+			return fmt.Errorf("macro map invalid numeric schema_version %v", v)
+		}
+	case json.Number:
+		n, err := v.Int64()
+		if err != nil || n <= 0 {
+			return fmt.Errorf("macro map invalid json.Number schema_version %v", v)
+		}
+	case string:
+		if strings.TrimSpace(v) == "" {
+			return fmt.Errorf("macro map missing schema_version")
+		}
+	default:
+		return fmt.Errorf("macro map unsupported schema_version type %T", m.SchemaVersion)
 	}
 	if m.TargetSystem == "" {
 		return fmt.Errorf("macro map missing target_system")
+	}
+	if m.SourceIdentity != nil {
+		if m.SourceIdentity.SchemaVersion != 2 {
+			return fmt.Errorf("source_identity schema_version must be 2, got %d", m.SourceIdentity.SchemaVersion)
+		}
+		if m.SourceIdentity.ManifestSHA256 == "" {
+			return fmt.Errorf("source_identity missing manifest_sha256")
+		}
+		for _, s := range m.SourceIdentity.Sources {
+			if s.RepoID == "" {
+				return fmt.Errorf("source_identity source has empty repo_id")
+			}
+			if s.URLSHA256 == "" {
+				return fmt.Errorf("source_identity source %q has empty url_sha256", s.RepoID)
+			}
+		}
 	}
 	nodeIDs := make(map[string]bool, len(m.Nodes))
 	for _, n := range m.Nodes {
@@ -313,6 +476,9 @@ func (m *MacroMap) CanonicalJSON() ([]byte, error) {
 		Relationships: sortedRels,
 		Unsupported:   sortedUnsupported,
 	}
+	if f, ok := normalized.SchemaVersion.(float64); ok && f == float64(int(f)) {
+		normalized.SchemaVersion = int(f)
+	}
 	if len(m.UnsupportedConstructs) > 0 {
 		constructs := append([]string(nil), m.UnsupportedConstructs...)
 		sort.Strings(constructs)
@@ -333,6 +499,29 @@ func (m *MacroMap) CanonicalJSON() ([]byte, error) {
 			return conflicts[i].ID < conflicts[j].ID
 		})
 		normalized.Conflicts = conflicts
+	}
+	if m.SourceIdentity != nil {
+		siCopy := &SourceIdentity{
+			SchemaVersion:  m.SourceIdentity.SchemaVersion,
+			ManifestSHA256: m.SourceIdentity.ManifestSHA256,
+		}
+		if len(m.SourceIdentity.Extractors) > 0 {
+			exts := make([]ExtractorIdentity, len(m.SourceIdentity.Extractors))
+			copy(exts, m.SourceIdentity.Extractors)
+			sort.Slice(exts, func(i, j int) bool {
+				return exts[i].ID < exts[j].ID
+			})
+			siCopy.Extractors = exts
+		}
+		if len(m.SourceIdentity.Sources) > 0 {
+			sources := make([]SourceRepoIdentity, len(m.SourceIdentity.Sources))
+			copy(sources, m.SourceIdentity.Sources)
+			sort.Slice(sources, func(i, j int) bool {
+				return sources[i].RepoID < sources[j].RepoID
+			})
+			siCopy.Sources = sources
+		}
+		normalized.SourceIdentity = siCopy
 	}
 
 	var buf bytes.Buffer

@@ -651,7 +651,7 @@ func BuildIncremental(
 	var overallClass RefreshClass
 	var perFileClass map[string]RefreshClass
 	if prev == nil || prevState == nil || len(prevState.Fingerprints) == 0 ||
-		(prevState.SchemaVersion != "" && prev.SchemaVersion != "" && prevState.SchemaVersion != prev.SchemaVersion) {
+		(prevState.SchemaVersion != "" && prev.SchemaVersion != nil && fmt.Sprint(prevState.SchemaVersion) != fmt.Sprint(prev.SchemaVersion)) {
 		overallClass = RefreshFull
 		perFileClass = make(map[string]RefreshClass, len(currFingerprints))
 		for k := range currFingerprints {
@@ -704,7 +704,7 @@ func BuildIncremental(
 	}
 
 	nextState := &IncrementalState{
-		SchemaVersion: next.SchemaVersion,
+		SchemaVersion: fmt.Sprint(next.SchemaVersion),
 		Fingerprints:  currFingerprints,
 		LastClass:     overallClass,
 		PerFileClass:  perFileClass,
@@ -778,6 +778,19 @@ func cloneMacroMap(mm *domain.MacroMap) (*domain.MacroMap, error) {
 			}
 			out.Conflicts[i] = conflictCopy
 		}
+	}
+	if mm.SourceIdentity != nil {
+		siCopy := &domain.SourceIdentity{
+			SchemaVersion:  mm.SourceIdentity.SchemaVersion,
+			ManifestSHA256: mm.SourceIdentity.ManifestSHA256,
+		}
+		if len(mm.SourceIdentity.Extractors) > 0 {
+			siCopy.Extractors = append([]domain.ExtractorIdentity(nil), mm.SourceIdentity.Extractors...)
+		}
+		if len(mm.SourceIdentity.Sources) > 0 {
+			siCopy.Sources = append([]domain.SourceRepoIdentity(nil), mm.SourceIdentity.Sources...)
+		}
+		out.SourceIdentity = siCopy
 	}
 	return out, nil
 }
