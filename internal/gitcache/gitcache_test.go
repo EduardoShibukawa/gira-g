@@ -491,8 +491,9 @@ func TestCacheManager_PinnedReadsIgnoreReplaceRefs(t *testing.T) {
 		t.Fatalf("ExportTree followed refs/replace; unexpected path stat error=%v", err)
 	}
 	exportedReadme, err := os.ReadFile(filepath.Join(exportDir, "README.md"))
-	if err != nil || string(exportedReadme) != "# Hello World\n" {
-		t.Fatalf("ExportTree did not use pinned commit: got=%q err=%v", exportedReadme, err)
+	normalizedReadme := strings.ReplaceAll(string(exportedReadme), "\r\n", "\n")
+	if err != nil || normalizedReadme != "# Hello World\n" {
+		t.Fatalf("ExportTree did not use pinned commit: got=%q normalized=%q err=%v", exportedReadme, normalizedReadme, err)
 	}
 }
 
