@@ -304,103 +304,29 @@ func findProjectManifest() string {
 	return ""
 }
 
+func currentToolID() string {
+	tid, err := store.ComputeToolID(store.ToolIDOptions{
+		Version: version,
+		Commit:  commit,
+	})
+	if err != nil {
+		return ""
+	}
+	return tid
+}
+
 func loadIndex(indexPath string) (*domain.MacroMap, error) {
-	s := store.NewStore("")
-
-	// 1. Explicit --index path: must exist and be valid.
-	if strings.TrimSpace(indexPath) != "" {
-		fi, err := os.Stat(indexPath)
-		if err != nil || fi.IsDir() {
-			return nil, fmt.Errorf("index_missing: index file not found: %s", indexPath)
-		}
-		return s.LoadFile(indexPath)
+	manifestPath := findProjectManifest()
+	res, err := store.Resolve(context.Background(), store.ResolveOptions{
+		ExplicitPath:   indexPath,
+		ManifestPath:   manifestPath,
+		ExpectedToolID: currentToolID(),
+		WarnWriter:     os.Stderr,
+	})
+	if err != nil {
+		return nil, err
 	}
-
-	// 2. If gira.yaml exists in the current project (or an ancestor directory),
-	// resolve EXCLUSIVELY the index for its declared target_system.name. Never fall back to another system in cache.
-	if manifestPath := findProjectManifest(); manifestPath != "" {
-		m, err := manifest.ParseFile(manifestPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse project manifest %s: %w", manifestPath, err)
-		}
-		sysName := m.TargetSystem.Name
-		projectRoot := filepath.Dir(manifestPath)
-		var sysCandidates []string
-		sysCandidates = append(sysCandidates, filepath.Join(projectRoot, ".gira", "indexes", sysName, "macro-map.json"))
-		if cwdCandidate := filepath.Join(".gira", "indexes", sysName, "macro-map.json"); cwdCandidate != sysCandidates[0] {
-			sysCandidates = append(sysCandidates, cwdCandidate)
-		}
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
-			sysCandidates = append(sysCandidates, filepath.Join(home, ".cache", "gira", "indexes", sysName, "macro-map.json"))
-		}
-		for _, cand := range sysCandidates {
-			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
-				return s.LoadFile(cand)
-			}
-		}
-		return nil, fmt.Errorf("index_missing: no index found for target system %q declared in %s (run 'gira index' first)", sysName, manifestPath)
-	}
-
-	// 3. No gira.yaml in current directory hierarchy: check explicit local index files in CWD.
-	localFiles := []string{
-		filepath.Join(".gira", "macro-map.json"),
-		filepath.Join(".gira", "index.json"),
-		"macro-map.json",
-		"index.json",
-	}
-	for _, cand := range localFiles {
-		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
-			return s.LoadFile(cand)
-		}
-	}
-
-	// 4. Inspect local and user cache stores. Only auto-select when exactly one system exists.
-	type sysCandidate struct {
-		name string
-		path string
-	}
-	var discovered []sysCandidate
-	seenSys := make(map[string]bool)
-
-	sLocal := store.NewStore(filepath.Join(".gira", "indexes"))
-	if systems, err := sLocal.List(); err == nil {
-		for _, sys := range systems {
-			if !seenSys[sys] {
-				seenSys[sys] = true
-				discovered = append(discovered, sysCandidate{
-					name: sys,
-					path: filepath.Join(".gira", "indexes", sys, "macro-map.json"),
-				})
-			}
-		}
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		sHome := store.NewStore(filepath.Join(home, ".cache", "gira", "indexes"))
-		if systems, err := sHome.List(); err == nil {
-			for _, sys := range systems {
-				if !seenSys[sys] {
-					seenSys[sys] = true
-					discovered = append(discovered, sysCandidate{
-						name: sys,
-						path: filepath.Join(home, ".cache", "gira", "indexes", sys, "macro-map.json"),
-					})
-				}
-			}
-		}
-	}
-
-	if len(discovered) == 1 {
-		return s.LoadFile(discovered[0].path)
-	}
-	if len(discovered) > 1 {
-		names := make([]string, 0, len(discovered))
-		for _, d := range discovered {
-			names = append(names, d.name)
-		}
-		return nil, fmt.Errorf("ambiguous index: multiple systems found in cache (%s); run from a directory with gira.yaml or pass --index <path>", strings.Join(names, ", "))
-	}
-
-	return nil, fmt.Errorf("index_missing: no index found (run 'gira index' first or pass --index <path>)")
+	return res.MacroMap, nil
 }
 
 func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {

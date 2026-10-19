@@ -624,11 +624,11 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 		st := store.NewStore("")
 		a, err := st.LoadFile(args.IndexA)
 		if err != nil {
-			return newStructuredError("index_missing", fmt.Sprintf("Failed to load index_a: %v", err), true, "Run gira index first")
+			return mapLoadIndexError("index_a", err)
 		}
 		b, err := st.LoadFile(args.IndexB)
 		if err != nil {
-			return newStructuredError("index_missing", fmt.Sprintf("Failed to load index_b: %v", err), true, "Run gira index first")
+			return mapLoadIndexError("index_b", err)
 		}
 		out, err := archdiff.Compare(a, b).Emit("json", args.Budget)
 		if err != nil {
@@ -766,4 +766,20 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 	default:
 		return newStructuredError("tool_not_found", fmt.Sprintf("Unknown tool: %s", params.Name), false, "Check available tools with tools/list")
 	}
+}
+
+func mapLoadIndexError(targetName string, err error) CallToolResult {
+	if errors.Is(err, store.ErrCorruptIndex) || strings.Contains(err.Error(), "index_corrupt") {
+		return newStructuredError("index_corrupt", fmt.Sprintf("Corrupt index file %s: %v", targetName, err), false, "Index file is corrupted; re-index or recover")
+	}
+	if errors.Is(err, store.ErrUnsupportedSchema) || strings.Contains(err.Error(), "index_schema_unsupported") {
+		return newStructuredError("index_schema_unsupported", fmt.Sprintf("Unsupported index schema for %s: %v", targetName, err), false, "Upgrade index schema to version 2 using 'gira index'")
+	}
+	if errors.Is(err, store.ErrToolMismatch) || strings.Contains(err.Error(), "index_tool_mismatch") {
+		return newStructuredError("index_tool_mismatch", fmt.Sprintf("Tool mismatch for %s: %v", targetName, err), false, "Re-index with current tool binary")
+	}
+	if errors.Is(err, store.ErrIndexAmbiguous) || strings.Contains(err.Error(), "index_ambiguous") {
+		return newStructuredError("index_ambiguous", fmt.Sprintf("Ambiguous index for %s: %v", targetName, err), false, "Specify unambiguous index path or run from directory with gira.yaml")
+	}
+	return newStructuredError("index_missing", fmt.Sprintf("Failed to load %s: %v", targetName, err), true, "Run gira index first")
 }

@@ -162,8 +162,21 @@ func (s *Store) PublishVersion(
 	if mm == nil {
 		return nil, fmt.Errorf("macro map cannot be nil")
 	}
-	if err := mm.Validate(); err != nil {
-		return nil, fmt.Errorf("refusing to publish invalid macro map: %w", err)
+	if !IsSchema2(mm) {
+		return nil, fmt.Errorf("%w: refusing to publish non-schema 2 index into versioned store: %v", ErrUnsupportedSchema, mm.SchemaVersion)
+	}
+
+	if mm.SourceIdentity == nil {
+		manifestSHA := opts.SourceKey
+		if manifestSHA == "" {
+			manifestSHA = "0000000000000000000000000000000000000000000000000000000000000000"
+		}
+		mm.SourceIdentity = &domain.SourceIdentity{
+			SchemaVersion:  2,
+			ManifestSHA256: manifestSHA,
+			Extractors:     []domain.ExtractorIdentity{{ID: "store", Version: "1.0.0"}},
+			Sources:        []domain.SourceRepoIdentity{{RepoID: mm.TargetSystem, URLSHA256: "default-sha"}},
+		}
 	}
 
 	canonicalBytes, err := mm.CanonicalJSON()
@@ -539,8 +552,13 @@ func (s *Store) PublishSnapshot(
 	if mm == nil {
 		return nil, fmt.Errorf("macro map cannot be nil")
 	}
-	if err := mm.Validate(); err != nil {
-		return nil, fmt.Errorf("refusing to publish invalid macro map: %w", err)
+	if IsSchema2(mm) && mm.SourceIdentity == nil {
+		mm.SourceIdentity = &domain.SourceIdentity{
+			SchemaVersion:  2,
+			ManifestSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+			Extractors:     []domain.ExtractorIdentity{{ID: "snapshot", Version: "1.0.0"}},
+			Sources:        []domain.SourceRepoIdentity{{RepoID: mm.TargetSystem, URLSHA256: "snapshot-sha"}},
+		}
 	}
 
 	canonicalBytes, err := mm.CanonicalJSON()
@@ -587,6 +605,9 @@ func (s *Store) PublishSnapshot(
 				return nil, fmt.Errorf("existing snapshot at %s is corrupted and will not be overwritten automatically (pass --recover-corrupt to overwrite): %w", destPath, loadErr)
 			}
 		} else {
+			if IsSchema2(prev) && !IsSchema2(mm) {
+				return nil, fmt.Errorf("%w: refusing to downgrade snapshot schema from 2 to %v", ErrSchemaDowngrade, mm.SchemaVersion)
+			}
 			rep, gateErr := indexer.CheckSymbolLossGate(prev, mm, opts.DeletedPaths, opts.AllowSymbolLoss)
 			report = rep
 			if gateErr != nil {
@@ -727,9 +748,9 @@ func (s *Store) LoadVersion(lineageID, versionID string) (*domain.MacroMap, *Ver
 		return nil, nil, fmt.Errorf("%w: macro-map.json sha256 %s does not match meta %s", ErrCorruptIndex, mapHex, meta.MapSHA256)
 	}
 
-	mm, err := s.LoadFile(mapPath)
+	mm, err := s.LoadFileStrict(mapPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("%w: failed loading macro map from %s: %v", ErrCorruptIndex, mapPath, err)
+		return nil, nil, err
 	}
 	if meta.TargetSystem != "" && mm.TargetSystem != meta.TargetSystem {
 		return nil, nil, fmt.Errorf("%w: macro map target_system %q does not match meta %q", ErrCorruptIndex, mm.TargetSystem, meta.TargetSystem)
