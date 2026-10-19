@@ -419,7 +419,7 @@ func TestCacheManager_ListTreeAndReadFileIgnoreReplaceRefs(t *testing.T) {
 	repoDecl := manifest.RepositoryDeclaration{
 		ID: "replace-refs",
 		URL: "file://" + localRepoDir,
-		SHA: pinnedSHA,
+		SHA: replacementSHA,
 		PathScope: ".",
 	}
 	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
@@ -464,25 +464,33 @@ func TestCacheManager_ListTreeAndReadFileIgnoreReplaceRefs(t *testing.T) {
 			t.Fatalf("entry %q changed with core.quotePath: %q vs %q", path, value, plainMap[path])
 		}
 	}
-	if _, ok := plainMap["replacement-only.txt"]; !ok {
-		t.Fatal("test fixture missing replacement-only.txt from replacement commit")
+	for _, name := range []string{"replacement-only.txt", "你好.txt"} {
+		if _, ok := plainMap[name]; !ok {
+			t.Fatalf("replacement commit missing expected pathname %q", name)
+		}
 	}
 
-	runCachedGit("replace", pinnedSHA, replacementSHA)
+	// Make the replacement SHA resolve to the old tree. Pinned reads must
+	// still return the replacement commit's actual contents and pathname set.
+	runCachedGit("replace", replacementSHA, pinnedSHA)
 	entries, err := cm.ListTree(ctx, repoDecl)
 	if err != nil {
 		t.Fatalf("ListTree with refs/replace present: %v", err)
 	}
+	seen := map[string]bool{}
 	for _, entry := range entries {
-		if entry.Path == "replacement-only.txt" {
-			t.Fatal("ListTree followed refs/replace instead of the pinned commit")
+		seen[entry.Path] = true
+	}
+	for _, name := range []string{"replacement-only.txt", "你好.txt"} {
+		if !seen[name] {
+			t.Fatalf("ListTree followed refs/replace instead of the pinned commit; missing %q", name)
 		}
 	}
 	contents, err := cm.ReadFile(ctx, repoDecl, "README.md")
 	if err != nil {
 		t.Fatalf("ReadFile with refs/replace present: %v", err)
 	}
-	if string(contents) != "# Hello World\n" {
+	if string(contents) != "# replaced tree\n" {
 		t.Fatalf("ReadFile followed refs/replace: got %q", contents)
 	}
 }
