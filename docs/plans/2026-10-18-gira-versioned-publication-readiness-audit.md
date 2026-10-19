@@ -34,9 +34,9 @@ No momento da consulta, as listas de PRs abertas estavam vazias nos dois reposit
 ## Branch de auditoria e CI da documentação
 
 - PR documental: [Gira-G #31](https://github.com/EduardoShibukawa/gira-g/pull/31), draft, aberta, sem merge; branch `audit/2026-10-18-versioned-publication-readiness`.
-- HEAD remoto atual da PR #31: `85312f52cb3baa3afd8360c6c57feee85a9c30b1`, base `main` `6c66d938148de56d460389f183bf9900f482f50f`; HEAD inicial observado nesta retomada: `7be227755fba688fac2dae602c352bab67e75408`.
-- CI do HEAD `85312f52cb3baa3afd8360c6c57feee85a9c30b1`: [run 39252906774](https://github.com/EduardoShibukawa/gira-g/actions/runs/39252906774) e docs [run 39252908644](https://github.com/EduardoShibukawa/gira-g/actions/runs/39252908644), ambos concluídos em sucesso. Jobs de teste Ubuntu/macOS/Windows, validator, floor guard e gate-lint (warn-only) passaram; `docs build` passou e `docs deploy` foi `skipped`.
-- A PR #31 continua draft, aberta e sem merge. O diff contém apenas os dois documentos preparatórios. Os checks verdes verificam a branch documental e o código-base existente; não executam nem aprovam SC1–SC10.
+- HEAD remoto atual da PR #31: `4f1c7b73293d0dc7cd3750cca9694603b3baa4d1`, base `main` `6c66d938148de56d460389f183bf9900f482f50f`. A PR continua draft, aberta e sem merge.
+- CI do commit anterior `a7a2d50ba982cf6c246ec9cfbec070b19ac0029c`: [run 39255822361](https://github.com/EduardoShibukawa/gira-g/actions/runs/39255822361) e docs [run 39255822342](https://github.com/EduardoShibukawa/gira-g/actions/runs/39255822342), ambos concluídos em sucesso. Após a correção de estado de AC2/V1 e task `todo`, o novo CI [39256568052](https://github.com/EduardoShibukawa/gira-g/actions/runs/39256568052) está `queued` e docs [39256568021](https://github.com/EduardoShibukawa/gira-g/actions/runs/39256568021) está `in_progress` nesta observação.
+- O diff continua documental-only. Os checks anteriores validaram relatório e código-base, não a inexistência de referências dinâmicas nem SC1–SC10.
 - Nenhum merge, alteração de `main`, mudança de código de produto, mudança de contrato ou suporte ao schema 2 foi realizado nesta fase.
 
 ## Evidências de código e contrato
@@ -153,7 +153,7 @@ A auditoria técnica existente também enumerou estes pontos de integração. Fo
 | ID | Resultado da auto-revisão | Evidência / limite |
 |---|---|---|
 | AC1 | **pass com limite local declarado** | O relatório contém SHAs completos e URLs remotas de Gira-G/G-Ingá, PR #31 e CI. Checkout, branch e worktree local do usuário não estavam disponíveis; o relatório não afirma que foram inspecionados. |
-| AC2 | **pass, com resíduos dinâmicos explicitamente unknown** | Os 96 arquivos de código/script e 94 arquivos de teste foram pesquisados remotamente contra a árvore `6c66d93`; a matriz liga produtor/modelo, cópia, serializer, store, todos os leitores/consumidores de código identificados, fixtures/goldens e docs. O contrato futuro `source_identity` e o risco de downgrade estão descritos. Referências dinâmicas/reflexivas ficam explicitamente unknown porque a API de code-search é incompleta e não há checkout local; a task pede registrar essa limitação, não inferir ausência. |
+| AC2 | **blocked** | Os 96 arquivos de código/script e 94 arquivos de teste foram pesquisados remotamente contra a árvore `6c66d93`; a matriz cobre os consumidores identificados e o contrato futuro `source_identity`. Porém, referências dinâmicas/reflexivas não foram fechadas com busca reproduzível nem checkout local. Como a instrução exige manter a task `todo` enquanto a cobertura tiver lacunas, não tratar o registro explícito da incerteza como cumprimento total do AC2. |
 | AC3 | **pass** | Código e testes do fallback de G-Ingá foram revalidados na `main` `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; schema string `"1.0.0"` aceito estruturalmente, inteiro 2 rejeitado; CI `39089480098` passou. |
 | AC4 | **pass documental; teste proposto, não executado nesta tarefa** | [Experimento Windows 39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) registrou `git archive` exit 128 com `invalid path` para nome com tab e `tar -x` exit 2. A política é falhar fechado, não aceitar extração parcial, limpar o destino temporário e testar o erro através dos chamadores; não alegar que esse teste foi executado na main atual. |
 | AC5 | **pass** | O diff da PR #31 contém apenas relatório e tarefa 00; não altera código, testes, fixtures, spec ou decisões de produto. Auto-revisão desta atualização comparou links/SHAs, distinções entre código e CI, matriz de consumidores e ressalvas. |
@@ -214,9 +214,9 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ### P0: bloqueia declarar readiness para iniciar implementação funcional
 
-**P0 de auditoria documental: fechado no escopo verificável.** A task 00 tem a matriz remota e a auto-revisão AC1–AC5 registradas. As referências dinâmicas e a enumeração global de goldens/docs não observáveis sem checkout continuam explicitamente desconhecidas e passam para task 09, em vez de serem declaradas ausentes. Isso fecha a lacuna de planejamento da auditoria, não os gates técnicos do protocolo versionado.
+**P0 da auditoria documental: ainda aberto por AC2/V1.** A matriz remota cobre os caminhos identificados, mas referências dinâmicas/reflexivas seguem sem fechamento reproduzível. A task 00 permanece `todo`; não converter a documentação explícita da incerteza em aceite do AC2. Próximo passo: obter checkout verificável ou completar uma busca de referências que permita delimitar os consumidores restantes. Task 01/ADR 0014 permanece bloqueada até a verificação formal da task 00.
 
-**Continua bloqueado declarar a publicação versionada funcionalmente aceita:** schema 2, source_identity, store/heads, reader anti-downgrade, locks, durabilidade e SC1–SC10 continuam sem implementação/evidência de aceitação. A próxima tarefa é ADR 0014; task 02 é o trabalho técnico paralelo permitido pela sua dependência própria, sempre em branch separado e reutilizando #28.
+**Continua bloqueado declarar a publicação versionada funcionalmente aceita:** schema 2, source_identity, store/heads, reader anti-downgrade, locks, durabilidade e SC1–SC10 continuam sem implementação/evidência de aceitação. A task 02 pode avançar em branch independente porque sua dependência é revalidar a auditoria remota e reutilizar a PR #28 já integrada, sem tocar em schema 2 ou store versionado.
 
 ### P1: bloqueia tarefas específicas posteriores
 
@@ -258,6 +258,6 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 
 ## Veredito
 
-**NOT READY para declarar a publicação versionada pronta para implementação integrada.** A auditoria documental remota foi ampliada, mas schema 2, source_identity, store/heads, reader estrito, locks, durabilidade e SC1–SC10 ainda não existem como implementação validada. A matriz também mantém como desconhecidas as referências dinâmicas/globais que não puderam ser consultadas sem checkout local. É possível preparar ADR 0014 e iniciar o trabalho delimitado da task 02 somente conforme suas dependências formais; nada aqui autoriza merge, release ou suporte a schema 2.
+**NOT READY para declarar a publicação versionada pronta para implementação integrada.** A matriz remota foi ampliada, mas AC2/V1 continuam bloqueados por referências dinâmicas/globais ainda não verificáveis sem checkout ou busca global completa. Task 00 fica `todo`, e ADR 0014 não deve começar até que a tarefa seja formalmente verificada. A task 02 pode continuar isolada e delimitada; schema 2, source_identity, store/heads, reader estrito, locks, durabilidade e SC1–SC10 não têm aceite. Nada aqui autoriza merge, release ou suporte a schema 2.
 
-**Próxima ação:** registrar o resultado e a auto-revisão AC1–AC5 na task 00, preservando explicitamente suas limitações; depois seguir a ordem de dependências.
+**Próximas ações:** fechar AC2 com evidência reproduzível para só então destravar ADR 0014; enquanto isso, terminar e validar a task 02 em sua PR draft sem alteração de `main`.
