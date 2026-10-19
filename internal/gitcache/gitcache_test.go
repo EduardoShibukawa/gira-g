@@ -102,6 +102,60 @@ func TestCacheManager_New(t *testing.T) {
 	}
 }
 
+func TestCacheManager_CloneAndFetchRespectUserGitConfig(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, firstSHA := createTestLocalRepo(t)
+	remoteURL := "https://example.invalid/gira-g-user-config.git"
+	localURL := "file://" + filepath.ToSlash(localRepoDir)
+	configPath := filepath.Join(t.TempDir(), "gitconfig")
+	config := "[url \"" + localURL + "\"]\n\tinsteadOf = " + remoteURL + "\n"
+	if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	// A host Git URL rewrite must remain active for clone/fetch. Local probes
+	// use gitCommandEnv separately; CacheManager transport commands inherit this
+	// user config by design (ADR 0009).
+	t.Setenv("GIT_CONFIG_GLOBAL", configPath)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
+
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	decl := manifest.RepositoryDeclaration{ID: "user-config", URL: remoteURL, SHA: firstSHA, PathScope: "."}
+	if err := cm.EnsureRepo(ctx, decl, false); err != nil {
+		t.Fatalf("clone through configured URL rewrite failed: %v", err)
+	}
+	bareDir := cm.RepoDir(decl)
+	if !cm.HasCommit(ctx, bareDir, firstSHA) {
+		t.Fatalf("clone did not cache pinned commit %s", firstSHA)
+	}
+
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+	if err := os.WriteFile(filepath.Join(localRepoDir, "second.txt"), []byte("second commit\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	runGit("add", "second.txt")
+	runGit("commit", "-m", "second commit")
+	secondSHA := runGit("rev-parse", "HEAD")
+	decl.SHA = secondSHA
+	if err := cm.EnsureRepo(ctx, decl, false); err != nil {
+		t.Fatalf("fetch through configured URL rewrite failed: %v", err)
+	}
+	if !cm.HasCommit(ctx, bareDir, secondSHA) {
+		t.Fatalf("fetch did not cache commit %s", secondSHA)
+	}
+}
+
 func TestCacheManager_EnsureRepo_OfflineAndOnline(t *testing.T) {
 	ctx := context.Background()
 	cacheDir := t.TempDir()
@@ -358,6 +412,174 @@ func mapKeys(values map[string]bool) []string {
 	return keys
 }
 
+
+func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("partial tar-stream fixture uses a Unix shell wrapper")
+	}
+	realGitPath, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	cacheDir := t.TempDir()
+	cm, err := gitcache.NewCacheManager(cacheDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	localRepoDir, commitSHA := createTestLocalRepo(t)
+	repoDecl := manifest.RepositoryDeclaration{
+		ID: "partial-archive",
+		URL: "file://" + localRepoDir,
+		SHA: commitSHA,
+		PathScope: ".",
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("ensure repo: %v", err)
+	}
+
+	targetParent := t.TempDir()
+	targetDir := filepath.Join(targetParent, "target")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	keepPath := filepath.Join(targetDir, "keep.txt")
+	if err := os.WriteFile(keepPath, []byte("previous tree\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	binDir := t.TempDir()
+	// Emit the first 1024 bytes of a real archive, then fail. On common Unix
+	// tar implementations this is enough to materialize at least one entry,
+	// reproducing the partial-output shape seen from Git for Windows.
+	quotedGit := "'" + strings.ReplaceAll(realGitPath, "'", "'\\''") + "'"
+	fakeGit := filepath.Join(binDir, "git")
+	script := "#!/bin/sh\n" + quotedGit + " \"$@\" | head -c 1024\nexit 23\n"
+	if err := os.WriteFile(fakeGit, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	err = cm.ExportTree(ctx, repoDecl, targetDir)
+	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
+		t.Fatalf("ExportTree error = %v, want archive failure", err)
+	}
+	if got, err := os.ReadFile(keepPath); err != nil || string(got) != "previous tree\n" {
+		t.Fatalf("previous target was changed after partial archive: got=%q err=%v", got, err)
+	}
+	entries, err := os.ReadDir(targetDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 || entries[0].Name() != "keep.txt" {
+		t.Fatalf("partial archive leaked into target: entries=%v", mapDirEntries(entries))
+	}
+	parentEntries, err := os.ReadDir(targetParent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(parentEntries) != 1 || parentEntries[0].Name() != "target" {
+		t.Fatalf("staging directory leaked after archive failure: entries=%v", mapDirEntries(parentEntries))
+	}
+}
+
+func TestCacheManager_ExportTreeHandlesTabPathWithoutPartialPublish(t *testing.T) {
+	ctx := context.Background()
+	localRepoDir, baseSHA := createTestLocalRepo(t)
+	runGit := func(args ...string) string {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = localRepoDir
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			t.Fatalf("git %v failed: %v: %s", args, err, out)
+		}
+		return strings.TrimSpace(string(out))
+	}
+
+	const contents = "tab pathname fixture\n"
+	blobCmd := exec.Command("git", "hash-object", "-w", "--stdin")
+	blobCmd.Dir = localRepoDir
+	blobCmd.Stdin = strings.NewReader(contents)
+	blobOut, err := blobCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git hash-object failed: %v: %s", err, blobOut)
+	}
+	blobSHA := strings.TrimSpace(string(blobOut))
+	treeCmd := exec.Command("git", "mktree", "-z")
+	treeCmd.Dir = localRepoDir
+	treeCmd.Stdin = strings.NewReader("100644 blob " + blobSHA + "\ttab\tname.txt\x00")
+	treeOut, err := treeCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git mktree -z failed: %v: %s", err, treeOut)
+	}
+	treeSHA := strings.TrimSpace(string(treeOut))
+	commitSHA := runGit("commit-tree", treeSHA, "-p", baseSHA, "-m", "tab pathname fixture")
+	// Make the generated commit reachable to a bare clone without ever asking
+	// the local filesystem to create the unmaterializable pathname.
+	runGit("update-ref", "refs/heads/tab-path-test", commitSHA)
+
+	cm, err := gitcache.NewCacheManager(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	repoDecl := manifest.RepositoryDeclaration{
+		ID: "tab-path",
+		URL: "file://" + localRepoDir,
+		SHA: commitSHA,
+		PathScope: ".",
+	}
+	if err := cm.EnsureRepo(ctx, repoDecl, false); err != nil {
+		t.Fatalf("ensure repo with synthetic tab-path tree: %v", err)
+	}
+
+	targetParent := t.TempDir()
+	targetDir := filepath.Join(targetParent, "export")
+	if err := os.MkdirAll(targetDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	keepPath := filepath.Join(targetDir, "keep.txt")
+	if err := os.WriteFile(keepPath, []byte("previous tree\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	err = cm.ExportTree(ctx, repoDecl, targetDir)
+	if err != nil {
+		if runtime.GOOS != "windows" {
+			t.Fatalf("Unix should materialize a tab pathname: %v", err)
+		}
+		if !strings.Contains(err.Error(), "git archive failed") && !strings.Contains(err.Error(), "tar extract failed") {
+			t.Fatalf("unmaterializable path returned no archive/extraction diagnostic: %v", err)
+		}
+		if got, readErr := os.ReadFile(keepPath); readErr != nil || string(got) != "previous tree\n" {
+			t.Fatalf("previous target changed on failed Windows extraction: got=%q err=%v", got, readErr)
+		}
+		entries, readErr := os.ReadDir(targetDir)
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		if len(entries) != 1 || entries[0].Name() != "keep.txt" {
+			t.Fatalf("partial Windows extraction leaked into target: entries=%v", mapDirEntries(entries))
+		}
+		return
+	}
+
+	got, err := os.ReadFile(filepath.Join(targetDir, "tab\tname.txt"))
+	if err != nil || string(got) != contents {
+		t.Fatalf("tab pathname was not exported intact: got=%q err=%v", got, err)
+	}
+	if _, err := os.Stat(keepPath); !os.IsNotExist(err) {
+		t.Fatalf("successful export did not replace the previous tree: stat err=%v", err)
+	}
+}
+
+func mapDirEntries(entries []os.DirEntry) []string {
+	out := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		out = append(out, entry.Name())
+	}
+	return out
+}
 
 func TestCacheManager_ExportTreeReapsTarWhenArchiveFails(t *testing.T) {
 	if runtime.GOOS == "windows" {
