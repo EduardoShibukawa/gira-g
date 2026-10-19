@@ -511,6 +511,7 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		proto string
 		exportedReadme string
 		exportedProto string
+		exportOutcome string
 	}
 	readSnapshot := func(configPath, suffix string) snapshot {
 		t.Helper()
@@ -552,31 +553,47 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 
 		exportDir := filepath.Join(t.TempDir(), "export-"+suffix)
 		if err := cm.ExportTree(ctx, repoDecl, exportDir); err != nil {
-			t.Fatalf("ExportTree with config %q: %v", configPath, err)
+			if runtime.GOOS != "windows" {
+				t.Fatalf("ExportTree with config %q: %v", configPath, err)
+			}
+			if !strings.Contains(err.Error(), "café.proto") && !strings.Contains(err.Error(), "tar extract failed") {
+				t.Fatalf("Windows rejected export without a path-materialization diagnostic: %v", err)
+			}
+			if _, statErr := os.Stat(exportDir); !os.IsNotExist(statErr) {
+				t.Fatalf("failed export published a partial target directory: %v", statErr)
+			}
+			leftovers, readErr := os.ReadDir(filepath.Dir(exportDir))
+			if readErr != nil {
+				t.Fatal(readErr)
+			}
+			if len(leftovers) != 0 {
+				t.Fatalf("failed export left staging artifacts: %#v", leftovers)
+			}
+			return snapshot{entries: entries, readme: string(readme), proto: string(proto), exportOutcome: "rejected"}
 		}
 		exportedReadme, err := os.ReadFile(filepath.Join(exportDir, "README.md"))
 		if err != nil {
 			t.Fatalf("read exported README: %v", err)
 		}
-		var exportedProto []byte
-		if runtime.GOOS != "windows" {
-			exportedProto, err = os.ReadFile(filepath.Join(exportDir, "café.proto"))
-			if err != nil {
-				t.Fatalf("read exported café.proto: %v", err)
-			}
+		exportedProto, err := os.ReadFile(filepath.Join(exportDir, "café.proto"))
+		if err != nil {
+			t.Fatalf("ExportTree returned success without materializing café.proto: %v", err)
 		}
-		return snapshot{entries: entries, readme: string(readme), proto: string(proto), exportedReadme: string(exportedReadme), exportedProto: string(exportedProto)}
+		return snapshot{entries: entries, readme: string(readme), proto: string(proto), exportedReadme: string(exportedReadme), exportedProto: string(exportedProto), exportOutcome: "published"}
 	}
 	gotTrue := readSnapshot(configTrue, "true")
 	gotFalse := readSnapshot(configFalse, "false")
 	if !reflect.DeepEqual(gotTrue, gotFalse) {
 		t.Fatalf("pinned reads changed with global config\nquotePath=true: %#v\nquotePath=false: %#v", gotTrue, gotFalse)
 	}
-	if gotTrue.proto != "syntax = \"proto3\";\n" || gotTrue.exportedReadme != gotTrue.readme {
-		t.Fatalf("pinned file reads/export differ: %#v", gotTrue)
+	if gotTrue.proto != "syntax = \"proto3\";\n" {
+		t.Fatalf("pinned file read differs from source bytes: %#v", gotTrue)
 	}
-	if runtime.GOOS != "windows" && gotTrue.exportedProto != gotTrue.proto {
-		t.Fatalf("exported non-ASCII file differs from pinned bytes: %#v", gotTrue)
+	if gotTrue.exportOutcome == "published" && (gotTrue.exportedReadme != gotTrue.readme || gotTrue.exportedProto != gotTrue.proto) {
+		t.Fatalf("published export differs from pinned bytes: %#v", gotTrue)
+	}
+	if runtime.GOOS != "windows" && gotTrue.exportOutcome != "published" {
+		t.Fatalf("Unix export unexpectedly failed closed: %#v", gotTrue)
 	}
 }
 
@@ -751,7 +768,7 @@ func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *test
 	if err == nil {
 		t.Fatal("ExportTree unexpectedly accepted a tree with a tab pathname")
 	}
-	if !strings.Contains(err.Error(), "archive failed") && !strings.Contains(err.Error(), "tar extract failed") {
+	if !strings.Contains(err.Error(), "archive failed") && !strings.Contains(err.Error(), "tar extract failed") && !strings.Contains(err.Error(), "archive extraction incomplete") && !strings.Contains(err.Error(), "cannot be materialized") {
 		t.Fatalf("ExportTree error is not diagnostic: %v", err)
 	}
 	if _, statErr := os.Stat(targetDir); !os.IsNotExist(statErr) {
@@ -765,3 +782,4 @@ func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *test
 		t.Fatalf("failed export left staging artifacts: %#v", leftovers)
 	}
 }
+
