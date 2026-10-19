@@ -626,6 +626,11 @@ func gitCommandEnv() []string {
 		"GIT_OBJECT_DIRECTORY": true,
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
 		"GIT_NAMESPACE": true,
+		// These variables can also redirect repository discovery or change
+		// path interpretation for local probes. Clone/fetch commands deliberately
+		// do not use this sanitized environment so host Git credentials/config work.
+		"GIT_PREFIX": true,
+		"GIT_CEILING_DIRECTORIES": true,
 		"GIT_CONFIG": true,
 		"GIT_CONFIG_COUNT": true,
 		"GIT_CONFIG_PARAMETERS": true,
