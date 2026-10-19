@@ -371,6 +371,8 @@ type Corpus struct {
 	Dir          string // source tree, also read by the grep baseline
 	RepoID       string
 	TargetSystem string
+	Manifest     *manifest.Manifest
+	ManifestPath string
 }
 
 // Indexed is one real indexing run of a corpus.
@@ -391,12 +393,22 @@ func (c Corpus) Index(ctx context.Context, workDir string, pipe *extractors.Pipe
 	if err != nil {
 		return nil, err
 	}
-	m := &manifest.Manifest{
-		Version:      1,
-		TargetSystem: manifest.TargetSystemMeta{Name: c.TargetSystem},
-		Repositories: []manifest.RepositoryDeclaration{{ID: c.RepoID, URL: repoDir, SHA: sha, PathScope: "."}},
+	m := c.Manifest
+	if m == nil {
+		m = &manifest.Manifest{
+			Version:      1,
+			TargetSystem: manifest.TargetSystemMeta{Name: c.TargetSystem},
+			Repositories: []manifest.RepositoryDeclaration{{ID: c.RepoID, URL: repoDir, SHA: sha, PathScope: "."}},
+		}
+	} else if len(m.Repositories) == 0 {
+		mCopy := *m
+		mCopy.Repositories = []manifest.RepositoryDeclaration{{ID: c.RepoID, URL: repoDir, SHA: sha, PathScope: "."}}
+		m = &mCopy
 	}
-	mm, err := indexer.Build(ctx, m, cm, indexer.Options{Pipeline: pipe})
+	mm, err := indexer.Build(ctx, m, cm, indexer.Options{
+		Pipeline:     pipe,
+		ManifestPath: c.ManifestPath,
+	})
 	if err != nil {
 		return nil, err
 	}

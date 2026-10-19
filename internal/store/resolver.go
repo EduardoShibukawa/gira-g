@@ -239,6 +239,27 @@ type ResolveResult struct {
 	VersionMeta *VersionMeta
 }
 
+// PrimaryStoreDir returns the highest-priority store directory following Hierarchy D2:
+// 1. $XDG_CACHE_HOME/gira/indexes
+// 2. ~/.cache/gira/indexes
+// 3. <projectRoot>/.gira/indexes
+// 4. ./.gira/indexes
+func PrimaryStoreDir(projectRoot string) string {
+	home, _ := os.UserHomeDir()
+	if xdg := os.Getenv("XDG_CACHE_HOME"); xdg != "" {
+		if home == "" || !strings.HasSuffix(xdg, string(filepath.Separator)+".cache") || strings.HasPrefix(xdg, home) {
+			return filepath.Join(xdg, "gira", "indexes")
+		}
+	}
+	if home != "" {
+		return filepath.Join(home, ".cache", "gira", "indexes")
+	}
+	if projectRoot != "" {
+		return filepath.Join(projectRoot, ".gira", "indexes")
+	}
+	return filepath.Join(".", ".gira", "indexes")
+}
+
 // Resolve executes the strict index resolution algorithm (Policy R2).
 func Resolve(ctx context.Context, opts ResolveOptions) (*ResolveResult, error) {
 	st := NewStore("")
@@ -266,10 +287,13 @@ func Resolve(ctx context.Context, opts ResolveOptions) (*ResolveResult, error) {
 	// Determine candidate store roots (Hierarchy D2)
 	roots := opts.StoreRoots
 	if len(roots) == 0 {
+		home, _ := os.UserHomeDir()
 		if xdg := os.Getenv("XDG_CACHE_HOME"); xdg != "" {
-			roots = append(roots, filepath.Join(xdg, "gira", "indexes"))
+			if home == "" || !strings.HasSuffix(xdg, string(filepath.Separator)+".cache") || strings.HasPrefix(xdg, home) {
+				roots = append(roots, filepath.Join(xdg, "gira", "indexes"))
+			}
 		}
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
+		if home != "" {
 			roots = append(roots, filepath.Join(home, ".cache", "gira", "indexes"))
 		}
 		if opts.ProjectRoot != "" {

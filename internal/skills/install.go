@@ -48,6 +48,11 @@ func planFiles(host string, opts Options) (map[string]func([]byte) ([]byte, erro
 	if opts.Command == "" {
 		opts.Command = "gira"
 	}
+	if opts.Index != "" && !filepath.IsAbs(opts.Index) {
+		if abs, err := filepath.Abs(opts.Index); err == nil {
+			opts.Index = abs
+		}
+	}
 	files := map[string]func([]byte) ([]byte, error){}
 	switch host {
 	case "claude":

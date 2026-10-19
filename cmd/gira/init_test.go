@@ -15,6 +15,11 @@ import (
 // SCSingleInit: `gira init` gera gira.yaml pinando o HEAD e indexa; segunda
 // chamada sem --force reaproveita o manifest; --force repina após novo commit.
 func TestSCSingleInit(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(tmpHome, ".cache"))
+
 	repoDir, sha := createGitRepoWithFiles(t, map[string]string{
 		"go.mod":  "module example.com/acme\n\ngo 1.24\n",
 		"main.go": "package main\n\nfunc main() {}\n",
@@ -130,6 +135,11 @@ func TestSCSingleInit(t *testing.T) {
 }
 
 func TestInit_ForceDoesNotAllowSymbolLoss(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+	t.Setenv("USERPROFILE", tmpHome)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(tmpHome, ".cache"))
+
 	composeInitial := `version: '3.8'
 services:
   frontend:
