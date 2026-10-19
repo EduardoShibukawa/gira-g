@@ -472,6 +472,11 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		t.Setenv("GIT_NO_REPLACE_OBJECTS", "0")
 		t.Setenv("GIT_PREFIX", "redirected/")
 		t.Setenv("GIT_CEILING_DIRECTORIES", localRepoDir)
+		t.Setenv("GIT_LITERAL_PATHSPECS", "1")
+		t.Setenv("GIT_GLOB_PATHSPECS", "1")
+		t.Setenv("GIT_NOGLOB_PATHSPECS", "1")
+		t.Setenv("GIT_ICASE_PATHSPECS", "1")
+		t.Setenv("GIT_ATTR_SOURCE", "deadbeef")
 
 		entries, err := cm.ListTree(ctx, repoDecl)
 		if err != nil {
@@ -576,7 +581,12 @@ func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *test
 		t.Skip("Git for Windows path-materialization behavior is the subject of this test")
 	}
 	repoDecl := manifest.RepositoryDeclaration{ID: "windows-tab-path"}
-	cm, err := gitcache.NewCacheManager(t.TempDir())
+	cacheRoot, err := os.MkdirTemp(os.TempDir(), "gira-win-cache-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(cacheRoot) })
+	cm, err := gitcache.NewCacheManager(cacheRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -605,7 +615,11 @@ func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *test
 	commitSHA := runGit("", "commit-tree", treeSHA, "-m", "tab path fixture")
 	repoDecl.SHA = commitSHA
 
-	parent := t.TempDir()
+	parent, err := os.MkdirTemp(os.TempDir(), "gira-win-out-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
 	targetDir := filepath.Join(parent, "export")
 	err = cm.ExportTree(context.Background(), repoDecl, targetDir)
 	if err == nil {
