@@ -62,7 +62,8 @@ NUL-delimited ls-tree; sanitização de variáveis GIT_* para probes locais; pre
 
 - as of: 2026-10-19
 - status: completed; AC1–AC6 and V1 passed on `4162d47d1b207a0a40b77b9602805f3c9366b857`
-- branch/PR: `work/2026-10-19-gitcache-env-fail-closed`, [PR #32](https://github.com/EduardoShibukawa/gira-g/pull/32), draft/open/no merge
-- evidence: [CI 39258639643](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639643), [docs 39258639578](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639578)
-- next: complete formal task-state verification; keep PR draft until review/merge authorization. Task 03 remains blocked on ADR 0014 and this task reaching `verified`.
-- revalidate: no local checkout or local tests; product implementation beyond task 02 remains out of scope
+- branch/PR: `work/2026-10-19-gitcache-env-fail-closed`, [PR #32](https://github.com/EduardoShibukawa/gira-g/pull/32), merged em `main` no commit `30819b42a01cb331f1ec501bfb65921e3c87f4d3`
+- evidence: CI remoto [CI 39258639643](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639643), [docs 39258639578](https://github.com/EduardoShibukawa/gira-g/actions/runs/39258639578). Implementação integrada em `main`; suíte de testes locais executada com sucesso (`go test -race ./...`).
+- next: Tarefa concluída e integrada. Desbloquear Tarefa 03 após conclusão da ADR 0014 (Tarefa 01).
+- revalidate: resultados de CI remoto preservados e distinguidos de execuções de testes locais. Implementação além do escopo da Tarefa 02 permanece fora de escopo.
+
