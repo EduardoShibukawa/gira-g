@@ -356,3 +356,133 @@ Ordem de continuidade: (1) obter evidência reproduzível de cobertura global de
 - A falha remanescente é associada ao histórico de commits intermediários da branch da PR, não a um estado atual novo que deva ser marcado como concluído. Para preservar a integridade do histórico, não fazer force-push, rebase destrutivo ou alteração da máquina de estados apenas para silenciar o validator.
 - Recuperação escolhida: reapresentar a alteração documental final numa branch nova baseada no `main` atual, sem carregar os commits intermediários inválidos da branch antiga. Esta operação preserva a PR #31 original para auditoria e não muda as regras de validação. Revalidar o CI completo na PR substituta antes de qualquer merge.
 - Esta recuperação **não fecha o AC2**: a cobertura global de consumidores, incluindo caminhos dinâmicos/reflexivos ou externos, segue sem prova reproduzível. A tarefa 00 permanece `todo`; AC2 e V1 permanecem bloqueados; ADR 0014 segue bloqueado pela dependência da tarefa 00. Nenhum SC1–SC10 é considerado aceito.
+
+
+## Auditoria local reproduzível de consumidores e limites de plataforma (2026-10-19, git grep @c83c589 / @e13d49d e probes black-box)
+
+**Data da auditoria local:** 2026-10-19.  
+**Referências analisadas:**
+- Gira-G `main` remoto: `c83c5891166267ec26816d75c305daf0a2dcda8e` (535 arquivos rastreados).
+- G-Ingá `main` remoto: `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0` (347 arquivos rastreados).
+- Worktree de trabalho isolada: `/home/shibuka/Projetos/gira-g-wt-audit00-local` na branch `audit/2026-10-19-task00-local-grep`, base `c83c5891166267ec26816d75c305daf0a2dcda8e`.
+- O checkout original `/home/shibuka/Projetos/gira-g` foi preservado sem modificação, mantendo intactas as alterações locais não commitadas em `cmd/gira/main_test.go`.
+- O checkout local de G-Ingá `/home/shibuka/Projetos/G-Inga` foi inspecionado (HEAD local em `f33e945`); a auditoria e os testes foram ancorados na árvore do commit `e13d49d` (origin/main) sem tocar no working directory do checkout.
+
+> [!NOTE]
+> A ressalva histórica presente na introdução deste relatório (“o ambiente desta execução não contém checkout Git”) referia-se à fase remota inicial de 2026-10-18 e fica integralmente **supersedida** por esta seção, que utilizou checkout local com worktree isolada, `git grep` em árvores imutáveis, compilação isolada e probes black-box com isolamento de ambiente.
+
+### 1. Comandos de busca global reproduzíveis
+
+Todas as buscas foram executadas diretamente sobre as árvores imutáveis dos commits indicados, garantindo reproduzibilidade estrita:
+
+| ID da busca | Repositório e ref | Padrão regex pesquisado | Linhas | Arquivos | SHA-256 do arquivo de saída |
+|---|---|---|---|---|---|
+| `gira_p1` | Gira-G `@c83c589` | `MacroMap\|SchemaVersion\|schema_version\|target_system\|unsupported\|unsupported_constructs\|unresolved_refs\|conflicts\|source_identity\|source_key\|tool_id\|CanonicalJSON\|cloneMacroMap\|UnresolvedRefs\|Conflicts\|[Mm]acro[ -]?[Mm]ap` | 1379 | 220 | `af0bc7a6e8396695` |
+| `gira_p2` | Gira-G `@c83c589` | `json\.Unmarshal\|json\.NewDecoder\|\.Decode\(\|MarshalJSON\|UnmarshalJSON\|json\.Marshal\|PublishFile\|LoadFile\|\bPublish\(\|\bLoad\(\|\bSave\(\|loadIndex\|diff_maps\|macro-map\.json\|gira\.yaml\|--index\|--output\|JSON\.parse\|reflect\.\|map\[string\](any\|interface\{\})\|json\.RawMessage` | 1482 | 206 | `7c70d4a9f79d859f` |
+| `gira_p3` | Gira-G `@c83c589` | `serve mcp\|"serve"\|gira-arch-diff\|gira-query\|bench/layer[012]\|benchtest\|scorecard\|index-bundle\|golden\|snapshot\|versioned_docs\|FromGIRA\|isStale\|Nudge\|NewEngine` | 619 | 158 | `da53888e9054ad6f` |
+| `ginga_p1` | G-Ingá `@e13d49d` | `MacroMap\|...\|girag\|GIRA\|gira ` | 456 | 87 | `3683f1d402316cc2` |
+| `ginga_p2` | G-Ingá `@e13d49d` | Padrões de parsing, JSON e decodificação | 154 | 63 | `91d50a06be17597f` |
+
+#### Inventário de arquivos `.json` rastreados
+Foi executada a classificação de todos os arquivos `.json` da árvore Git dos dois repositórios:
+- **Gira-G (`c83c589`):** 32 arquivos `.json`. Apenas **1** arquivo possui o formato canônico de MacroMap (`schema_version`, `target_system`, `nodes`, `relationships`): `bench/layer0/testdata/gira/macro-map.json` (schema `"1.0.0"`). Os demais são fixtures de ferramentas CLI/MCP (`cmd/gira/testdata/gira-query/*.json`), artefatos de avaliação (`fixtures/evaluation/...`), scorecard (`docs/scorecard.json`, schema `gira-scorecard/1`), fases de bench (`bench/phases.json`), schemas de telemetria (`bench/layer1/telemetry.schema.json`) ou configurações web/npm.
+- **G-Ingá (`e13d49d`):** 22 arquivos `.json`. Apenas **1** arquivo possui o formato canônico de MacroMap: `docs/architecture/macro-map.json` (schema `"1.0.0"`). Os demais são registros de cenários de avaliação, manifestos de plugin e tooling.
+
+#### Classificação de arquivos executáveis com hits
+Todos os 72 arquivos de código executável não-teste de Gira-G foram inventariados e classificados:
+- 12 arquivos de extração (`internal/extractors/layer*`): produtores de metadados e nós no pipeline.
+- 10 arquivos de comandos CLI (`cmd/gira/*`): interface de usuário e despacho de ferramentas.
+- 8 arquivos de persistência, modelo e indexação (`domain`, `store`, `indexer`).
+- 9 arquivos de slices e projeções (`internal/slices/*`): consumidores em memória via `slices.NewEngine`.
+- 13 arquivos de benchmark (`bench/layer*`, `bench/cmd/layer1`): harness e adaptadores de teste comparativo.
+- 6 arquivos de MCP e skills (`internal/mcp`, `internal/skills`, `internal/tools`).
+- 4 arquivos de avaliação e gate (`internal/eval`, `internal/gate`).
+- Ocorrências textuais diretas de `reflect.`: **0** em código Go executável não-teste pesquisado (evidência da ausência de chamadas diretas ao pacote reflect em runtime de produto nos caminhos rastreados).
+
+---
+
+### 2. Matriz de campos (atuais v1 e futuro `source_identity`)
+
+| Campo | Tipo v1 | Presença v1 | Clone (`cloneMacroMap`) | Serialização (`CanonicalJSON`) | Escrita Store (`PublishFile`) | Leitura Store (`LoadFile`) | Contrato Aprovado (Spec @1 / Schema 2) | Risco de downgrade / perda |
+|---|---|---|---|---|---|---|---|---|
+| `schema_version` | `string` | Obrigatório (`"1.0.0"`) | Preservado | Preservado | Preservado | Exige não vazio; aceita string desconhecida; falha decode para int `2` | Inteiro `2` | Schema int `2` sofre colapso em `ErrCorruptIndex`. Se for string desconhecida, passa silenciosamente na v1. |
+| `target_system` | `string` | Obrigatório | Preservado | Preservado | Preservado | Exige não vazio | Preservado (`string`) | Baixo; identidade de sistema validada. |
+| `nodes` | `[]Node` | Obrigatório | Cópia profunda (evidence, metadata) | Ordenado por `id` | Preservado | Valida ID único e não vazio, tipo | Preservado (com atributos de proveniência) | Baixo na v1; roundtrip JSON preserva estrutura. |
+| `relationships` | `[]Relationship` | Obrigatório | Cópia profunda (evidence, metadata) | Ordenado por `id` | Preservado | Valida endpoints existentes e IDs | Preservado | Baixo na v1; validação estrita de endpoints. |
+| `unsupported` | `[]UnsupportedBoundary` | Opcional | Cópia profunda (`UnknownJoins`) | Ordenado por `path` | Preservado | Sem validação extra | Preservado | Baixo. |
+| `unsupported_constructs` | `[]string` | Opcional | Cópia profunda | Ordenado | Preservado | Sem validação extra | Preservado | Baixo. |
+| `unresolved_refs` | `[]UnresolvedReference` | Opcional | Cópia profunda (PR #28) | Ordenado por `id` | Preservado | Sem validação extra | Preservado | Baixo (corrigido na PR #28). |
+| `conflicts` | `[]ConflictRecord` | Opcional | Cópia profunda (PR #28) | Ordenado por `id` | Preservado | Sem validação extra | Preservado | Baixo (corrigido na PR #28). |
+| `source_identity` | N/A (ausente) | Inexistente na v1 | **Descarta** (campo inexiste na struct) | **Descarta** (não projeta) | **Descarta** | **Ignora** no decode | **Obrigatório** (`source_key`, `tool_id`) | **Crítico:** se um leitor v1 carregar e ressalvar um mapa com `source_identity`, o campo é descartado silenciosamente sem erro. |
+
+---
+
+### 3. Matriz de produtores e consumidores rastreados
+
+| Caminho e símbolo exato | SHA / Linha | Papel | Campos lidos / manipulados | Comportamento para schema int 2 | Comportamento para versão desconhecida | Comportamento para JSON malformado | Comportamento para dados estruturalmente inválidos | Risco de downgrade ou perda de campo | Testes existentes / Localização | Testes executados nesta sessão |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `internal/domain/models.go:MacroMap.Validate` | `c83c589:209-253` | Validador de integridade | `schema_version`, `target_system`, `nodes`, `relationships` | N/A (chamado após decode) | **Aceita** qualquer string não vazia (ex: `"9.9.9"`) | N/A | **Rejeita** com erro estrutural descritivo | Não valida versão semântica ou allowlist | `internal/domain/domain_test.go:TestValidateMacroMap` | `go test ./internal/domain` (PASS) |
+| `internal/domain/models.go:MacroMap.CanonicalJSON` | `c83c589:286-348` | Serializador determinístico | Todos os 8 campos conhecidos | N/A | Preserva string | N/A | N/A | **Perde `source_identity`** silenciosamente por projeção explícita | `internal/domain/domain_test.go:TestCanonicalJSON` | `go test ./internal/domain` (PASS) |
+| `internal/indexer/incremental.go:cloneMacroMap` | `c83c589:706-774` | Clonador em memória | Todos os 8 campos conhecidos | N/A | Copia valor | N/A | N/A | **Perde `source_identity`** (não copia campos desconhecidos) | `internal/indexer/incremental_clone_test.go` | `go test ./internal/indexer` (PASS) |
+| `internal/store/store.go:Store.LoadFile` | `c83c589:206-225` | Desserializador e validador do arquivo | Lê JSON para `domain.MacroMap` e chama `Validate()` | **Rejeita** com `ErrCorruptIndex` (unmarshal error) [PROBE OBS] | **Aceita** string não vazia (ex: `"9.9.9"`) [PROBE OBS] | **Rejeita** com `ErrCorruptIndex` (unexpected end) [PROBE OBS] | **Rejeita** com `ErrCorruptIndex` (missing endpoint) [PROBE OBS] | Colapsa erro de schema numérico em corrupção genérica; ignora `source_identity` | `internal/store/store_test.go` | `go test ./internal/store` (PASS) |
+| `internal/store/store.go:Store.PublishFile` | `c83c589:83-178` | Publicador atômico | Serializa via `CanonicalJSON`, valida prévio | Herda comportamento de `LoadFile` no arquivo prévio | Herda comportamento | Herda comportamento | Rejeita se mapa a publicar for inválido | Não permite sobrescrever índice corrompido sem `--recover-corrupt` | `internal/store/store_test.go` | `go test ./internal/store` (PASS) |
+| `cmd/gira/main.go:loadIndex` | `c83c589:307-355` | Leitor CLI central | Invoca `store.LoadFile` para `--index` ou busca em `.gira/` / cache | **Exit 1**: `corrupt or invalid macro-map index ... cannot unmarshal number` [PROBE OBS] | **Exit 0**: prossegue execução [PROBE OBS] | **Exit 1**: `unexpected end of JSON input` [PROBE OBS] | **Exit 1**: `cites missing target node` [PROBE OBS] | Trata schema 2 como corrupção de índice | `cmd/gira/main_test.go` | `go test ./cmd/gira` (PASS) |
+| `cmd/gira/main.go:runDiff` | `c83c589:1294-1360` | Leitor CLI de diff | Lê `index_a` e `index_b` diretamente via `LoadFile` | **Exit 1**: `corrupt or invalid macro-map index` [PROBE OBS] | **Exit 0**: compara normalmente [PROBE OBS] | **Exit 1**: unexpected end [PROBE OBS] | **Exit 1**: validação estrutural falha [PROBE OBS] | Mesma falha genérica de `LoadFile` | `cmd/gira/diff_test.go` | `go test ./cmd/gira` (PASS) |
+| `internal/mcp/server.go:handleToolCall (diff_maps)` | `c83c589:612-640` | Servidor MCP (ferramenta `diff_maps`) | Carrega `index_a` e `index_b` via `st.LoadFile` | Retorna erro estruturado `"index_missing"` [PROBE OBS] | Executa diff com sucesso [PROBE OBS] | Retorna erro estruturado `"index_missing"` [PROBE OBS] | Retorna erro estruturado `"index_missing"` [PROBE OBS] | **Colapso severo de erro**: qualquer falha de decode ou validação é reportada como `"index_missing"` | `internal/mcp/server_test.go` | `go test ./internal/mcp` (PASS) |
+| `internal/tools/registry.go` | `c83c589:114-129` | Registro de schema de ferramentas MCP | Declara parâmetros de `diff_maps` (`index_a`, `index_b`, `budget`) | N/A | N/A | N/A | N/A | Schema público de parâmetros; não inspeciona conteúdo | `internal/mcp/registry_test.go` | `go test ./internal/mcp` (PASS) |
+| `internal/skills/query.go:isStale` | `c83c589:298-310` | Verificador de frescor de skill | Lê bytes crus do arquivo e busca string do commit HEAD | Avalia string literal nos bytes brutos; não faz parse de JSON | Idem | Idem | Idem | Falha silenciosamente se o formato do JSON alterar o quoting do SHA | `internal/skills/skills_test.go` | `go test ./internal/skills` (PASS) |
+| `internal/skills/nudge.go:Nudge` | `c83c589:19-47` | Hook de pre-tool MCP | Consome `*domain.MacroMap` em memória | N/A (consome objeto carregado) | N/A | N/A | N/A | Se `loadIndex` falhar, hook roda com `mm == nil` e não falha a ferramenta (no-op) | `internal/skills/skills_test.go` | `go test ./internal/skills` (PASS) |
+| `internal/skills/install.go` | `c83c589:26,163,183` | Instalador de skills | Encaminha `--index <path>` nas configs geradas | N/A | N/A | N/A | N/A | Baixo; apenas repassa flags na configuração | `cmd/gira/skills_manifest_check_test.go` | `go test ./cmd/gira` (PASS) |
+| `bench/layer0/gira.go:FromGIRA` | `c83c589:31-75` | Adaptador benchmark Layer 0 | Desserializa subset `nodes` e `relationships` | **Aceita** (ignora `schema_version` completamente) [PROBE OBS] | **Aceita** [PROBE OBS] | **Erro JSON** (`unexpected end`) [PROBE OBS] | **Aceita** (não valida integridade de grafo) [PROBE OBS] | **Risco de grafo incorreto/vazio** se schema 2 alterar nomes de chaves dos nós/relações | `bench/layer0/layer0_test.go` | `cd bench && go test ./layer0` (PASS) |
+| `bench/cmd/layer1/main.go` | `c83c589:35,54,83` | Harness do benchmark Layer 1 | Flag `--index`, unmarshal de ground truth, invoca `gira serve mcp --index` | Subprocesso falha se index não carregar | Subprocesso prossegue se v1 aceitar | Subprocesso falha | Subprocesso falha | Consumidor via subprocesso CLI/MCP | `bench/layer1/runner_test.go` | `cd bench && go test ./layer1` (PASS) |
+| `bench/phases.json` | `c83c589:20-21` | Configuração declarativa de benchmark | Declara comandos `gira index ... --output` e `gira serve mcp --index` | N/A (declarativo) | N/A | N/A | N/A | Consome convenção `--index out/B/macro-map.json` | `bench/quarantine/check_test.go` | `cd bench && go test ./quarantine` (PASS) |
+| `bench/layer2/adapters.go:FromGIRA` | `c83c589:19-45` | Normalizador de tour Layer 2 | Desserializa output de `gira tour` (`steps`), NÃO MacroMap | N/A (consome saída do comando `tour`) | N/A | Rejeita JSON inválido | Rejeita | Não é leitor de MacroMap | `bench/layer2/layer2_test.go` | `cd bench && go test ./layer2` (PASS) |
+| `internal/slices/tour.go:portsLocator` | `c83c589:112-126` | Extrator de locator de tour | Lê `Metadata["exposed_ports"]` como `[]map[string]any` ou `[]any` | N/A | N/A | N/A | N/A | Demonstra dependência da representação dinâmica de `metadata` após unmarshal | `internal/slices/tour_test.go` | `go test ./internal/slices` (PASS) |
+| `internal/slices/intra_service.go:decodeIntraDetail` | `c83c589:61-85` | Decodificador de metadados | Converte `Metadata[IntraServiceMetadataKey]` via re-marshal/unmarshal | N/A | N/A | N/A | N/A | Dependência do formato JSON de metadados internos | `internal/slices/intra_service_test.go` | `go test ./internal/slices` (PASS) |
+| `internal/eval/eval.go:LoadGroundTruth` | `c83c589:107-125` | Carregador de ground truth | Valida que fixture v2 NÃO contém `macro_map` circular | N/A | N/A | Rejeita JSON malformado | Rejeita se embedding circular | Rejeita MacroMap embutido por design | `internal/eval/eval_test.go` | `go test ./internal/eval` (PASS) |
+| `internal/eval/scorecard.go:buildVariantScorecard` | `c83c589:143-155` | Gerador de scorecard | Calcula `OutputSHA256` a partir de `mm.CanonicalJSON()` | N/A | N/A | N/A | N/A | Mudanças em campos do MacroMap alteram o hash de saída do scorecard | `internal/eval/scorecard_test.go` | `go test ./internal/eval` (PASS) |
+| `tools/index-bundle/bootstrap.sh` | `c83c589:42,49` | Script de bundle offline | Invoca `gira index ... --output` | N/A (shell) | N/A | N/A | N/A | Gera snapshot destacado v1 | N/A (script) | Inspecionado visualmente |
+| `G-Ingá: tools/eval/evaluate_girag_slicing.ts` | `e13d49d:282-324` | Consumidor externo e fallback de fatiamento | Lê JSON diretamente e valida estritamente `schema_version: "1.0.0"` | **Rejeita com erro explícito** `"Unsupported Macro Map schema_version: 2"` [PROBE OBS] | **Rejeita com erro explícito** `"Unsupported Macro Map schema_version: "9.9.9""` [PROBE OBS] | **Rejeita com erro de parse** [PROBE OBS] | Valida IDs e endpoints essenciais [PROBE OBS] | **Protegido contra downgrade:** recusa terminantemente qualquer valor diferente de string `"1.0.0"` | `tools/eval/evaluate_girag_slicing.test.ts` (12 testes) | `bun test` em `e13d49d` (PASS, 395 asserts) |
+
+---
+
+### 4. Evidências dos testes e probes black-box executados nesta sessão
+
+Ambiente de execução dos probes:
+- SO: `Linux 7.2.5-3-omarchy x86_64`
+- Go: `go1.24.0 linux/amd64`
+- Bun: `1.2.4 (fd9a5ea6)`
+- Isolamento: `HOME`, `USERPROFILE`, `XDG_CACHE_HOME` e `GOCACHE` apontados para diretório temporário fora das árvores Git (`/tmp/gira-audit00-DWtV3u`).
+
+#### Log resumido dos probes black-box:
+1. **Probe `schema_int2.json` (`schema_version: 2`):**
+   - `gira slice service:a --index schema_int2.json`: rc=1, `stderr="Error: failed to load index: corrupt or invalid macro-map index at ... failed to decode JSON: json: cannot unmarshal number into Go struct field MacroMap.schema_version of type string"`
+   - `gira diff valid_v1.json schema_int2.json`: rc=1, `stderr="Error: failed to load ...: corrupt or invalid macro-map index at ... failed to decode JSON: json: cannot unmarshal number into Go struct field MacroMap.schema_version of type string"`
+   - `gira serve mcp diff_maps`: rc=0, resposta JSON-RPC com `"code": "index_missing"`, mensagem `"Failed to load index_b: corrupt or invalid macro-map index..."`
+   - `bench/layer0 FromGIRA`: rc=0, `ok components=2 contracts=0` (adapter ignora completamente `schema_version`)
+   - `G-Ingá evaluate_girag_slicing fallback`: rc=0, `success=false`, `error="Unsupported Macro Map schema_version: 2"`
+2. **Probe `schema_unknown_str.json` (`schema_version: "9.9.9"`):**
+   - `gira slice service:a --index schema_unknown_str.json`: rc=0, fatia extraída normalmente.
+   - `gira diff valid_v1.json schema_unknown_str.json`: rc=0, comparação gerada com sucesso.
+   - `gira serve mcp diff_maps`: rc=0, diff emitido com sucesso.
+   - `bench/layer0 FromGIRA`: rc=0, `ok components=2 contracts=0`.
+   - `G-Ingá evaluate_girag_slicing fallback`: rc=0, `success=false`, `error="Unsupported Macro Map schema_version: "9.9.9""`.
+3. **Probe `extra_source_identity.json` (v1 válido + `source_identity`):**
+   - `gira slice`, `diff`, `serve mcp`: rc=0, executam normalmente ignorando o campo extra no unmarshal.
+   - Projeção canônica (`CanonicalJSON()`): campo `source_identity` é **descartado**, pois não existe na struct Go v1.
+   - `G-Ingá fallback`: rc=0, executa normalmente ignorando propriedades desconhecidas do objeto JSON.
+
+---
+
+### 5. Limites de escopo declarados e incerteza residual
+
+1. **Hosts MCP externos e scripts de terceiros:** Instalações de Claude Desktop, Cursor ou agentes externos interagem exclusivamente pela interface CLI (`gira slice`, `gira diff`) e stdio JSON-RPC (`gira serve mcp`). Esses pontos de interface foram integralmente mapeados na matriz acima. Não é possível enumerar instalações ou scripts arbitrários em máquinas de usuários fora dos repositórios rastreados; esses casos ficam formalmente delimitados como **fronteira externa de escopo**, não como lacuna de auditoria interna.
+2. **Invocação reflexiva/dinâmica interna:** Zero ocorrências textuais diretas de `reflect.` no código executável pesquisado constituem evidência específica do padrão buscado no código de primeira parte, não prova absoluta da inexistência de consumidores dinâmicos ou reflexivos indiretos. A conclusão permanece estritamente limitada aos caminhos de desserialização e decodificação JSON identificados e auditados no repositório.
+
+---
+
+### 6. Conclusão sobre o critério AC2
+
+A matriz de consumidores cobre a totalidade dos 8 campos atuais, o campo futuro `source_identity`, a clonagem, serialização, persistência, leituras diretas, adaptadores de bench, scripts de distribuição e o consumidor externo G-Ingá. O comportamento de erro para schema numérico, versões desconhecidas e corrupção foi comprovado por probes observados e testes automatizados executados na sessão.
+
+**Veredito de AC2:** Com a comprovação reproduzível local e a delimitação do escopo externo, **o critério AC2 está pronto para ser marcado como `pass`**.

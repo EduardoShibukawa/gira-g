@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -40,12 +40,12 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | 30819b42a01cb331f1ec501bfb65921e3c87f4d3 | Gira-G `main` ref `30819b4...` and G-Ingá `main` ref `e13d49d...` rechecked via Git refs. PR #32 is merged; Gira-G CI [39261086261](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086261) and docs [39261086265](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086265) succeeded. PR #31 state/head and CI were checked. No checkout/local tests claimed. |
-| AC2 | Consumer matrix includes all current fields plus proposed source_identity, current behavior and downgrade risks for producer/copy/serializer/store/readers, with unknown paths explicit. | blocked | 30819b42a01cb331f1ec501bfb65921e3c87f4d3 | Current tree is 534 blobs (658 tree entries, untruncated), with 186 Go files including 94 tests and 495 text-like candidates. The matrix covers all eight current MacroMap fields, proposed `source_identity`, clone, canonical serializer, store, CLI direct readers, MCP/skills, Layer 0 adapter, bundle, fixtures/goldens/scorecard/docs and G-Ingá. `source_identity` and strict schema-2 reader remain absent. GitHub code-search returned zero results for central symbols, so it is not valid evidence of a complete global search; dynamic/reflection/host-external consumers remain unknown. |
-| AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0 | The fallback is typed for schema string `"1.0.0"`; test fixtures reject integer schema `2`, unknown versions, wrong representation, malformed JSON and invalid structures. [CI 39089480098](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) passed `test` and `pre-commit`; no open G-Ingá PRs were returned by the current query. |
-| AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 30819b42a01cb331f1ec501bfb65921e3c87f4d3 | Historical experiment [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) recorded the tab path failure. Current main CI [39261086261](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086261): Windows `TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath` passed; partial archive test passed on Ubuntu/macOS and is skipped on Windows by design. Windows skips the general unusual-path test for unmaterializable control characters, which remains a platform limitation rather than a passing materialization claim. |
-| AC5 | Report is updated and self-reviewed; no product code changed. | pass | f6887252438d9343ecd920da78cf5949bf4a8b1e | Documentary criterion only: the report/task record was updated and self-reviewed without changes to product source, tests, fixtures, spec or owner decisions. No test was executed for the purpose of this AC5, and this row does not claim test execution or product behavior. CI evidence is tracked separately; on the prior PR #31 head the validator failed while the three OS test jobs, floor guard, gate-lint and docs build passed. A run after this documentation correction must be checked independently. |
-| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | blocked | 39c92e3d347e7fd383edca56b72495063c909d77 | Self-review keeps AC2 blocked. PR #31 CI [39259495126](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495126) failed validator finding: commit `4f1c7b7` recorded `active → todo`, unreachable in the §3.3 state machine; docs run [39259495034](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495034) succeeded and the three OS jobs passed. That run preceded PR #32's merge and is not current-base CI. No SC1–SC10 acceptance claimed. |
+| AC1 | Report points to exact remote SHAs and URLs and makes no unsupported local checkout/test claims. | pass | c83c5891166267ec26816d75c305daf0a2dcda8e | Gira-G `main` ref `c83c589...` e G-Ingá `main` ref `e13d49d...` confirmados por Git refs e fetches remotos. Worktree isolada `../gira-g-wt-audit00-local` na branch `audit/2026-10-19-task00-local-grep`. Checkout original preservado sem alterações em `cmd/gira/main_test.go`. |
+| AC2 | Consumer matrix includes all current fields plus proposed source_identity, current behavior and downgrade risks for producer/copy/serializer/store/readers, with unknown paths explicit. | pass | c83c5891166267ec26816d75c305daf0a2dcda8e | Matriz exaustiva concluída via 3 passagens de `git grep` reproduzíveis sobre a árvore rastreada integral (535 arquivos em Gira-G, 347 em G-Ingá). Cobre os 8 campos atuais, o campo futuro `source_identity` (`source_key`, `tool_id`), clone, serialização, persistência, leitor central CLI `loadIndex`, `runDiff`, MCP `diff_maps`, `registry`, `skills` (`isStale`, `nudge`, `install`), adaptadores de bench (`layer0/gira.go`, `cmd/layer1`, `phases.json`, `layer2/adapters.go`), metadata roundtrip (`tour.go`, `intra_service.go`), `eval/scorecard`, `index-bundle` e o consumidor externo G-Ingá (`evaluate_girag_slicing.ts`). Comportamentos de erro (schema int 2, string desconhecida, JSON malformado, dados estruturalmente inválidos e campo extra) verificados por probes black-box observados em diretório temporário isolado. Limite de hosts externos delimitado no relatório e ressalva explícita de que zero ocorrências de `reflect.` constituem evidência textual do padrão pesquisado, não prova absoluta de ausência de qualquer consumidor dinâmico indireto. |
+| AC3 | Current G-Ingá fallback is revalidated on current remote default branch. | pass | e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0 | Fallback revalidado na árvore do commit `e13d49d...`. Execução real da suíte `bun test tools/eval/evaluate_girag_slicing.test.ts` observada com sucesso (12 testes pass, 0 fail, 395 asserts). Fallback rejeita estritamente schema int 2 (`Unsupported Macro Map schema_version: 2`) e versões desconhecidas. Sem suporte a schema 2 em G-Ingá. |
+| AC4 | Git for Windows archive limitation is documented with fail-closed policy and a proposed test. | pass | 30819b42a01cb331f1ec501bfb65921e3c87f4d3 | Experimento histórico [39084138230](https://github.com/EduardoShibukawa/gira-g/actions/runs/39084138230) registrou a falha de tab path. CI de main [39261086261](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086261): Windows `TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath` passou; teste de arquivo parcial passou em Ubuntu/macOS e é ignorado em Windows por design. |
+| AC5 | Report is updated and self-reviewed; no product code changed. | pass | c83c5891166267ec26816d75c305daf0a2dcda8e | Critério documental: o relatório de prontidão e este registro foram atualizados com a auditoria local completa, comandos exatos, hashes e matriz AC2. Nenhum código de produto, teste de produto, fixture, spec ou decisão de dono foi alterado. |
+| V1 | Self-review of report and task record against AC1–AC5, evidence provenance and scope boundaries. | pass | c83c5891166267ec26816d75c305daf0a2dcda8e | Auto-revisão contra AC1–AC5 concluída. Comandos de busca reproduzíveis registrados com hashes SHA-256 das saídas brutas. Probes black-box executados com saídas e códigos de retorno verificados. Testes de pacotes relevantes de Gira-G e G-Ingá executados com sucesso em ambiente isolado. Validador executado com Overall: pass. |
 
 ## Plan
 
@@ -59,9 +59,9 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 ## Checkpoint
 
 - as of: 2026-10-19
-- status: todo; task remains open because AC2 and V1 are blocked
-- next: obtain a checkout or complete repository-wide symbol search to close AC2; do not start task 01/ADR 0014 until task 00 is verified. Task 02 may proceed only within its independent, explicitly stated dependency on remote audit revalidation and merged PR #28.
-- revalidate: report is remote-only; no checkout or local command is claimed
+- status: completed; auditoria AC2 e revalidação de limites concluídas com evidências reproduzíveis e CI 100% verde na PR #38
+- next: revisão e aceite da PR #38 draft pelo mantenedor para merge em `main`; após merge, desbloquear a Tarefa 01 (ADR 0014). Tarefa 02 continua com escopo independente.
+- revalidate: matriz de consumidores e limites de plataforma comprovados com probes isolados, buscas exaustivas e checks de CI em Ubuntu, macOS e Windows.
 
 ## Remote revalidation update (2026-10-19)
 
@@ -85,3 +85,26 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 - **PR #31:** continua aberta/em draft, HEAD observado antes desta atualização `39c92e3d347e7fd383edca56b72495063c909d77`. O run CI [39259495126](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495126) falhou por transição histórica inválida `active → todo` no commit `4f1c7b7`; docs [39259495034](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495034) passou. Não foi feito force-push/rewrite do histórico. A integração da #32 mudou main depois desses runs, portanto o próximo resultado de CI da #31 precisa ser reconsultado contra a base atual.
 - **Read-only / limites:** checkout local não disponível; nenhum teste local executado. Nenhum código de produto, teste, fixture, spec, decisão aprovada, main, merge ou branch histórica foi alterado por esta auditoria.
 - **Next:** fechar a busca global de consumidores dinâmicos/reflexivos com evidência reproduzível; só então verificar task 00. ADR 0014 continua dependente da task 00 e permanece `todo`. Manter SC1–SC10 sem aceite.
+
+
+## Revalidação local reproduzível AC2 (2026-10-19)
+
+- **Task state:** transição formal de `todo → active` executada na worktree isolada `../gira-g-wt-audit00-local` (branch `audit/2026-10-19-task00-local-grep`, base `c83c5891166267ec26816d75c305daf0a2dcda8e`).
+- **Gira-G:** `main` remoto em `c83c5891166267ec26816d75c305daf0a2dcda8e`. Checkout original preservado intacto.
+- **G-Ingá:** `main` remoto em `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`. Suíte `evaluate_girag_slicing.test.ts` executada localmente via bun test sobre a árvore `e13d49d` com 12 pass e 395 asserções.
+- **AC2 concluído:** busca global via `git grep` em 535 arquivos de Gira-G e 347 de G-Ingá classificou exaustivamente todos os produtores, clonadores, serializadores, persistência e leitores.
+- **Probes black-box observados:** executados com binário compilado em `/tmp/gira-audit00-DWtV3u` e isolamento estrito de variáveis de ambiente (`HOME`, `USERPROFILE`, `XDG_CACHE_HOME`, `GOCACHE`). Comprovado que schema inteiro 2 gera `ErrCorruptIndex` na CLI e `index_missing` no MCP; que string desconhecida é aceita por falta de allowlist na v1; que JSON malformado e estruturas com endpoints ausentes são rejeitados; e que campo extra `source_identity` é ignorado no decode mas perdido na serialização canônica v1.
+- **Testes executados nesta sessão:**
+  - `go test -v -count=1 ./internal/store ./internal/indexer ./internal/mcp ./cmd/gira` (PASS)
+  - `cd bench && go test -v -count=1 ./layer0 ./layer1 ./layer2` (PASS)
+  - `go test -count=1 ./internal/slices ./internal/domain ./internal/archdiff ./internal/skills ./internal/eval` (PASS)
+  - `bun test tools/eval/evaluate_girag_slicing.test.ts` em G-Ingá `@e13d49d` (PASS)
+- **Veredito:** AC1–AC5 e V1 satisfeitos com evidências reproduzíveis. A tarefa 00 está com auditoria integralmente concluída e transitada para `status: completed`. ADR 0014 continua aguardando a integração desta tarefa em `main`.
+
+## Conclusão formal da Tarefa 00 (2026-10-19, PR #38)
+
+- **Transição de estado:** `active → completed`.
+- **Governança e validador (§3.3 e §3.4):** a tarefa conclui em `status: completed` (sem transição indevida para `verified`), pois tarefas do tier standard sem linha de baseline `B` não admitem `verified` pelas regras do validador.
+- **Evidências remotas:** PR #38 (draft) aberta contra `main` (commit `66bc62336a1bc335aabc0172d1fa95b7d868f9bc`), com todos os 7 checks remotos concluídos com sucesso (Ubuntu, macOS, Windows, validator, floor guard, gate-lint e docs).
+- **Ressalva de reflexão:** busca por `reflect.` qualificada expressamente como evidência do padrão textual pesquisado no código do repositório, não prova absoluta de ausência de qualquer consumidor reflexivo indireto.
+- **Portões mantidos:** Tarefa 01 (ADR 0014) e critérios de sucesso integrados SC1–SC10 permanecem bloqueados até a aprovação e integração formal da Tarefa 00 na `main`.
