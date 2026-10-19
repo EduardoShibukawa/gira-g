@@ -83,13 +83,11 @@ skip: roda depois que os children estiverem verificados
 
 ## Checkpoint
 
-- as of: 2026-10-17, branch `work/2026-10-17-gira-gate-owner-decisions`, base `731cf4ba`
-- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas
-- checkpoint histórico de 2026-10-17: spec `draft`, tarefa-mãe `todo`, implementação não autorizada; esse estado foi substituído pela autorização explícita do dono em 2026-10-18
-- next: fechar a auditoria de consumidores/schema, testar o contrato estrito/anti-downgrade, caminhos/ambiente Git, identidade de eval e `tool_id`, e o caso `git archive | tar -x` com tab no Windows; então rever a aprovação da spec e pedir autorização heavy separadamente
-- open: evidência de compatibilidade de consumidores/schema; execução dos testes definidos pelas decisões; comportamento de tab em `git archive | tar -x` no Windows; W2 (symlink com usuário não elevado/sem Developer Mode, com skip justificado se não permitido); M0–M6 em `tasks/2026-10-17-m0-m6-retro-review.md`
-- revalidate: CI PR #21 (head `4c59c6a`) passou `test` nos três SOs, `validator`, `floor guard`, `gate-lint` e `docs build`; essas são verificações de documentação, não testes da implementação versionada
-- gates (2026-10-17): decisões registradas em `docs/plans/2026-10-17-gates-tecnicos-publicacao-versionada.md`. Atualização de 2026-10-18: spec aprovada, parent `active` e `confirmed: heavy`; Gate 5 continua obrigatório antes da aceitação/merge.
+- as of: 2026-10-19, branch `work/2026-10-19-versioned-publication-full-local-run`
+- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas; Tarefa 00 concluída; Tarefa 02 integrada em main (PR #32) e reconciliada; Tarefa 01 (ADR 0014) concluída e integrada.
+- next: Executar Tarefa 03 (`2026-10-18-gira-versioned-publication-03-locator`).
+- revalidate: Validador standalone (`bun tools/validate/validate.ts`) em sucesso; suíte de testes passando.
+
 
 
 ## Owner authorization record (2026-10-18)
