@@ -84,9 +84,10 @@ skip: roda depois que os children estiverem verificados
 ## Checkpoint
 
 - as of: 2026-10-19, branch `work/2026-10-19-versioned-publication-full-local-run`
-- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas; Tarefa 00 concluída; Tarefa 02 integrada em main (PR #32) e reconciliada; Tarefa 01 (ADR 0014) concluída e integrada.
-- next: Executar Tarefa 03 (`2026-10-18-gira-versioned-publication-03-locator`).
-- revalidate: Validador standalone (`bun tools/validate/validate.ts`) em sucesso; suíte de testes passando.
+- done: N1/N2 e aceite formal Etapa 1/1.1; O6 aplicada; direções N3/N4/D1–D9c; decisões suplementares dos Gates 1–5 registradas; Tarefa 00 concluída; Tarefa 02 integrada em main (PR #32) e reconciliada; Tarefa 01 (ADR 0014) concluída e integrada; Tarefa 03 (locator e raiz Git) concluída e integrada.
+- next: Executar Tarefa 04 (`2026-10-18-gira-versioned-publication-04-keys`).
+- revalidate: Validador standalone (`bun tools/validate/validate.ts`) em sucesso; suíte de testes passando com `-race`.
+
 
 
 
