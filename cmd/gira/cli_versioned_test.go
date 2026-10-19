@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -319,7 +320,7 @@ func TestAC4_InitConcurrentManifestModificationGeneratesConflict(t *testing.T) {
 	t.Cleanup(func() { initHookBeforeBuild = nil })
 
 	var stdout, stderr bytes.Buffer
-	err := Run([]string{"init", repoDir}, nil, &stdout, &stderr)
+	err = Run([]string{"init", repoDir}, nil, &stdout, &stderr)
 	if err == nil {
 		t.Fatalf("expected init to fail on concurrent manifest creation")
 	}
