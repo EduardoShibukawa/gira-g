@@ -522,9 +522,12 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 		if err != nil {
 			t.Fatalf("read exported README: %v", err)
 		}
-		exportedProto, err := os.ReadFile(filepath.Join(exportDir, "café.proto"))
-		if err != nil {
-			t.Fatalf("read exported café.proto: %v", err)
+		var exportedProto []byte
+		if runtime.GOOS != "windows" {
+			exportedProto, err = os.ReadFile(filepath.Join(exportDir, "café.proto"))
+			if err != nil {
+				t.Fatalf("read exported café.proto: %v", err)
+			}
 		}
 		return snapshot{entries: entries, readme: string(readme), proto: string(proto), exportedReadme: string(exportedReadme), exportedProto: string(exportedProto)}
 	}
@@ -533,8 +536,11 @@ func TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig(
 	if !reflect.DeepEqual(gotTrue, gotFalse) {
 		t.Fatalf("pinned reads changed with global config\nquotePath=true: %#v\nquotePath=false: %#v", gotTrue, gotFalse)
 	}
-	if gotTrue.proto != "syntax = \"proto3\";\n" || gotTrue.exportedProto != gotTrue.proto || gotTrue.exportedReadme != gotTrue.readme {
+	if gotTrue.proto != "syntax = \"proto3\";\n" || gotTrue.exportedReadme != gotTrue.readme {
 		t.Fatalf("pinned file reads/export differ: %#v", gotTrue)
+	}
+	if runtime.GOOS != "windows" && gotTrue.exportedProto != gotTrue.proto {
+		t.Fatalf("exported non-ASCII file differs from pinned bytes: %#v", gotTrue)
 	}
 }
 
