@@ -42,6 +42,11 @@ var gitRedirectEnv = map[string]bool{
 	"GIT_CEILING_DIRECTORIES": true,
 	"GIT_NO_REPLACE_OBJECTS": true,
 	"GIT_REPLACE_REF_BASE": true,
+	"GIT_LITERAL_PATHSPECS": true,
+	"GIT_GLOB_PATHSPECS": true,
+	"GIT_NOGLOB_PATHSPECS": true,
+	"GIT_ICASE_PATHSPECS": true,
+	"GIT_ATTR_SOURCE": true,
 }
 
 // GitEnvForRead returns an environment for deterministic reads from pinned Git
@@ -275,36 +280,45 @@ func (cm *CacheManager) ReadFile(ctx context.Context, repo manifest.RepositoryDe
 // only after both git archive and tar succeed. A failed archive therefore cannot
 // leave a partial checkout that a caller might mistake for success.
 func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.RepositoryDeclaration, targetDir string) error {
-	repoDir := cm.RepoDir(repo)
-	parentDir := filepath.Dir(targetDir)
+	if strings.TrimSpace(targetDir) == "" {
+		return fmt.Errorf("export target path cannot be empty")
+	}
+	cleanTarget := filepath.Clean(targetDir)
+	if cleanTarget == "." || filepath.Dir(cleanTarget) == cleanTarget {
+		return fmt.Errorf("refusing to replace current directory or filesystem root")
+	}
+	parentDir := filepath.Dir(cleanTarget)
 	if err := os.MkdirAll(parentDir, 0755); err != nil {
 		return fmt.Errorf("failed to create target parent directory: %w", err)
 	}
 
 	targetExists := false
-	if info, err := os.Stat(targetDir); err == nil {
-		if !info.IsDir() {
-			return fmt.Errorf("export target %q is not a directory", targetDir)
+	targetMode := os.FileMode(0755)
+	if info, err := os.Lstat(cleanTarget); err == nil {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("export target %q is not a real directory", cleanTarget)
 		}
-		contents, err := os.ReadDir(targetDir)
+		contents, err := os.ReadDir(cleanTarget)
 		if err != nil {
-			return fmt.Errorf("failed to inspect export target %q: %w", targetDir, err)
+			return fmt.Errorf("failed to inspect export target %q: %w", cleanTarget, err)
 		}
 		if len(contents) != 0 {
-			return fmt.Errorf("export target directory %q is not empty", targetDir)
+			return fmt.Errorf("export target directory %q is not empty", cleanTarget)
 		}
 		targetExists = true
+		targetMode = info.Mode().Perm()
 	} else if !os.IsNotExist(err) {
-		return fmt.Errorf("failed to inspect export target %q: %w", targetDir, err)
+		return fmt.Errorf("failed to inspect export target %q: %w", cleanTarget, err)
 	}
 
+	repoDir := cm.RepoDir(repo)
 	stageDir, err := os.MkdirTemp(parentDir, ".gira-export-*")
 	if err != nil {
 		return fmt.Errorf("failed to create staging directory: %w", err)
 	}
 	defer os.RemoveAll(stageDir)
 
-	// Use git archive piped to tar extraction in the staging directory.
+	// Keep incomplete extraction private until both child processes succeed.
 	archiveCmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "archive", repo.SHA)
 	archiveCmd.Env = GitEnvForRead()
 	if repo.PathScope != "" && repo.PathScope != "." {
@@ -312,7 +326,6 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 	}
 
 	tarCmd := exec.CommandContext(ctx, "tar", "-x", "-C", stageDir)
-
 	pipe, err := archiveCmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to create stdout pipe: %w", err)
@@ -328,8 +341,8 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 	}
 
 	archiveErr := archiveCmd.Run()
-	// Always reap tar, even if git archive fails. Otherwise the consumer may
-	// remain blocked on the pipe and leak a child process on the error path.
+	// Always reap tar even when git archive fails: it may have consumed a
+	// valid prefix of the archive. All such files remain in the private stage.
 	tarErr := tarCmd.Wait()
 	if archiveErr != nil {
 		return fmt.Errorf("git archive failed: %s: %w", strings.TrimSpace(archiveStderr.String()), archiveErr)
@@ -338,13 +351,23 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
+	// Preserve the legacy exported-root permissions while keeping partial trees
+	// private (MkdirTemp creates mode 0700) until publication is certain.
+	if err := os.Chmod(stageDir, 0755); err != nil {
+		return fmt.Errorf("failed to set exported tree permissions: %w", err)
+	}
 	if targetExists {
-		if err := os.Remove(targetDir); err != nil {
-			return fmt.Errorf("failed to replace empty export target %q: %w", targetDir, err)
+		if err := os.Remove(cleanTarget); err != nil {
+			return fmt.Errorf("failed to replace empty export target %q: %w", cleanTarget, err)
 		}
 	}
-	if err := os.Rename(stageDir, targetDir); err != nil {
-		return fmt.Errorf("failed to publish extracted tree at %q: %w", targetDir, err)
+	if err := os.Rename(stageDir, cleanTarget); err != nil {
+		if targetExists {
+			if restoreErr := os.Mkdir(cleanTarget, targetMode); restoreErr != nil {
+				return fmt.Errorf("publish failed (%v) and empty export target could not be restored: %w", err, restoreErr)
+			}
+		}
+		return fmt.Errorf("failed to publish extracted tree at %q: %w", cleanTarget, err)
 	}
 	return nil
 }
