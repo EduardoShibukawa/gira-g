@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -59,9 +59,9 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
 ## Checkpoint
 
 - as of: 2026-10-19
-- status: todo; task remains open because AC2 and V1 are blocked
-- next: obtain a checkout or complete repository-wide symbol search to close AC2; do not start task 01/ADR 0014 until task 00 is verified. Task 02 may proceed only within its independent, explicitly stated dependency on remote audit revalidation and merged PR #28.
-- revalidate: report is remote-only; no checkout or local command is claimed
+- status: completed; auditoria AC2 e revalidação de limites concluídas com evidências reproduzíveis e CI 100% verde na PR #38
+- next: revisão e aceite da PR #38 draft pelo mantenedor para merge em `main`; após merge, desbloquear a Tarefa 01 (ADR 0014). Tarefa 02 continua com escopo independente.
+- revalidate: matriz de consumidores e limites de plataforma comprovados com probes isolados, buscas exaustivas e checks de CI em Ubuntu, macOS e Windows.
 
 ## Remote revalidation update (2026-10-19)
 
@@ -99,4 +99,12 @@ Revalidar produtores, cópia/serialização, store, CLI, MCP, skills, bench, eva
   - `cd bench && go test -v -count=1 ./layer0 ./layer1 ./layer2` (PASS)
   - `go test -count=1 ./internal/slices ./internal/domain ./internal/archdiff ./internal/skills ./internal/eval` (PASS)
   - `bun test tools/eval/evaluate_girag_slicing.test.ts` em G-Ingá `@e13d49d` (PASS)
-- **Veredito:** AC1–AC5 e V1 satisfeitos com evidências reproduzíveis. A tarefa 00 está com auditoria integralmente concluída e pronta para transição formal para verified/closeout após revisão do commit local. ADR 0014 continua aguardando o gate da tarefa 00.
+- **Veredito:** AC1–AC5 e V1 satisfeitos com evidências reproduzíveis. A tarefa 00 está com auditoria integralmente concluída e transitada para `status: completed`. ADR 0014 continua aguardando a integração desta tarefa em `main`.
+
+## Conclusão formal da Tarefa 00 (2026-10-19, PR #38)
+
+- **Transição de estado:** `active → completed`.
+- **Governança e validador (§3.3 e §3.4):** a tarefa conclui em `status: completed` (sem transição indevida para `verified`), pois tarefas do tier standard sem linha de baseline `B` não admitem `verified` pelas regras do validador.
+- **Evidências remotas:** PR #38 (draft) aberta contra `main` (commit `66bc62336a1bc335aabc0172d1fa95b7d868f9bc`), com todos os 7 checks remotos concluídos com sucesso (Ubuntu, macOS, Windows, validator, floor guard, gate-lint e docs).
+- **Ressalva de reflexão:** busca por `reflect.` qualificada expressamente como evidência do padrão textual pesquisado no código do repositório, não prova absoluta de ausência de qualquer consumidor reflexivo indireto.
+- **Portões mantidos:** Tarefa 01 (ADR 0014) e critérios de sucesso integrados SC1–SC10 permanecem bloqueados até a aprovação e integração formal da Tarefa 00 na `main`.
