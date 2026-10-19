@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/EduardoShibukawa/gira-g/internal/mcp"
+	"github.com/EduardoShibukawa/gira-g/internal/slices"
 	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
