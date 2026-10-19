@@ -45,6 +45,11 @@ func gitReadEnvironment() []string {
 		"GIT_REPLACE_REF_BASE":           true,
 		"GIT_GRAFT_FILE":                 true,
 		"GIT_SHALLOW_FILE":               true,
+		"GIT_LITERAL_PATHSPECS":           true,
+		"GIT_GLOB_PATHSPECS":              true,
+		"GIT_NOGLOB_PATHSPECS":             true,
+		"GIT_ICASE_PATHSPECS":              true,
+		"GIT_ATTR_SOURCE":                  true,
 		"GIT_CONFIG":                     true,
 	}
 	env := make([]string, 0, len(os.Environ()))
@@ -310,6 +315,11 @@ func (cm *CacheManager) ExportTree(ctx context.Context, repo manifest.Repository
 		return fmt.Errorf("tar extract failed: %s: %w", strings.TrimSpace(tarStderr.String()), tarErr)
 	}
 
+	// MkdirTemp deliberately keeps the incomplete staging tree private (0700).
+	// Restore the previous exported-root mode immediately before publication.
+	if err := os.Chmod(stageDir, 0755); err != nil {
+		return fmt.Errorf("failed to set exported tree permissions: %w", err)
+	}
 	if err := os.Rename(stageDir, targetDir); err != nil {
 		return fmt.Errorf("failed to publish extracted tree into %s: %w", targetDir, err)
 	}
