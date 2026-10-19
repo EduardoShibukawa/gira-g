@@ -1,13 +1,13 @@
 # Gira-G / G-Ingá: auditoria de readiness para publicação versionada
 
-**Última revalidação remota:** 2026-10-18, nesta retomada. Os SHAs de `main`, o HEAD da PR #31 e os jobs de CI citados foram consultados separadamente.  
+**Base histórica:** 2026-10-18. **Última revalidação remota:** 2026-10-19, após a integração da PR #32; consultar o addendum final para o estado atual e para evidências posteriores. Os SHAs de `main`, o HEAD da PR #31 e os jobs de CI citados foram consultados separadamente.  
 **Escopo:** APIs do GitHub, branches, PRs, workflows e código/documentação dos dois repositórios.  
 **Limitação local:** o ambiente desta execução não contém checkout Git (`git rev-parse --show-toplevel` retorna “not a git repository”). Nenhum teste local foi executado; não é possível afirmar branch, HEAD ou limpeza do worktree na máquina do usuário.  
 **Alterações propostas neste branch:** correção documental do plano da task 00 e este relatório. Sem alterações de código/testes de produto, sem mudança de spec, sem aprovação de SC, sem merge/release.
 
 Este é um adendo de revalidação. O relatório anterior [gira-schema-consumer-compatibility-audit](2026-10-18-gira-schema-consumer-compatibility-audit.md) é preservado como registro histórico. Suas conclusões anteriores à PR #28 e à aprovação da spec precisam ser lidas à luz dos fatos abaixo.
 
-## Estado verificado
+## Estado verificado (snapshot histórico de 2026-10-18; supersedido pelo addendum de 2026-10-19)
 
 | Repositório | Branch padrão / SHA atual | CI mais recente observado na consulta | Conclusão |
 |---|---|---|---|
@@ -261,3 +261,88 @@ A presença de um teste não equivale à sua execução nem à aprovação do SC
 **NOT READY para declarar a publicação versionada pronta para implementação integrada.** A matriz remota foi ampliada, mas AC2/V1 continuam bloqueados por referências dinâmicas/globais ainda não verificáveis sem checkout ou busca global completa. Task 00 fica `todo`, e ADR 0014 não deve começar até que a tarefa seja formalmente verificada. A task 02 pode continuar isolada e delimitada; schema 2, source_identity, store/heads, reader estrito, locks, durabilidade e SC1–SC10 não têm aceite. Nada aqui autoriza merge, release ou suporte a schema 2.
 
 **Próximas ações:** fechar AC2 com evidência reproduzível para só então destravar ADR 0014; enquanto isso, terminar e validar a task 02 em sua PR draft sem alteração de `main`.
+
+
+## Addendum: revalidação remota em 2026-10-19 após a PR #32
+
+Este addendum é o estado mais recente consultado para esta auditoria e prevalece sobre os snapshots históricos acima onde houver divergência de SHA, PR, CI ou caminho de execução. A consulta foi remota; **nenhum checkout local nem execução local foi alegado**.
+
+### 1. SHAs, PRs e CI revalidados
+
+| Evidência | Estado observado em 2026-10-19 | Consequência |
+|---|---|---|
+| [Gira-G main](https://github.com/EduardoShibukawa/gira-g/commit/30819b42a01cb331f1ec501bfb65921e3c87f4d3) | SHA `30819b42a01cb331f1ec501bfb65921e3c87f4d3`, confirmado por `refs/heads/main`. É o merge commit da PR #32. | As referências antigas a `6c66d93` são baseline histórico, não o HEAD atual. |
+| [PR #32](https://github.com/EduardoShibukawa/gira-g/pull/32) | `merged=true`; merge commit `30819b42a01cb331f1ec501bfb65921e3c87f4d3`; branch source HEAD `291a0d29f63be5c0ce80afae5efbc48e794b7451`. Fechada em 2026-10-19 13:32:48Z. | As mudanças de cache/ambiente já estão na main. Não duplicá-las numa tarefa ou PR posterior. |
+| [Gira-G CI no main atual](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086261) | Conclusão `success`: validator, floor guard, gate-lint warn-only e testes em Ubuntu/macOS/Windows concluíram em sucesso. | Evidência de CI do commit integrado; não é aceite de SC1–SC10. |
+| [Gira-G docs no main atual](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086265) | Conclusão `success`. | Build de docs da main passou. |
+| [G-Ingá main](https://github.com/EduardoShibukawa/G-Inga/commit/e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0) | SHA `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`, confirmado por `refs/heads/main`. | Baseline do consumidor externo v1-only. |
+| [G-Ingá validate](https://github.com/EduardoShibukawa/G-Inga/actions/runs/39089480098) | Jobs `test` e `pre-commit` concluídos em sucesso. A consulta à lista de PRs `state=open` retornou vazia. | Não existe PR aberta observada no G-Ingá nesta consulta; isso não prova ausência de branches. |
+| [Gira-G PR #31](https://github.com/EduardoShibukawa/gira-g/pull/31) | Aberta, `draft=true`, `merged=false`; HEAD `39c92e3d347e7fd383edca56b72495063c909d77`. O snapshot de base e os runs associados ainda apontavam para `main` `6c66d938...`, antes da integração da #32. | A PR #31 ainda precisa ser validada contra a base atual; seus checks anteriores não são checks do HEAD/base combinados atualizados. |
+| [PR #31 CI observado](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495126) e [docs](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495034) | CI concluiu em `failure`; docs em `success`. Ubuntu, macOS e Windows passaram no CI consultado; validator falhou. | A PR continua bloqueada. Não marcar o run global como verde só porque os três jobs Go passaram. |
+
+### 2. Causa precisa do validator da PR #31
+
+O log do job validator `118083135296` no run [39259495126](https://github.com/EduardoShibukawa/gira-g/actions/runs/39259495126) reporta:
+
+```text
+artifact-records fail 1 failing finding(s)
+tasks/2026-10-18-gira-versioned-publication-00-audit-revalidation.md §3.3 4f1c7b7:
+task 2026-10-18-gira-versioned-publication-00-audit-revalidation:
+active → todo is not reachable in the §3.3 state machine
+Overall: fail
+```
+
+A falha é a transição histórica `active → todo` registrada no commit abreviado `4f1c7b7`, não a compilação do produto nem a suíte Go. A execução do CI mostra, separadamente, Ubuntu/macOS/Windows em sucesso. O build docs também passou. Como o finding referencia um commit anterior no histórico da PR, apenas mudar novamente o frontmatter em um commit novo não prova que o finding histórico desapareça. Não foi feita reescrita/force-push do histórico; a PR fica em draft e sem merge. Qualquer reparo que exija reconstruir histórico deve ser deliberado separadamente e revalidado, não escondido alterando o estado atual da task.
+
+### 3. Auditoria atualizada do produtor, store e consumidores
+
+A árvore Git recursiva no SHA `30819b42a01cb331f1ec501bfb65921e3c87f4d3` retornou 658 nós, 534 blobs, sem truncamento e aproximadamente 495 arquivos textuais candidatos pelos sufixos examinados. Entre eles há 186 arquivos Go (incluindo 94 arquivos de teste), 15 arquivos de script TS/JS/shell/Python, 31 JSON, 13 YAML/YML e 250 Markdown. Este inventário de paths é reproduzível; ele não equivale a uma prova de ausência de consumidores dinâmicos/reflexivos.
+
+As fontes relevantes foram revalidadas em main:
+
+- [`internal/domain/models.go`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/internal/domain/models.go): `MacroMap.SchemaVersion` é `string`; `NewMacroMap` emite `"1.0.0"`. O modelo atual contém oito campos conhecidos: `schema_version`, `target_system`, `nodes`, `relationships`, `unsupported`, `unsupported_constructs`, `unresolved_refs` e `conflicts`. Não há `source_identity`. `Validate()` exige que a versão não seja vazia, mas não impõe allowlist estrita de versões; `CanonicalJSON()` projeta os campos conhecidos explicitamente.
+- [`internal/indexer/incremental.go`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/internal/indexer/incremental.go): `cloneMacroMap` copia os campos diagnósticos `unresolved_refs` e `conflicts`, incluindo suas evidências. A correção legada da PR #28 não deve ser refeita.
+- [`internal/store/store.go`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/internal/store/store.go): `Publish/PublishFile` escrevem snapshots via arquivo temporário, sync e rename; `Load/LoadFile` desserializam para o modelo legado e validam a estrutura. Ainda não existe store imutável por `version_id`, head por linhagem ou protocolo de publicação versionada. Um `schema_version` inteiro `2` não corresponde ao tipo Go string e é reportado pelo caminho de erro de decode/corrupção, não por uma taxonomia normativa `index_schema_unsupported`. Uma versão desconhecida como string não vazia não é, por si só, rejeitada por `Validate()`.
+- [`cmd/gira/main.go`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/cmd/gira/main.go): `loadIndex` usa `LoadFile` para `--index` explícito e para os caminhos de descoberta existentes; `runDiff` lê diretamente os dois snapshots. Ainda não há a política normativa de reader para schema 2/legado, nem toda a taxonomia de erro aprovada.
+- [`bench/layer0/gira.go`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/bench/layer0/gira.go): o adaptador desserializa um subconjunto de JSON por `json.Unmarshal`; a struct consumidora não valida `schema_version`. É um consumidor adicional a manter na cobertura de task 09.
+- [skill `gira-arch-diff`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/internal/skills/catalog/gira-arch-diff/SKILL.md) documenta `gira diff` e MCP `diff_maps`; [`tools/index-bundle/bootstrap.sh`](https://github.com/EduardoShibukawa/gira-g/blob/30819b42a01cb331f1ec501bfb65921e3c87f4d3/tools/index-bundle/bootstrap.sh) ainda gera snapshot destacado `macro-map.json` por `gira index --output`. Fixtures/goldens, scorecard e docs versionadas permanecem consumidores/artefatos que precisam da reconciliação da task 09; docs versionadas são histórico, não devem ser editadas para insinuar suporte retroativo.
+- O caminho atual de G-Ingá está em [`evaluate_girag_slicing.ts`](https://github.com/EduardoShibukawa/G-Inga/blob/e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0/tools/eval/evaluate_girag_slicing.ts) e [testes](https://github.com/EduardoShibukawa/G-Inga/blob/e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0/tools/eval/evaluate_girag_slicing.test.ts). O fallback continua estrito em `schema_version: "1.0.0"`; os testes rejeitam schema inteiro `2`, versões desconhecidas, representação errada, JSON malformado e estruturas inválidas. Não habilitar schema 2 no consumidor externo durante a auditoria.
+
+**Inferência de risco, não teste executado nesta auditoria:** porque o decoder Go desserializa em uma struct que não declara `source_identity`, propriedades desconhecidas não são preservadas no modelo; a serialização canônica atual reconstrói apenas os campos conhecidos. O leitor legado não é um reader de schema 2 e pode reportar schema 2 numérico como índice corrompido, não como tipo de incompatibilidade normativa. Isso exige implementação e testes próprios nas tarefas 04/06/07/09; não se resolve alterando só documentação.
+
+### 4. O que a PR #32 comprovou e o que ela não comprova
+
+O diff integrado da PR #32 altera `cmd/gira/main.go`, testes da CLI, `internal/gitcache/cache.go`, testes do gitcache, `internal/indexer/indexer.go` e o registro da task 02. Em main, `GitEnvForRead` remove variáveis de redirecionamento/prefixo e configura leituras de objetos fixados com ambiente de configuração isolado; o caminho de clone/fetch preserva a configuração de usuário necessária. `ExportTree` extrai para staging, valida a materialização e só promove o diretório após sucesso dos comandos e verificação do conteúdo esperado.
+
+No CI da main atual [39261086261](https://github.com/EduardoShibukawa/gira-g/actions/runs/39261086261), os logs mostram:
+
+| Teste | Ubuntu | macOS | Windows |
+|---|---|---|---|
+| `TestCacheManager_ListTreePreservesUnusualPathnames` | pass | pass | skip explícito para nomes de controle não materializáveis no filesystem Windows |
+| `TestCacheManager_ReadsPinnedObjectsIndependentOfReplaceRefsAndGlobalConfig` | pass | pass | pass |
+| `TestCacheManager_PreservesUserURLRewriteForCloneAndFetch` | pass | pass | pass |
+| `TestCacheManager_ExportTreeDoesNotPublishPartialArchive` | pass | pass | skip esperado: fixture shell é Unix-only |
+| `TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath` | skip por plataforma | skip por plataforma | pass |
+
+O Windows específico foi executado, e não apenas inferido a partir da matriz. Ainda assim, o skip de nomes de controle no Windows deve permanecer visível: os testes demonstram parsing/leitura dos nomes materializáveis e falha fechada para o caso tab via archive, não a capacidade de materializar no NTFS todo nome possível de Git.
+
+### 5. Resultado atual de AC1–AC5, limites e sequência
+
+| Critério da task 00 | Estado após esta revalidação | Evidência / pendência |
+|---|---|---|
+| AC1 — SHAs/URLs exatos, sem alegar checkout/testes locais | **pass** | Refs de Gira-G/G-Ingá, PR #32 integrada, PR #31 e URLs de CI acima reconsultados; nenhum teste local alegado. |
+| AC2 — matriz de consumidores, campos atuais + `source_identity`, risco de downgrade | **blocked** | A matriz cobre modelo, clone, serializer, store, CLI, bench Layer 0, skill, bundle, fixtures/goldens, docs e G-Ingá. Porém a busca de código do conector retornou zero resultados para consultas centrais (incluindo `MacroMap`, `CanonicalJSON`, `source_identity`, `schema_version`), logo não é evidência válida de busca global completa. Referências dinâmicas/reflexivas e hosts externos continuam não verificadas; AC2 não pode ser aprovado. |
+| AC3 — fallback atual do G-Ingá revalidado | **pass** | Fonte/testes no SHA `e13d49d...` e workflow `39089480098` em sucesso. |
+| AC4 — limite de Windows documentado com política fail-closed/teste | **pass** | Experimento histórico `39084138230` documenta o erro de archive/tar para nome com tab; o teste específico do Windows passou no CI main `39261086261`. |
+| AC5 — relatório atualizado/revisado sem mudar código de produto | **pass documental** | Este addendum é documental e as fontes alteradas no código são citadas apenas como evidência remota; não houve edição de código/testes/fixtures/spec/decisões nesta auditoria. O CI da própria atualização ainda precisa ser reconsultado. |
+| V1 — auto-revisão completa contra AC1–AC5/gates | **blocked** | AC2 continua aberto e o CI atual observado da PR #31 tem a falha histórica de transição de estado do validator. Não há aceite de SCs. |
+
+A task 00 **permanece `todo`**, não `verified`. A autorização `heavy` da tarefa-mãe permanece intacta; esta conclusão não altera decisões de produto. A task 01/ADR 0014 continua bloqueada pela dependência declarada da task 00. Não preparar/mesclar o ADR nem marcar tarefa concluída enquanto AC2 não tiver evidência reproduzível suficiente.
+
+A task 02 na main está com `status: completed` e seu conteúdo registra AC1–AC6/V1 na evidência do commit de trabalho `4162d47...`; entretanto, seu checkpoint ainda descreve PR #32 como `draft/open/no merge`, o que ficou obsoleto após a integração em `30819b4...`. A reconciliação dessa inconsistência documental é pendência separada e não reabre a #32 nem autoriza duplicar seus fixes. Faz sentido fazê-la quando o gate da task 00 estiver formalmente resolvido, preservando os resultados comprovados.
+
+### Veredito vigente
+
+**NOT READY** para declarar a publicação versionada pronta para implementação integrada ou aceita. A task 00 permanece aberta por AC2/V1; schema inteiro 2, `source_identity`, store/head versionado, reader anti-downgrade, locks/durabilidade e SC1–SC10 continuam sem aceite integrado. A main atual tem CI verde e as mudanças de gitcache da PR #32 foram integradas, mas isso não satisfaz o contrato da publicação versionada.
+
+Ordem de continuidade: (1) obter evidência reproduzível de cobertura global de referências/consumidores para fechar AC2, idealmente com checkout/grep ou mecanismo equivalente verificável; (2) resolver formalmente o finding histórico do validator da PR #31 sem ocultar sua causa e sem reescrita de histórico não autorizada; (3) somente depois da verificação da task 00, avançar ADR 0014 e reconciliação documental da task 02; (4) manter os SCs sem aceite até seus testes integrados e multiplataforma serem efetivamente executados.
