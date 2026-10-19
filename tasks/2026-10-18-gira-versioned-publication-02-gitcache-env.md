@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: active
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -12,7 +12,7 @@ parent: 2026-10-17-gira-versioned-publication
 
 - tier: standard (escopo e critérios de aceite limitados abaixo)
 - approved: criação da tarefa e plano de execução pelo dono (2026-10-18, instrução explícita para desbloquear e criar tasks)
-- dependencies: Pode começar após revalidar a auditoria; incorporar/aguardar merge da PR #28 antes de duplicar seus fixes.
+- dependencies: Revalidação remota da auditoria 00; PR #28 já está integrada em `main` (`6c66d938148de56d460389f183bf9900f482f50f`). Reutilizar os fixes existentes, sem duplicá-los.
 
 ## Objective
 
@@ -51,14 +51,18 @@ NUL-delimited ls-tree; sanitização de variáveis GIT_* para probes locais; pre
 ## Plan
 
 1. Revalidar instruções do repositório, branch/HEAD e estado do worktree antes de alterações; nunca resetar, limpar ou sobrescrever mudanças do usuário.
-2. Ler a spec aprovada, os registros de decisão e as tarefas upstream/downstream.
-3. Implementar apenas o comportamento delimitado e seus testes de regressão.
-4. Executar testes focados e depois as verificações obrigatórias; registrar SHA, comandos, plataforma e resultados exatos.
-5. Revisar o diff integrado contra cada critério e atualizar esta tarefa apenas com resultados sustentados por evidência.
+2. Reler o Gate 2 da auditoria técnica, ADR 0009 e testes/changes da PR #28 antes de editar.
+3. Manter probes locais separados de clone/fetch: filtrar `GIT_PREFIX` e `GIT_CEILING_DIRECTORIES` nos probes locais, mas deixar clone/fetch herdarem a configuração/credenciais do usuário.
+4. Extrair `git archive` para diretório irmão temporário; publicar/substituir o destino só quando archive e tar terminarem com sucesso, restaurando o destino anterior se a promoção falhar.
+5. Adicionar regressões de variáveis Git/config, URL rewrite de usuário para clone/fetch, falha após emissão parcial do tar e um tree Git sintético com pathname contendo tab, sem criar esse nome no filesystem Windows.
+6. Rodar CI no SHA exato desta branch (Linux/macOS/Windows, validator e floor guard); nenhum critério deve ser marcado `pass` a partir apenas de existência do teste ou leitura de código.
+7. Revisar o diff integrado contra AC1–AC6. Não implementar schema 2, `source_identity`, store/head versionado, resolver ou locks nesta tarefa.
 
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Pode começar após revalidar a auditoria; incorporar/aguardar merge da PR #28 antes de duplicar seus fixes.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- as of: 2026-10-19
+- status: active; branch separado da auditoria, sem alterações em `main`
+- base: PR #31 audit head `85312f52cb3baa3afd8360c6c57feee85a9c30b1`; `main` base `6c66d938148de56d460389f183bf9900f482f50f`
+- changes so far: filtros de probes incluem `GIT_PREFIX` e `GIT_CEILING_DIRECTORIES`; testes de env/clone-fetch/partial archive/tab pathname estão sendo adicionados; ExportTree usa staging antes de substituir o destino.
+- verification: todos AC1–AC6 continuam `not run` até CI do SHA final; não há teste local porque não existe checkout local acessível nesta sessão.
+- next: terminar auto-revisão dos testes e código, abrir/atualizar PR draft empilhada sobre a branch da auditoria e registrar links dos checks do head exato.
