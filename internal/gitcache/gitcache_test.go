@@ -1,6 +1,8 @@
 package gitcache_test
 
 import (
+	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -281,6 +283,15 @@ func TestCacheManager_ExportTree(t *testing.T) {
 	exportDir := filepath.Join(t.TempDir(), "export")
 	if err := cm.ExportTree(ctx, repoDecl, exportDir); err != nil {
 		t.Fatalf("failed to export tree: %v", err)
+	}
+	if runtime.GOOS != "windows" {
+		info, err := os.Stat(exportDir)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := info.Mode().Perm(); got != 0755 {
+			t.Fatalf("export root permissions = %04o, want 0755", got)
+		}
 	}
 
 	// Verify exported files exist on disk
@@ -573,6 +584,70 @@ func TestCacheManager_PreservesUserURLRewriteForCloneAndFetch(t *testing.T) {
 	}
 	if !cm.HasCommit(ctx, cm.RepoDir(repoDecl), fetchedSHA) {
 		t.Fatalf("fetched pinned commit %s is not present in cache", fetchedSHA)
+	}
+}
+
+func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell-backed partial archive fixture is Unix-only")
+	}
+	ctx := context.Background()
+	archivePath := filepath.Join(t.TempDir(), "partial.tar")
+	payload := []byte("partial output stays private")
+	var archiveBytes bytes.Buffer
+	tw := tar.NewWriter(&archiveBytes)
+	if err := tw.WriteHeader(&tar.Header{Name: "partial.txt", Mode: 0644, Size: int64(len(payload)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(payload); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(archivePath, archiveBytes.Bytes(), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	binDir := t.TempDir()
+	fakeGit := filepath.Join(binDir, "git")
+	script := "#!/bin/sh\\ncat \"$GIRA_ARCHIVE_FIXTURE\"\\nexit 23\\n"
+	if err := os.WriteFile(fakeGit, []byte(script), 0755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("GIRA_ARCHIVE_FIXTURE", archivePath)
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	cacheRoot, err := os.MkdirTemp(os.TempDir(), "gira-partial-cache-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(cacheRoot) })
+	cm, err := gitcache.NewCacheManager(cacheRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parent, err := os.MkdirTemp(os.TempDir(), "gira-partial-out-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(parent) })
+	targetDir := filepath.Join(parent, "export")
+	repoDecl := manifest.RepositoryDeclaration{ID: "partial-stream", SHA: "deadbeef"}
+
+	err = cm.ExportTree(ctx, repoDecl, targetDir)
+	if err == nil || !strings.Contains(err.Error(), "git archive failed") {
+		t.Fatalf("ExportTree error = %v, want git archive failure", err)
+	}
+	if _, statErr := os.Stat(targetDir); !os.IsNotExist(statErr) {
+		t.Fatalf("partial archive became visible at targetDir; stat error = %v", statErr)
+	}
+	leftovers, err := os.ReadDir(parent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(leftovers) != 0 {
+		t.Fatalf("staging directory leaked after failed archive: %v", leftovers)
 	}
 }
 
