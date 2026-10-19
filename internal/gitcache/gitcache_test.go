@@ -379,10 +379,10 @@ func TestCacheManager_ExportTreeDoesNotStartExtractorWhenArchiveFails(t *testing
 	fakeGit := filepath.Join(binDir, "git")
 	fakeTar := filepath.Join(binDir, "tar")
 	tarMarker := filepath.Join(t.TempDir(), "tar-was-run")
-	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\\nexit 23\\n"), 0755); err != nil {
+	if err := os.WriteFile(fakeGit, []byte("#!/bin/sh\nexit 23\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\\necho called > \"$TAR_CALLED\"\\nexit 0\\n"), 0755); err != nil {
+	if err := os.WriteFile(fakeTar, []byte("#!/bin/sh\necho called > \"$TAR_CALLED\"\nexit 0\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("TAR_CALLED", tarMarker)
@@ -658,8 +658,8 @@ func TestCacheManager_ExportTreeDoesNotPublishPartialArchive(t *testing.T) {
 	binDir := t.TempDir()
 	fakeGit := filepath.Join(binDir, "git")
 	fakeTar := filepath.Join(binDir, "tar")
-	gitScript := "#!/bin/sh\\ncat \"$GIRA_ARCHIVE_FIXTURE\"\\nexit 0\\n"
-	tarScript := "#!/bin/sh\\n\"$REAL_TAR\" \"$@\"\\nexit 23\\n"
+	gitScript := "#!/bin/sh\ncat \"$GIRA_ARCHIVE_FIXTURE\"\nexit 0\n"
+	tarScript := "#!/bin/sh\n\"$REAL_TAR\" \"$@\"\nexit 23\n"
 	if err := os.WriteFile(fakeGit, []byte(gitScript), 0755); err != nil {
 		t.Fatal(err)
 	}
