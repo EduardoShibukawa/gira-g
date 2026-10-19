@@ -305,6 +305,12 @@ func readArchiveMembers(archivePath string) ([]archiveMember, error) {
 		if err != nil {
 			return nil, fmt.Errorf("read archive header: %w", err)
 		}
+		// Git commonly prefixes archives with a PAX global header named
+		// "pax_global_header" (type 'g'). It carries archive metadata, not a
+		// filesystem member, so validate and materialize only actual tree entries.
+		if header.Typeflag == tar.TypeXGlobalHeader {
+			continue
+		}
 		name := strings.TrimSuffix(header.Name, "/")
 		if name == "" || name == "." {
 			continue
