@@ -1,7 +1,9 @@
 ---
 schema: spec/1
-status: draft
+status: approved
 version: 1
+approved_version: 1
+approved_hash: "sha256:26ed56083c348768f8b50b751af38e70701fea34dc728b94c09b81c2d5101865"
 ---
 
 # Agent context surface: formato caveman, teto do summary com intra-service e erros de índice legíveis
