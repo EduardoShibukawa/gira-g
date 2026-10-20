@@ -60,17 +60,39 @@ const (
 	FormatJSON     Format = "json"
 	FormatMarkdown Format = "md"
 	FormatHTML     Format = "html"
+	// FormatCaveman is the one-fact-per-line agent format (INTENT 0001).
+	FormatCaveman Format = "caveman"
 )
 
-// ParseFormat maps a CLI format flag to a Format.
+// ParseFormat maps a CLI format flag to a Format. Unknown values fall back to
+// JSON, preserving the legacy behavior of the commands that predate the strict
+// surface; slice/impact/locate validate with ParseFormatStrict instead.
 func ParseFormat(s string) Format {
 	switch s {
 	case "md", "markdown":
 		return FormatMarkdown
 	case "html":
 		return FormatHTML
+	case "caveman", "llm":
+		return FormatCaveman
 	default:
 		return FormatJSON
+	}
+}
+
+// ParseFormatStrict maps a CLI format flag of the agent-facing commands
+// (slice, impact, locate) to a Format, refusing unknown values instead of
+// falling back silently to JSON. caveman accepts the llm alias (INTENT 0001).
+func ParseFormatStrict(s string) (Format, error) {
+	switch s {
+	case "json":
+		return FormatJSON, nil
+	case "md", "markdown":
+		return FormatMarkdown, nil
+	case "caveman", "llm":
+		return FormatCaveman, nil
+	default:
+		return FormatJSON, fmt.Errorf("invalid --format %q: accepted values are json|md|caveman", s)
 	}
 }
 
@@ -80,6 +102,9 @@ func (cs *ContextSlice) Emit(format Format, limit int) ([]byte, error) {
 	render := func(c *ContextSlice) ([]byte, error) {
 		if format == FormatMarkdown {
 			return []byte(c.RenderMarkdown() + "\n"), nil
+		}
+		if format == FormatCaveman {
+			return []byte(c.RenderCaveman() + "\n"), nil
 		}
 		return c.CanonicalJSON()
 	}
@@ -120,6 +145,9 @@ func (ib *ImpactBriefing) Emit(format Format, limit int) ([]byte, error) {
 	render := func(b *ImpactBriefing) ([]byte, error) {
 		if format == FormatMarkdown {
 			return []byte(b.RenderMarkdown() + "\n"), nil
+		}
+		if format == FormatCaveman {
+			return []byte(b.RenderCaveman() + "\n"), nil
 		}
 		return b.CanonicalJSON()
 	}

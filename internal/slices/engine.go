@@ -93,10 +93,10 @@ type BoundaryResult struct {
 // unsupported boundaries before graph components.
 func (br *BoundaryResult) Emit(format Format, limit int) ([]byte, error) {
 	render := func(r *BoundaryResult) ([]byte, error) {
-		if format == FormatMarkdown {
-			// No markdown format for boundary result yet
-			return r.CanonicalJSON()
+		if format == FormatCaveman {
+			return []byte(r.RenderCaveman() + "\n"), nil
 		}
+		// No markdown format for boundary result yet
 		return r.CanonicalJSON()
 	}
 	if limit <= 0 {
