@@ -9,7 +9,7 @@ Search component boundaries, methods, and unhandled files for a query string.
 ## Synopsis
 
 ```text
-gira locate <query> [--index <path>] [--format json|md] [--checkout <dir>]
+gira locate <query> [--index <path>] [--format json|md|caveman] [--checkout <dir>]
 ```
 
 ## Arguments
@@ -23,7 +23,7 @@ gira locate <query> [--index <path>] [--format json|md] [--checkout <dir>]
 | Flag | Type | Default | Description |
 |---|---|---|---|
 | `--index` | string | — | Path to `macro-map.json` |
-| `--format` | string | `json` | `json` \| `md` |
+| `--format` | string | `json` | `json` \| `md` \| `caveman` |
 | `--checkout` | string | — | Local checkout for staleness comparison |
 
 ## Output

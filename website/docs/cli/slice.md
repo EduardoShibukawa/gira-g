@@ -9,7 +9,7 @@ Extract a bounded context slice around a Component, Contract, or node.
 ## Synopsis
 
 ```text
-gira slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--index <path>]
+gira slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--format json|md|caveman] [--index <path>]
 ```
 
 ## Flags
@@ -20,7 +20,7 @@ gira slice <node_id> [--tier <tier>] [--view <view>] [--budget <tokens>] [--inde
 | `--view` | string | `full` | `full` \| `architecture` \| `governance` |
 | `--budget` | int | (tier default) | Hard ceiling on estimated output tokens (500/1500/3500 per tier) |
 | `--checkout` | string | — | Local checkout for staleness comparison |
-| `--format` | string | `json` | `json` \| `md` |
+| `--format` | string | `json` | `json` \| `md` \| `caveman` (alias `llm`) |
 | `--index` | string | — | Path to `macro-map.json` |
 
 ## Output (JSON)
@@ -34,6 +34,26 @@ derived token estimate.
 ```bash
 gira slice service:checkout --tier contracts --view architecture --index .gira/index.json
 ```
+
+### Agent format (`caveman`)
+
+`--format=caveman` renders one fact per line for LLM context budgets:
+
+```text
+Component: Service[service:checkout] @ src/checkout/main.go:L12
+Contracts:
+  - Contract[contract:Checkout] @ pb/checkout.proto:L5
+    - Checkout(CheckoutRequest) -> CheckoutResponse
+Dependencies:
+  - imports library:payments @ src/checkout/main.go:L4
+Impact:
+  - consumed by Service[service:frontend] @ web/src/api.ts:L3
+Budget: limit=400 estimated=212 truncated=false
+```
+
+The budget fitter drops whole facts (farthest neighbors first), never a line
+in the middle. Any other value for `--format` fails with
+`json|md|caveman` instead of silently falling back to JSON.
 
 ## Notes
 
