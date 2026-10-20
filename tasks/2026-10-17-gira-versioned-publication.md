@@ -14,6 +14,7 @@ spec: 2026-10-17-gira-versioned-publication@1
 - approved: spec v1 by owner (2026-10-18, explicit spec approval and heavy implementation authorization)
 - decided: N1 (publicação versionada = continuação do item 1, rótulo próprio, ex. "Etapa 1.2"; item 2 aprovado reservado a atualidade e sync) → (a) by owner (2026-10-17, owner, 2026-10-17 (session decision message))
 - decided: N2 (aceite da Etapa 1/1.1) → (b) revisão adversarial somente leitura de `4c2204c` e `0d5f248` (`aa4e6fe..0d5f248`, exclui `aa4e6fe`), depois aceite se não houver bloqueio material by owner (2026-10-17, owner, 2026-10-17 (session decision message))
+- accepted: by owner (2026-10-19, "bora fixar elas?")
 
 ## Objective
 

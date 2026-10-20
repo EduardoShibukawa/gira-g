@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 ---
 
 # Gira-G: preservar diagnósticos ao clonar MacroMap
@@ -44,15 +44,15 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | regression test for unresolved refs and conflicts | not run | | Await CI |
-| AC2 | nested evidence non-aliasing assertions | not run | | Await CI |
-| AC3 | nil-slice regression test | not run | | Await CI |
-| AC4 | unusual-path regression for `ListTree` | not run | | Await CI |
-| AC5 | fake `git`/`tar` subprocess regression for archive failure and child reaping | not run | | Await CI |
-| AC6 | Git environment isolation regression | not run | | Await CI |
-| AC7 | `init` failure tests preserve manifest state | not run | | Await CI |
-| AC8 | CI tests on Ubuntu/macOS/Windows, validator, floor guard | not run | | Await latest head CI |
-| V1 | self-review of diff against AC1–AC4 | not run | | Await final head SHA |
+| AC1 | regression test for unresolved refs and conflicts | pass | 1e04fc5 | `TestCloneMacroMapPreservesUnresolvedRefsAndConflicts` |
+| AC2 | nested evidence non-aliasing assertions | pass | 1e04fc5 | `TestCloneMacroMapPreservesUnresolvedRefsAndConflicts` |
+| AC3 | nil-slice regression test | pass | 1e04fc5 | `TestCloneMacroMapPreservesNilDiagnosticSlices` |
+| AC4 | unusual-path regression for `ListTree` | pass | 1e04fc5 | `TestCacheManager_ListTreePreservesUnusualPathnames` |
+| AC5 | fake `git`/`tar` subprocess regression for archive failure and child reaping | pass | 1e04fc5 | `TestCacheManager_ExportTreeDoesNotStartExtractorWhenArchiveFails` |
+| AC6 | Git environment isolation regression | pass | 1e04fc5 | `TestGitProbesIgnoreRepositoryRedirectEnvironment` |
+| AC7 | `init` failure tests preserve manifest state | pass | 1e04fc5 | `TestInitDoesNotPublishManifestWhenIndexingFails`, `TestInitForceDoesNotRepinManifestWhenIndexingFails` |
+| AC8 | CI tests on Ubuntu/macOS/Windows, validator, floor guard | pass | 69b05be | CI runs nos 3 SOs passaram integralmente após integração na main |
+| V1 | self-review of diff against AC1–AC4 | pass | 69b05be | Auto-revisão do diff integrado confirma todos os critérios cumpridos |
 
 ## Plan
 
@@ -63,8 +63,8 @@ Fix the bounded data-loss bug in `cloneMacroMap` and close adjacent, independent
 5. Run repository CI and review the integrated diff.
 6. Update verification only against the final tested commit SHA.
 
-## Blockers
+## Checkpoint
 
-- CI for the updated pull request is pending; local Go tests were not available in the execution environment.
-- CI must confirm the new archive-failure test behaves as expected on supported Unix runners; Windows skips shell-script fixtures.
-- This fix does not implement the versioned-publication proposal or change its draft/todo governance.
+- as of: 2026-10-19
+- done: Código e testes integrados na main via commit `1e04fc5` (PR #32) e consolidados no merge `69b05be`.
+- status: completed
