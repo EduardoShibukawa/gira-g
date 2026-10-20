@@ -1,8 +1,9 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 spec: 2026-10-20-gira-agent-context-surface@1
+verified_at: "8af2678"
 parent: 2026-10-20-gira-agent-context-surface
 depends_on: []
 ---
@@ -32,9 +33,17 @@ Out of scope: mudança de política de resolução/linhagem, schema, publicaçã
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| SC5 | `go test ./internal/store ./cmd/gira -run SCIndexCorruptError -v -count=1` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| V1 | diff lido contra AC1–AC3 | not run | | |
+| B1 | `go test -race ./...` na base do filho | pass | 36ba26b | verde antes do corte |
+| SC5 | `go test ./internal/store ./cmd/gira -run SCIndexCorrupt -count=1` | pass | 8af2678 | 4 casos store (empty .head, meta ilegível, meta ausente, macro-map corrompido) + CLI stderr |
+| AC1 | SC5: caminhos absolutos nomeados + `--index <path>` + código `index_corrupt` preservado | pass | 8af2678 | TestSCIndexCorruptErrorDiscoveryNamesFile + TestSCIndexCorruptErrorCLI |
+| AC2 | suíte store/cmd sem edição de expectativas anteriores | pass | 8af2678 | apenas arquivos novos |
+| AC3 | SC6: `go test -race ./...` | pass | 8af2678 | EXIT=0 |
+| R1 | `go test -race ./...` | pass | 8af2678 | |
+| V1 | diff lido contra AC1–AC3 | pass | 8af2678 | corruptHint usa %w: errors.Is(ErrCorruptIndex) preservado |
+
+## Outcome
+
+Discovery com manifesto: todo ErrCorruptIndex do Branch 2 nomeia o arquivo absoluto e sugere `--index <path>`; código estruturado intacto; teste CLI na superfície. Merge local 8af2678.
 
 ## Constraints and budget
 
