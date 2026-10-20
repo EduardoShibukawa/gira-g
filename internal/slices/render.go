@@ -496,3 +496,259 @@ func renderBudgetMarkdown(sb *strings.Builder, b *Budget) {
 		sb.WriteString(fmt.Sprintf("- escalate: %s\n", b.EscalateHint))
 	}
 }
+
+// cavemanLoc renders the compact one-fact locator `path:L<start>` for caveman
+// output; the full repo@commit citation stays in JSON and Markdown.
+func cavemanLoc(ev []domain.EvidenceRecord) string {
+	for _, e := range ev {
+		if e.Locator.Path != "" {
+			if e.Locator.StartLine > 0 {
+				return fmt.Sprintf("%s:L%d", e.Locator.Path, e.Locator.StartLine)
+			}
+			return e.Locator.Path
+		}
+	}
+	return ""
+}
+
+func cavemanNodeLine(n domain.Node) string {
+	loc := cavemanLoc(n.Evidence)
+	if loc == "" {
+		return fmt.Sprintf("%s[%s]", n.Kind, n.ID)
+	}
+	return fmt.Sprintf("%s[%s] @ %s", n.Kind, n.ID, loc)
+}
+
+// cavemanBudget writes the never-truncated budget marker for caveman output.
+func cavemanBudget(sb *strings.Builder, b *Budget) {
+	if b == nil {
+		return
+	}
+	fmt.Fprintf(sb, "Budget: limit=%d estimated=%d truncated=%t\n", b.Limit, b.Estimated, b.Truncated)
+	if b.Dropped.Nodes > 0 || b.Dropped.Relationships > 0 || b.Dropped.Evidence > 0 {
+		fmt.Fprintf(sb, "Dropped: nodes=%d relationships=%d evidence=%d\n", b.Dropped.Nodes, b.Dropped.Relationships, b.Dropped.Evidence)
+	}
+	if b.EscalateHint != "" {
+		fmt.Fprintf(sb, "Escalate: %s\n", b.EscalateHint)
+	}
+}
+
+// renderCavemanContractFacts writes the contract metadata of a node, one fact
+// per line, as far as the tier kept it: RPC definitions, then plain methods,
+// then messages. Nothing is invented when the summary stripped the details (D3).
+func renderCavemanContractFacts(sb *strings.Builder, c domain.Node, indent string) {
+	if c.Metadata == nil {
+		return
+	}
+	if rDefs, ok := c.Metadata["rpc_definitions"].([]map[string]string); ok {
+		for _, r := range rDefs {
+			fmt.Fprintf(sb, "%s- %s(%s) -> %s\n", indent, r["name"], r["request"], r["response"])
+		}
+		return
+	}
+	written := false
+	if mAnyList, ok := c.Metadata["methods"].([]any); ok {
+		for _, mAny := range mAnyList {
+			if m, ok := mAny.(string); ok {
+				fmt.Fprintf(sb, "%s- %s\n", indent, m)
+				written = true
+			}
+		}
+	} else if mList, ok := c.Metadata["methods"].([]string); ok {
+		for _, m := range mList {
+			fmt.Fprintf(sb, "%s- %s\n", indent, m)
+			written = true
+		}
+	}
+	if written {
+		return
+	}
+	for _, msgs := range [][]string{stringSliceMeta(c.Metadata["messages"])} {
+		for _, m := range msgs {
+			fmt.Fprintf(sb, "%s- msg %s\n", indent, m)
+		}
+	}
+}
+
+func stringSliceMeta(v any) []string {
+	switch l := v.(type) {
+	case []string:
+		return l
+	case []any:
+		var out []string
+		for _, e := range l {
+			if s, ok := e.(string); ok {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	return nil
+}
+
+// RenderCaveman formats a ContextSlice as one-fact-per-line plain text for LLM
+// budgets (INTENT 0001): no markdown, no AST, no warnings, deterministic order.
+func (cs *ContextSlice) RenderCaveman() string {
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Component: %s\n", cavemanNodeLine(cs.FocalNode))
+
+	var contracts []domain.Node
+	if cs.FocalNode.Kind == domain.NodeContract {
+		contracts = append(contracts, cs.FocalNode)
+	}
+	for _, n := range cs.Neighbors {
+		if n.Kind == domain.NodeContract {
+			contracts = append(contracts, n)
+		}
+	}
+	if len(contracts) > 0 {
+		sb.WriteString("Contracts:\n")
+		for _, c := range contracts {
+			fmt.Fprintf(&sb, "  - %s\n", cavemanNodeLine(c))
+			renderCavemanContractFacts(&sb, c, "    ")
+		}
+	}
+
+	outDeps, inDeps := 0, 0
+	for _, rel := range cs.Relationships {
+		if rel.SourceID == cs.FocalNode.ID || rel.TargetID == cs.FocalNode.ID {
+			if rel.SourceID == cs.FocalNode.ID {
+				outDeps++
+			} else {
+				inDeps++
+			}
+		}
+	}
+	if outDeps > 0 {
+		sb.WriteString("Dependencies:\n")
+		for _, rel := range cs.Relationships {
+			if rel.SourceID != cs.FocalNode.ID {
+				continue
+			}
+			loc := cavemanLoc(rel.Evidence)
+			if loc != "" {
+				fmt.Fprintf(&sb, "  - %s %s @ %s\n", rel.Verb, rel.TargetID, loc)
+			} else {
+				fmt.Fprintf(&sb, "  - %s %s\n", rel.Verb, rel.TargetID)
+			}
+		}
+	}
+	if inDeps > 0 {
+		sb.WriteString("Impact:\n")
+		kindByID := map[string]domain.NodeType{}
+		for _, n := range cs.Neighbors {
+			kindByID[n.ID] = n.Kind
+		}
+		for _, rel := range cs.Relationships {
+			if rel.TargetID != cs.FocalNode.ID {
+				continue
+			}
+			kind := kindByID[rel.SourceID]
+			if kind == "" {
+				kind = domain.NodeType("Node")
+			}
+			loc := cavemanLoc(rel.Evidence)
+			if loc != "" {
+				fmt.Fprintf(&sb, "  - %s by %s[%s] @ %s\n", pastParticiple(rel.Verb), kind, rel.SourceID, loc)
+			} else {
+				fmt.Fprintf(&sb, "  - %s by %s[%s]\n", pastParticiple(rel.Verb), kind, rel.SourceID)
+			}
+		}
+	}
+
+	if len(cs.UnsupportedBoundaries) > 0 {
+		sb.WriteString("Boundaries:\n")
+		for _, ub := range cs.UnsupportedBoundaries {
+			fmt.Fprintf(&sb, "  - UNSUPPORTED %s: %s\n", ub.Path, ub.Reason)
+		}
+	}
+
+	cavemanBudget(&sb, cs.Budget)
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+// pastParticiple renders a relationship verb as the passive agent-facing fact
+// ("consumes" → "consumed by"). Verbs outside the closed set fall back to the
+// verb itself, never invented prose.
+func pastParticiple(v domain.RelationVerb) string {
+	switch v {
+	case domain.VerbConsumes:
+		return "consumed"
+	case domain.VerbProvides:
+		return "provided"
+	case domain.VerbImports:
+		return "imported"
+	case domain.VerbAccesses:
+		return "accessed"
+	case domain.VerbImplements:
+		return "implemented"
+	case domain.VerbVerifies:
+		return "verified"
+	case domain.VerbGoverns:
+		return "governed"
+	}
+	return string(v)
+}
+
+// RenderCaveman formats an ImpactBriefing as one-fact-per-line plain text.
+func (ib *ImpactBriefing) RenderCaveman() string {
+	var sb strings.Builder
+	if ib.Diff != nil {
+		fmt.Fprintf(&sb, "Target: diff %s\n", ib.Diff.Range)
+	} else {
+		fmt.Fprintf(&sb, "Target: %s[%s]\n", ib.TargetKind, ib.TargetID)
+	}
+	fmt.Fprintf(&sb, "Depth: %d\n", ib.Depth)
+	writeGroup := func(title string, group []domain.Node) {
+		if len(group) == 0 {
+			return
+		}
+		fmt.Fprintf(&sb, "%s:\n", title)
+		for _, n := range group {
+			fmt.Fprintf(&sb, "  - %s\n", cavemanNodeLine(n))
+		}
+	}
+	writeGroup("Upstream", ib.UpstreamServices)
+	writeGroup("Libraries", ib.UpstreamLibraries)
+	writeGroup("Downstream", ib.DownstreamServices)
+	writeGroup("Contracts", ib.AffectedContracts)
+	if ib.Diff != nil && len(ib.Diff.UnmatchedPaths) > 0 {
+		sb.WriteString("Unmatched:\n")
+		for _, p := range ib.Diff.UnmatchedPaths {
+			fmt.Fprintf(&sb, "  - %s\n", p)
+		}
+	}
+	if len(ib.UnsupportedBoundaries) > 0 {
+		sb.WriteString("Boundaries:\n")
+		for _, ub := range ib.UnsupportedBoundaries {
+			fmt.Fprintf(&sb, "  - UNSUPPORTED %s: %s\n", ub.Path, ub.Reason)
+		}
+	}
+	cavemanBudget(&sb, ib.Budget)
+	return strings.TrimRight(sb.String(), "\n")
+}
+
+// RenderCaveman formats boundary matches one per line, in the canonical
+// BoundaryResult order, unsupported last.
+func (br *BoundaryResult) RenderCaveman() string {
+	var sb strings.Builder
+	for _, m := range br.Matches {
+		if m.Unsupported != nil {
+			fmt.Fprintf(&sb, "Boundary: %s: %s\n", m.Unsupported.Path, m.Unsupported.Reason)
+			continue
+		}
+		kind := m.Kind
+		loc := ""
+		if m.Node != nil {
+			kind = string(m.Node.Kind)
+			loc = cavemanLoc(m.Node.Evidence)
+		}
+		if loc != "" {
+			fmt.Fprintf(&sb, "Match: %s[%s] @ %s\n", kind, m.ID, loc)
+		} else {
+			fmt.Fprintf(&sb, "Match: %s[%s]\n", kind, m.ID)
+		}
+	}
+	cavemanBudget(&sb, br.Budget)
+	return strings.TrimRight(sb.String(), "\n")
+}
