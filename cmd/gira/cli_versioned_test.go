@@ -504,8 +504,24 @@ func TestAC6_SkillsInstallAndCheckLegacyWarningAndAbsolutePath(t *testing.T) {
 		t.Fatalf("failed reading cursor mcp.json: %v", err)
 	}
 	absV2, _ := filepath.Abs(relV2)
-	if !strings.Contains(string(cursorMcpData), absV2) {
-		t.Errorf("expected absolute path %q in cursor mcp.json, got: %s", absV2, string(cursorMcpData))
+	var cursorCfg struct {
+		McpServers map[string]struct {
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(cursorMcpData, &cursorCfg); err != nil {
+		t.Fatalf("failed unmarshaling cursor mcp.json: %v", err)
+	}
+	foundV2 := false
+	for _, arg := range cursorCfg.McpServers["gira"].Args {
+		if filepath.Clean(arg) == filepath.Clean(absV2) {
+			foundV2 = true
+			break
+		}
+	}
+	if !foundV2 {
+		t.Errorf("expected absolute path %q in cursor mcp.json args, got: %s", absV2, string(cursorMcpData))
 	}
 }
 
