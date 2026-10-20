@@ -19,7 +19,7 @@ gira impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>]
 | Flag | Description |
 |---|---|
 | `--index` | Path to `macro-map.json` |
-| `--format` | `json` or `md` (default `json`) |
+| `--format` | `json`, `md` or `caveman` (default `json`) |
 
 ## Local flags
 
