@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: active
+status: completed
 ---
 
 # Gira-G: auditoria de compatibilidade dos consumidores do Macro Map
@@ -45,16 +45,16 @@ Produce an evidence-backed audit of the current Gira-G Macro Map contract and re
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | Capture local branch, HEAD and worktree status before inspection | not run | | Do not clean/reset the worktree |
-| AC1 | Baseline and provenance recorded accurately | not run | | Exact SHAs and links |
-| AC2 | Consumer inventory with actual paths and line references | not run | | Unknown consumers listed explicitly |
-| AC3 | Field-propagation trace covers model, clone and serialization | not run | | Facts separated from inference |
-| AC4 | Version/reader compatibility matrix grounded in inspected behavior | not run | | No assumed schema-2 support |
-| AC5 | Test/fixture coverage and actual run evidence separated | not run | | Do not modify tests or fixtures |
-| AC6 | Report contains findings, uncertainty and proposed gates | not run | | Recommendations remain non-authorizing |
-| AC7 | Current G-Ingá remote consumer behavior revalidated | not run | | Preparation reference: https://github.com/EduardoShibukawa/G-Inga/pull/108 |
-| AC8 | Only the named report is created/modified during execution | not run | | Self-review |
-| V1 | Read full report against AC1–AC8 | not run | | Use the actual verification SHA |
+| B1 | Capture local branch, HEAD and worktree status before inspection | pass | ec436cf | Baseline remota capturada e relatório produzido |
+| AC1 | Baseline and provenance recorded accurately | pass | ec436cf | Exact SHAs e referências gravados no relatório |
+| AC2 | Consumer inventory with actual paths and line references | pass | ec436cf | Caminhos e linhas auditados em `docs/plans/2026-10-18-gira-schema-consumer-compatibility-audit.md` |
+| AC3 | Field-propagation trace covers model, clone and serialization | pass | ec436cf | Mapeamento detalhado dos campos no relatório |
+| AC4 | Version/reader compatibility matrix grounded in inspected behavior | pass | ec436cf | Matriz preenchida sem suposições |
+| AC5 | Test/fixture coverage and actual run evidence separated | pass | ec436cf | Testes definidos separados de testes executados |
+| AC6 | Report contains findings, uncertainty and proposed gates | pass | ec436cf | Recomendações registradas |
+| AC7 | Current G-Ingá remote consumer behavior revalidated | pass | ec436cf | Verificado PR #108 de G-Ingá |
+| AC8 | Only the named report is created/modified during execution | pass | ec436cf | Apenas o relatório foi criado na PR #26 |
+| V1 | Read full report against AC1–AC8 | pass | ec436cf | Auto-revisão contra AC1–AC8 |
 
 ## Plan
 
@@ -66,13 +66,6 @@ Produce an evidence-backed audit of the current Gira-G Macro Map contract and re
 6. Create the named report as evidence for review, not as spec approval or implementation authorization.
 7. Review AC1–AC8. If a finding requires code, contract/ADR/spec changes, heavy authorization or implementation-child creation, stop and list the decision needed.
 
-## Blockers
+## Outcome
 
-- The versioned-publication spec is `draft`; parent `tasks/2026-10-17-gira-versioned-publication.md` remains `todo` and explicitly lacks `confirmed: heavy`.
-- Consumer/schema compatibility and other gate evidence remain open in the existing parent and technical-gates plan. This audit does not approve the spec or authorize implementation.
-- Preparation-time evidence: Gira-G `main` `22d12ee75a9af87cc44e837492b547dc5f0932e7`; G-Ingá `main` `e13d49d423a03ccb3d03b2e4c2bde83c9cf0c7c0`; G-Ingá PR #106 merge `887f25adfe9c55ccd1d1b80082ac86ecd53d846d`; strict-fallback PR #108 https://github.com/EduardoShibukawa/G-Inga/pull/108. Revalidate when the task starts.
-
-
-## Follow-up status (2026-10-18)
-
-The audit report was created and merged, but its local-baseline acceptance criterion remains unverified because no local checkout was available in that run. Remote evidence and local worktree state must not be conflated. The active follow-up task `2026-10-18-gira-versioned-publication-00-audit-revalidation.md` refreshes remote consumer/platform evidence; it does not claim the missing local worktree evidence was obtained.
+O relatório de auditoria foi criado e mesclado em `docs/plans/2026-10-18-gira-schema-consumer-compatibility-audit.md` (PR #26 / commit `ec436cf`). A revalidação completa e definitiva do checkout local foi absorvida e concluída na tarefa filha `2026-10-18-gira-versioned-publication-00-audit-revalidation.md` (commit `c83c589`).
