@@ -307,6 +307,11 @@ func Resolve(ctx context.Context, opts ResolveOptions) (*ResolveResult, error) {
 
 	// Branch 2: gira.yaml is present (or project context)
 	if strings.TrimSpace(opts.ManifestPath) != "" {
+		// corruptHint names the broken cache file and the two ways out, so an
+		// agent never has to guess which path to pass to --index (G3).
+		corruptHint := func(err error) error {
+			return fmt.Errorf("%w; re-index with 'gira index', or read a specific file with --index <path>", err)
+		}
 		m, err := manifest.ParseFile(opts.ManifestPath)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse project manifest %s: %w", opts.ManifestPath, err)
@@ -338,26 +343,26 @@ func Resolve(ctx context.Context, opts ResolveOptions) (*ResolveResult, error) {
 				if fi, err := os.Stat(headPath); err == nil && !fi.IsDir() {
 					activeVer, readErr := storeInst.ReadHead(lin)
 					if readErr != nil {
-						return nil, fmt.Errorf("%w: failed reading .head at %s: %v", ErrCorruptIndex, headPath, readErr)
+						return nil, corruptHint(fmt.Errorf("%w: failed reading .head at %s: %v", ErrCorruptIndex, headPath, readErr))
 					}
 					versionDir := filepath.Join(root, lin, "versions", activeVer)
 					metaPath := filepath.Join(versionDir, "meta.json")
 					mapPath := filepath.Join(versionDir, "macro-map.json")
 
 					if _, err := os.Stat(metaPath); err != nil {
-						return nil, fmt.Errorf("%w: version %s missing meta.json: %v", ErrCorruptIndex, activeVer, err)
+						return nil, corruptHint(fmt.Errorf("%w: missing %s: %v", ErrCorruptIndex, metaPath, err))
 					}
 					if _, err := os.Stat(mapPath); err != nil {
-						return nil, fmt.Errorf("%w: version %s missing macro-map.json: %v", ErrCorruptIndex, activeVer, err)
+						return nil, corruptHint(fmt.Errorf("%w: missing %s: %v", ErrCorruptIndex, mapPath, err))
 					}
 
 					metaBytes, err := os.ReadFile(metaPath)
 					if err != nil {
-						return nil, fmt.Errorf("%w: cannot read meta.json: %v", ErrCorruptIndex, err)
+						return nil, corruptHint(fmt.Errorf("%w: cannot read %s: %v", ErrCorruptIndex, metaPath, err))
 					}
 					var meta VersionMeta
 					if err := json.Unmarshal(metaBytes, &meta); err != nil {
-						return nil, fmt.Errorf("%w: corrupted meta.json: %v", ErrCorruptIndex, err)
+						return nil, corruptHint(fmt.Errorf("%w: corrupted %s: %v", ErrCorruptIndex, metaPath, err))
 					}
 					if opts.ExpectedToolID != "" && meta.ToolID != "" && meta.ToolID != opts.ExpectedToolID {
 						return nil, fmt.Errorf("%w: index tool_id %q does not match current tool_id %q (re-index with 'gira index')", ErrToolMismatch, meta.ToolID, opts.ExpectedToolID)
@@ -365,7 +370,7 @@ func Resolve(ctx context.Context, opts ResolveOptions) (*ResolveResult, error) {
 
 					mm, err := storeInst.LoadFileWithOptions(mapPath, LoadOptions{AllowLegacy: false})
 					if err != nil {
-						return nil, err
+						return nil, corruptHint(err)
 					}
 
 					return &ResolveResult{
