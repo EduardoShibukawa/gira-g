@@ -1,8 +1,9 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 spec: 2026-10-20-gira-agent-context-surface@1
+verified_at: "876c868"
 parent: 2026-10-20-gira-agent-context-surface
 depends_on: ["2026-10-20-gira-agent-context-surface-01-caveman-renderers", "2026-10-20-gira-agent-context-surface-02-caveman-cli-surface", "2026-10-20-gira-agent-context-surface-03-summary-intra-regression", "2026-10-20-gira-agent-context-surface-04-corrupt-index-errors"]
 ---
@@ -32,13 +33,21 @@ Out of scope: push, PR, tag, release, goreleaser; Fase 2 (pi-harness) e Fase 3 (
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| R1 | `go test -race ./...` | not run | | |
-| R2 | `node tools/validate/validate.js` | not run | | |
+| B1 | baseline na base do filho (docs only) | pass | 2917515 | suíte e validator verdes antes do merge docs |
+| R1 | `go test -race ./...` | pass | 876c868 | 17 pacotes ok no head integrado |
+| SC1–SC5 | baterias dos filhos reexecutadas no head integrado | pass | 876c868 | `go test ./internal/slices ./cmd/gira ./internal/store -run 'SCAgent\|SCIndexCorrupt'` ok |
+| R2 | `node tools/validate/validate.js` | pass | 876c868 | manifest-integrity + artifact-records pass |
 | SC1–SC5 | baterias dos filhos, reexecutadas no head integrado | not run | | |
-| AC3 | `which gira; gira version; gira slice service:internal --tier summary --budget 400 --format caveman` | not run | | |
-| V1 | diff lido contra SC1–SC6 | not run | | |
+| AC1 | SC6 integrado (R1+R2+goldens) | pass | 876c868 | `git diff fixtures/ testdata/` vazio |
+| AC2 | docs do site atualizadas (slice/impact/locate) | pass | 876c868 | exemplo caveman + validação estrita documentados |
+| AC3 | `which gira; gira version; gira slice service:internal --tier summary --budget 400 --format caveman` | pass | 876c868 | 0.1.0 f5dad05 → 0.2.0 876c868 no ~/.local/bin/gira; summary de service:internal (G1) verde no PATH do pi-harness; `--format xml` recusa com `json\|md\|caveman`; impact/locate caveman reais gravados |
+| V1 | diff lido contra SC1–SC6 | pass | 876c868 | nenhuma mudança de ground truth; cortes só aditivos |
 
 ## Constraints and budget
 
 - Instalação local apenas; nenhum artefato de release tocado.
 - Goldens/ground truth intocados (regeneração exigiriam nota explícita — esperado zero).
+
+## Outcome
+
+Spec 2026-10-20-agent-context-surface integrada na main local: 01 renderers+fit, 02 CLI+caveman+validação estrita, 03 guarda G1, 04 erros G3, 05 docs+build. Binário instalado: gira 0.2.0 (commit 876c868) em ~/.local/bin/gira (backup 0.1.0 em gira.bak-0.1.0); AC3 observado com o índice dogfood real. Nenhum push/tag.

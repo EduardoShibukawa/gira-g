@@ -29,7 +29,8 @@ Out of scope: `gira symbols`, `--errors-only`, Breaking Changes Gate (INTENT 000
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | SC1–SC6 integrated at the final head | not run | | filhos verificados + R1/R2 na task -05 |
+| B1 | `go test -race ./...` + validator antes dos filhos | pass | 3541cf9 | root ok; validator pass |
+| AC1 | SC1–SC6 integrated at the final head | pass | 876c868 | filhos 01–04 verified; -05 integration: race 17 pkgs, validator pass, baterias SCAgent/SCIndexCorrupt reexecutadas, docs site, gira 0.2.0 instalado no PATH |
 
 ## Plan
 
@@ -45,4 +46,5 @@ Rollback: `git revert` por filho.
 
 ## Review
 
-- [pending] leitura final do diff integrado contra SC1–SC6 na task -05.
+- [F1] acceptance do dono pendente (validação ao acordar, 2026-10-20): G1 era do binário stale, sanado na main por `cloneNode` (`89fda6f`) — esta spec o travou por testes; a rebuild local é a correção operacional
+- [F2] paridade MCP do formato (F1/D4) e os itens da INTENT 0001 fora do escopo (`symbols`, `--errors-only`, gate da INTENT 0002) permanecem fases futuras
