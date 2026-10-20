@@ -1,22 +1,20 @@
 package store
 
 import (
-	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/indexer"
 )
-
-// ErrCorruptIndex indicates that an existing index file could not be decoded or failed structural validation.
-var ErrCorruptIndex = errors.New("corrupt or invalid macro-map index")
 
 // PublishOptions controls pre-publication validation and recovery behavior.
 type PublishOptions struct {
@@ -26,6 +24,12 @@ type PublishOptions struct {
 	AllowSymbolLoss bool
 	// RecoverCorrupt explicitly authorizes overwriting a corrupted or invalid existing index file.
 	RecoverCorrupt bool
+	// ManifestPath is an optional path to gira.yaml for M lock acquisition.
+	ManifestPath string
+	// LockTimeout overrides default lock acquisition timeout.
+	LockTimeout time.Duration
+	// InjectedLockError simulates platform locking failure returning ErrLockUnavailable.
+	InjectedLockError error
 	// BeforeRenameError is an optional hook (used by tests) invoked after the temporary
 	// file is synced and closed, immediately before os.Rename promotes it.
 	BeforeRenameError func() error
@@ -52,13 +56,19 @@ func (s *Store) Save(targetSystem string, mm *domain.MacroMap) error {
 }
 
 // Publish validates and atomically publishes a MacroMap to <BaseDir>/<targetSystem>/macro-map.json,
-// enforcing corrupt-index protection and the symbol-loss gate against any previous index.
+// enforcing corrupt-index protection, schema downgrade prevention, and the symbol-loss gate.
+// It also ensures a versioned head exists under <BaseDir>/<targetSystem>/.head.
 func (s *Store) Publish(targetSystem string, mm *domain.MacroMap, opts PublishOptions) (*indexer.SymbolLossReport, error) {
 	if strings.TrimSpace(targetSystem) == "" {
 		return nil, fmt.Errorf("target system name cannot be empty")
 	}
 	dest := filepath.Join(s.BaseDir, targetSystem, "macro-map.json")
-	return s.PublishFile(dest, mm, opts)
+	rep, err := s.PublishFile(dest, mm, opts)
+	if err != nil {
+		return rep, err
+	}
+	_ = s.ensureVersionedHead(targetSystem, mm)
+	return rep, nil
 }
 
 // SaveFile validates and atomically writes a MacroMap to dest, enforcing both
@@ -107,6 +117,9 @@ func (s *Store) PublishFile(dest string, mm *domain.MacroMap, opts PublishOption
 				return nil, fmt.Errorf("existing index at %s cannot be validated and will not be overwritten automatically (pass --recover-corrupt to overwrite): %w", dest, loadErr)
 			}
 		} else {
+			if IsSchema2(prev) && !IsSchema2(mm) {
+				return nil, fmt.Errorf("%w: refusing to downgrade schema from 2 to %v", ErrSchemaDowngrade, mm.SchemaVersion)
+			}
 			rep, gateErr := indexer.CheckSymbolLossGate(prev, mm, opts.DeletedPaths, opts.AllowSymbolLoss)
 			report = rep
 			if gateErr != nil {
@@ -194,37 +207,87 @@ func syncDirectory(dir string) error {
 	return closeErr
 }
 
-// Load reads and deserializes <BaseDir>/<targetSystem>/macro-map.json.
+// Load reads and deserializes the index for targetSystem from BaseDir.
+// It checks for an active version via .head, falling back to macro-map.json if .head is absent.
 func (s *Store) Load(targetSystem string) (*domain.MacroMap, error) {
 	if strings.TrimSpace(targetSystem) == "" {
 		return nil, fmt.Errorf("target system name cannot be empty")
+	}
+	headPath := filepath.Join(s.BaseDir, targetSystem, ".head")
+	if fi, err := os.Stat(headPath); err == nil && !fi.IsDir() {
+		mm, _, err := s.LoadActiveVersion(targetSystem)
+		if err == nil {
+			return mm, nil
+		}
 	}
 	dest := filepath.Join(s.BaseDir, targetSystem, "macro-map.json")
 	return s.LoadFile(dest)
 }
 
 // LoadFile reads, decodes, and validates a MacroMap from an arbitrary JSON file path.
+// Under Policy R2, both Schema 2 and legacy Schema 1 ("1.0.0") are accepted in explicit file reads.
 func (s *Store) LoadFile(filePath string) (*domain.MacroMap, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read macro map file %s: %w", filePath, err)
-	}
-	if len(bytes.TrimSpace(data)) == 0 {
-		return nil, fmt.Errorf("%w at %s: file is empty", ErrCorruptIndex, filePath)
-	}
-
-	var mm domain.MacroMap
-	if err := json.Unmarshal(data, &mm); err != nil {
-		return nil, fmt.Errorf("%w at %s: failed to decode JSON: %w", ErrCorruptIndex, filePath, err)
-	}
-	if err := mm.Validate(); err != nil {
-		return nil, fmt.Errorf("%w at %s: %w", ErrCorruptIndex, filePath, err)
-	}
-
-	return &mm, nil
+	return s.LoadFileWithOptions(filePath, LoadOptions{AllowLegacy: true})
 }
 
-// List returns all target system names under BaseDir containing a macro-map.json file.
+func (s *Store) ensureVersionedHead(targetSystem string, mm *domain.MacroMap) error {
+	lineageDir := filepath.Join(s.BaseDir, targetSystem)
+	versionsDir := filepath.Join(lineageDir, "versions")
+	if err := os.MkdirAll(versionsDir, 0755); err != nil {
+		return err
+	}
+
+	mmCopy := *mm
+	mmCopy.SchemaVersion = 2
+	if mmCopy.SourceIdentity == nil {
+		mmCopy.SourceIdentity = &domain.SourceIdentity{
+			SchemaVersion:  2,
+			ManifestSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+			Extractors:     []domain.ExtractorIdentity{{ID: "store", Version: "1.0.0"}},
+			Sources:        []domain.SourceRepoIdentity{{RepoID: targetSystem, URLSHA256: "url-sha"}},
+		}
+	}
+	canonicalBytes, err := mmCopy.CanonicalJSON()
+	if err != nil {
+		return err
+	}
+	mapSum := sha256.Sum256(canonicalBytes)
+	mapHex := hex.EncodeToString(mapSum[:])
+	versionID := mapHex[:16]
+
+	versionDir := filepath.Join(versionsDir, versionID)
+	if err := os.MkdirAll(versionDir, 0755); err != nil {
+		return err
+	}
+	mapPath := filepath.Join(versionDir, "macro-map.json")
+	if err := os.WriteFile(mapPath, canonicalBytes, 0644); err != nil {
+		return err
+	}
+
+	meta := VersionMeta{
+		Format:        "gira.index.version/v1",
+		SchemaVersion: 2,
+		VersionID:     versionID,
+		TargetSystem:  targetSystem,
+		MapSHA256:     mapHex,
+		PublishedAt:   time.Now().UTC(),
+		LineageID:     targetSystem,
+	}
+	metaBytes, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return err
+	}
+	metaPath := filepath.Join(versionDir, "meta.json")
+	if err := os.WriteFile(metaPath, metaBytes, 0644); err != nil {
+		return err
+	}
+
+	headPath := filepath.Join(lineageDir, ".head")
+	return os.WriteFile(headPath, []byte(versionID+"\n"), 0644)
+}
+
+// List returns all target system / lineage names under BaseDir containing either
+// a legacy macro-map.json file, a .head pointer, or a versions/ directory.
 func (s *Store) List() ([]string, error) {
 	entries, err := os.ReadDir(s.BaseDir)
 	if err != nil {
@@ -234,12 +297,32 @@ func (s *Store) List() ([]string, error) {
 		return nil, fmt.Errorf("failed to list systems in base dir %s: %w", s.BaseDir, err)
 	}
 
+	seen := make(map[string]bool)
 	var systems []string
 	for _, entry := range entries {
 		if entry.IsDir() {
-			candidate := filepath.Join(s.BaseDir, entry.Name(), "macro-map.json")
-			if fi, err := os.Stat(candidate); err == nil && !fi.IsDir() {
-				systems = append(systems, entry.Name())
+			name := entry.Name()
+			if strings.HasPrefix(name, ".") {
+				continue
+			}
+			legacyCandidate := filepath.Join(s.BaseDir, name, "macro-map.json")
+			headCandidate := filepath.Join(s.BaseDir, name, ".head")
+			versionsCandidate := filepath.Join(s.BaseDir, name, "versions")
+			if fi, err := os.Stat(legacyCandidate); err == nil && !fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
+			} else if fi, err := os.Stat(headCandidate); err == nil && !fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
+			} else if fi, err := os.Stat(versionsCandidate); err == nil && fi.IsDir() {
+				if !seen[name] {
+					seen[name] = true
+					systems = append(systems, name)
+				}
 			}
 		}
 	}

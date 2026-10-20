@@ -2,6 +2,7 @@ package eval_test
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/eval"
 	"github.com/EduardoShibukawa/gira-g/internal/extractors"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 var (
@@ -306,3 +308,36 @@ func TestPerturbedGroundTruthAppliesRecipe(t *testing.T) {
 }
 
 var emptyBriefing = emptyImpact()
+
+// AC5: eval without real manifest returns manifest_path_required when overrides require locator.
+func TestCorpus_DeclarativeOverridesRequireManifestPath(t *testing.T) {
+	gt := loadPublished(t)
+	c := publishedCorpus(gt)
+
+	// Attach declarative overrides to manifest, but leave ManifestPath empty
+	c.Manifest = &manifest.Manifest{
+		Version:      1,
+		TargetSystem: manifest.TargetSystemMeta{Name: c.TargetSystem},
+		Overrides: &manifest.OverridesDeclaration{
+			Relationships: []manifest.RelationshipOverride{
+				{
+					SourceID: "service:frontend",
+					TargetID: "service:cartservice",
+					Verb:     "consumes",
+				},
+			},
+		},
+	}
+	c.ManifestPath = "" // Explicitly empty: must fail closed without fallback to gira.yaml
+
+	_, err := c.Index(context.Background(), t.TempDir(), nil)
+	if err == nil {
+		t.Fatalf("expected error for corpus with overrides but empty manifest path, got nil")
+	}
+	if !errors.Is(err, manifest.ErrManifestPathRequired) {
+		t.Errorf("expected ErrManifestPathRequired, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "manifest_path_required") {
+		t.Errorf("expected error to contain 'manifest_path_required', got: %v", err)
+	}
+}

@@ -20,14 +20,18 @@ This documentation covers:
 ## Quick start
 
 ```bash
-# Option A: Zero-config single repository (generates gira.yaml pinned to HEAD and indexes)
-gira init . --output .gira/macro-map.json
+# Option A: Zero-config single repository (publishes canonically to versioned store, writes gira.yaml last)
+gira init .
 
-# Option B: Multi-repository manifest (reads gira.yaml; defaults to ~/.cache/gira/indexes/<system>/macro-map.json)
-gira index --output .gira/macro-map.json
+# Option B: Multi-repository manifest (indexes gira.yaml into immutable versioned store)
+gira index
 
-# Ask what breaks if you change a target (auto-resolves .gira/macro-map.json, macro-map.json, or user cache when --index is omitted)
-gira impact <target_id> --index .gira/macro-map.json
+# Ask what breaks if you change a target (auto-resolves from versioned store using gira.yaml)
+gira impact <target_id>
+
+# Or generate a detached snapshot for isolated review or offline use
+gira index --output .gira/snapshot.json
+gira impact <target_id> --index .gira/snapshot.json
 
 # Explore a bounded context slice or guided reading tour
 gira slice <node_id> --tier contracts --view architecture

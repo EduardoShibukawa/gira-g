@@ -95,4 +95,59 @@ func TestCloneMacroMapPreservesNilDiagnosticSlices(t *testing.T) {
 	if cloned.Conflicts != nil {
 		t.Fatalf("Conflicts = %#v, want nil", cloned.Conflicts)
 	}
+	if cloned.SourceIdentity != nil {
+		t.Fatalf("SourceIdentity = %#v, want nil", cloned.SourceIdentity)
+	}
+}
+
+func TestCloneMacroMapPreservesSourceIdentity(t *testing.T) {
+	input := &domain.MacroMap{
+		SchemaVersion: 2,
+		TargetSystem:  "demo",
+		SourceIdentity: &domain.SourceIdentity{
+			SchemaVersion:  2,
+			ManifestSHA256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+			Extractors: domain.ExtractorList{
+				{ID: "go-extractor", Version: "1.0.0"},
+			},
+			Sources: []domain.SourceRepoIdentity{
+				{
+					RepoID:    "app",
+					CommitSHA: "abc",
+					SHA:       "abc",
+					URLSHA256: "def",
+				},
+			},
+		},
+	}
+
+	cloned, err := cloneMacroMap(input)
+	if err != nil {
+		t.Fatalf("cloneMacroMap() error = %v", err)
+	}
+	if cloned.SourceIdentity == nil {
+		t.Fatal("SourceIdentity was not cloned")
+	}
+	if cloned.SourceIdentity == input.SourceIdentity {
+		t.Fatal("SourceIdentity pointer was aliased, want deep copy")
+	}
+	if cloned.SourceIdentity.ManifestSHA256 != input.SourceIdentity.ManifestSHA256 {
+		t.Fatalf("ManifestSHA256 = %s, want %s", cloned.SourceIdentity.ManifestSHA256, input.SourceIdentity.ManifestSHA256)
+	}
+	if len(cloned.SourceIdentity.Extractors) != 1 || cloned.SourceIdentity.Extractors[0].ID != "go-extractor" {
+		t.Fatalf("Extractors not preserved: %+v", cloned.SourceIdentity.Extractors)
+	}
+	if len(cloned.SourceIdentity.Sources) != 1 || cloned.SourceIdentity.Sources[0].RepoID != "app" {
+		t.Fatalf("Sources not preserved: %+v", cloned.SourceIdentity.Sources)
+	}
+
+	// Slices must not alias
+	cloned.SourceIdentity.Extractors[0].ID = "mutated-extractor"
+	cloned.SourceIdentity.Sources[0].RepoID = "mutated-repo"
+	if input.SourceIdentity.Extractors[0].ID != "go-extractor" {
+		t.Fatal("cloned extractors slice aliased original")
+	}
+	if input.SourceIdentity.Sources[0].RepoID != "app" {
+		t.Fatal("cloned sources slice aliased original")
+	}
 }

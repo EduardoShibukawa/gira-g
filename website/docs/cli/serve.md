@@ -22,7 +22,7 @@ gira serve mcp [--index <path>]
 
 | Flag | Description |
 |---|---|
-| `--index` | Path to `macro-map.json` (auto-resolves `.gira/macro-map.json`, `macro-map.json`, or `~/.cache/gira/indexes/<system>/macro-map.json` when omitted) |
+| `--index` | Explicit path to a Macro Map index or detached snapshot. When omitted, resolves automatically from `gira.yaml` and the versioned store hierarchy D2 (`$XDG_CACHE_HOME/gira/indexes` -> `~/.cache/gira/indexes` -> `<project_root>/.gira/indexes`). |
 
 ## Exposed MCP Tools (13 tools)
 
@@ -54,7 +54,11 @@ The MCP server speaks JSON-RPC 2.0 over stdio (supporting both newline-delimited
 ## Example
 
 ```bash
-gira serve mcp --index .gira/macro-map.json
+# Serve over stdio using automatic resolution from the project's gira.yaml
+gira serve mcp
+
+# Or serve pointing explicitly to a detached snapshot
+gira serve mcp --index .gira/snapshot.json
 ```
 
 ## Notes

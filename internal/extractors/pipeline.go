@@ -334,8 +334,9 @@ func ApplyOverrides(mm *domain.MacroMap, overrides *manifest.OverridesDeclaratio
 	if overrides == nil {
 		return nil
 	}
-	if strings.TrimSpace(manifestPath) == "" {
-		manifestPath = "gira.yaml"
+	hasOverrides := len(overrides.Relationships) > 0 || len(overrides.Metadata) > 0
+	if hasOverrides && strings.TrimSpace(manifestPath) == "" {
+		return manifest.ErrManifestPathRequired
 	}
 
 	now := time.Now().UTC()

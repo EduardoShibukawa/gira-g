@@ -35,21 +35,21 @@ Gira supports both zero-config single-repository onboarding and manifest-driven 
 
 ### Where the index is stored and resolved
 
-- **Default user cache:** When `--output` is omitted, both `gira init` and `gira index` persist the canonical index to `~/.cache/gira/indexes/<system>/macro-map.json` (falling back to `.gira/indexes/<system>/macro-map.json`).
-- **Automatic `--index` resolution:** When `--index` is omitted on query commands (`impact`, `slice`, `explain`, `tour`, `flows`, `doc`, `locate`, `export`, `view`, `serve mcp`), Gira automatically searches in order:
-  1. `.gira/macro-map.json`
-  2. `macro-map.json`
-  3. `~/.cache/gira/indexes/<system>/macro-map.json`
-  4. `.gira/indexes/<system>/macro-map.json`
-- **Explicit path:** Pass `--output .gira/macro-map.json` (or `.gira/index.json`) when indexing and `--index .gira/macro-map.json` when querying to pin a specific file path in your workspace.
+- **Canonical versioned store:** When `--output` is omitted, both `gira init` and `gira index` persist immutable versions to the canonical store resolved via hierarchy D2:
+  1. `$XDG_CACHE_HOME/gira/indexes`
+  2. `~/.cache/gira/indexes`
+  3. `<project_root>/.gira/indexes` (fallback)
+  Inside the store, versions are stored under `<store_root>/<lineage_id>/versions/<version_id>/macro-map.json` (Schema 2) and pointed to by `.head`.
+- **Automatic resolution from `gira.yaml`:** When `--index` is omitted on query commands (`impact`, `slice`, `explain`, `tour`, `flows`, `doc`, `locate`, `export`, `view`, `serve mcp`), Gira discovers the project's `gira.yaml`, computes `source_key` and current `tool_id`, and safely resolves the matching version from the store without serving stale data.
+- **Detached snapshots (`--output P`):** With `gira index --output P`, a standalone detached snapshot is created at `P` without altering the canonical store or `.head`. With `gira init --output P`, the canonical version is published and an identical copy is written to `P`. Explicit `--index P` can query detached snapshots directly.
 
 ```bash
-# Zero-config in any local Git repository
+# Zero-config in any local Git repository (publishes canonically to store)
 cd /path/to/target-repo
-gira init . --output .gira/macro-map.json
+gira init .
 
-# Or from an existing gira.yaml manifest
-gira index --output .gira/macro-map.json
+# Or build a detached snapshot for export or CI review
+gira index --output .gira/snapshot.json
 ```
 
 ### Runnable in-repo example (`testdata/dogfood/services`)

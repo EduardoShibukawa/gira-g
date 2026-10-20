@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -43,14 +43,14 @@ index sem output publica canônico; index --output só snapshot; init publica ca
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | index --output P não altera store/head/manifesto. | not run | | |
-| AC2 | init --output P publica canônico e P com bytes idênticos; manifesto é gravado por último. | not run | | |
-| AC3 | Falha de build/gate/sync não cria manifesto novo nem altera o existente. | not run | | |
-| AC4 | Alteração concorrente do manifesto durante init gera conflito sem publicar estado misto. | not run | | |
-| AC5 | eval sem manifesto real retorna manifest_path_required quando overrides exigem locator. | not run | | |
-| AC6 | skills install/check --index avisa para legado e normaliza caminho relativo para absoluto. | not run | | |
-| AC7 | Mensagens refletem publicação parcial/visible_unconfirmed corretamente. | not run | | |
-| AC8 | Comandos existentes continuam funcionando e CI 3 SOs passa. | not run | | |
+| AC1 | index --output P não altera store/head/manifesto. | pass | `TestAC1_IndexDetachedSnapshotDoesNotTouchStoreOrManifest` | Snapshot publicado em P; store, .head e gira.yaml intocados. |
+| AC2 | init --output P publica canônico e P com bytes idênticos; manifesto é gravado por último. | pass | `TestAC2_InitOutputPublishesCanonicalAndIdenticalSnapshotManifestLast` | Cópia P idêntica byte a byte ao canônico; manifesto gravado ao final. |
+| AC3 | Falha de build/gate/sync não cria manifesto novo nem altera o existente. | pass | `TestAC3_InitFailureDoesNotCreateOrModifyManifest` | Falha antes do commit aborta sem criar ou tocar gira.yaml. |
+| AC4 | Alteração concorrente do manifesto durante init gera conflito sem publicar estado misto. | pass | `TestAC4_InitConcurrentManifestModificationGeneratesConflict` | Modificação do manifesto com lock detectada; aborta com erro de conflito. |
+| AC5 | eval sem manifesto real retorna manifest_path_required quando overrides exigem locator. | pass | `TestAC5_EvalWithoutManifestPathReturnsManifestPathRequired`, `TestCorpus_DeclarativeOverridesRequireManifestPath` | Remove fallback silencioso para gira.yaml; retorna manifest.ErrManifestPathRequired. |
+| AC6 | skills install/check --index avisa para legado e normaliza caminho relativo para absoluto. | pass | `TestAC6_SkillsInstallAndCheckLegacyWarningAndAbsolutePath` | Aviso emitido para schema 1.0.0; caminhos relativos resolvidos para absolutos. |
+| AC7 | Mensagens refletem publicação parcial/visible_unconfirmed corretamente. | pass | `TestAC7_InitPartialPublicationAndDurability` | Falha na cópia destacada reporta publicação parcial e durabilidade preservada. |
+| AC8 | Comandos existentes continuam funcionando e CI 3 SOs passa. | pass | `go test -race ./...` | Suíte completa com -race passou com êxito (cmd/gira, eval, skills, store). |
 
 ## Plan
 
@@ -62,7 +62,7 @@ index sem output publica canônico; index --output só snapshot; init publica ca
 
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Depende de task 05 locks e task 07 resolver.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- as of: 2026-10-19
+- status: completed
+- next: Integração final do fluxo CLI concluída; submeter commit e reportar ao orquestrador.
+- revalidate: `go test -race ./...` e `bun tools/validate/validate.ts` passaram com 100% de sucesso.

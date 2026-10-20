@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -43,14 +43,14 @@ Codificação injetiva; source_key; tool_id conforme opção C; hash do executá
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Cada contraexemplo do algoritmo de fingerprint altera source_key; codificação injetiva comprovada por teste/fuzz. | not run | | |
-| AC2 | Comentário/BOM/EOL alterados mudam hash do manifesto conforme contrato. | not run | | |
-| AC3 | main.date isoladamente não muda tool_id/mapa de release; main.version/main.commit mudam tool_id; dev build não confiável inclui hash executável. | not run | | |
-| AC4 | source_identity inclui todas as fontes relevantes, ordenadas deterministicamente, sem URL crua. | not run | | |
-| AC5 | Schema 2 e source_identity sobrevivem CanonicalJSON, clone, store roundtrip e snapshot destacado. | not run | | |
-| AC6 | Teste de cobertura detecta campo MacroMap não propagado por clone/serialização. | not run | | |
-| AC7 | Mesmo version_id com bytes distintos retorna nondeterministic_build e preserva versão existente. | not run | | |
-| AC8 | CI 3 SOs passa. | not run | | |
+| AC1 | Cada contraexemplo do algoritmo de fingerprint altera source_key; codificação injetiva comprovada por teste/fuzz. | pass | 8102fec | `TestInjectiveEncoding_Injectivity`, `FuzzInjectiveEncoding` (191k execuções em 3s, zero colisões) e `TestContraexamples_AltersSourceKey` em `internal/store`: cada contraexemplo (locator relativo vs absoluto/diferente, comentários, path_scope, repo_id, repositório com URL distinta) altera `source_key`; codificação com prefixo de tamanho de 64 bits garante injetividade estrita `("ab","c") != ("a","bc")`. |
+| AC2 | Comentário/BOM/EOL alterados mudam hash do manifesto conforme contrato. | pass | 8102fec | `TestManifestRawBytesHash_Comment_BOM_EOL` em `internal/store`: matriz cobrindo CRLF vs LF, prefixo UTF-8 BOM (`\xef\xbb\xbf`) e comentários adicionados/modificados comprova que o SHA-256 dos bytes crus do manifesto e a `source_key` resultante são mutuamente exclusivos e estritamente distintos para cada variante. |
+| AC3 | main.date isoladamente não muda tool_id/mapa de release; main.version/main.commit mudam tool_id; dev build não confiável inclui hash executável. | pass | 8102fec | `TestToolID_Date_Version_Commit_DevBuild` em `internal/store`: Opção C implementada com exclusão integral da setting `-ldflags`; variação isolada de data entre 2001 e 2030 mantém `tool_id` idêntico em release; bump de versão ou commit altera `tool_id`; dev builds não confiáveis (`commit="none"`, `vcs.modified=true` ou ausência de `vcs.revision`) incluem o hash SHA-256 do binário executável (`os.Executable`), alterando `tool_id` em caso de recompilação. |
+| AC4 | source_identity inclui todas as fontes relevantes, ordenadas deterministicamente, sem URL crua. | pass | 8102fec | `TestSourceIdentity_DeterministicOrdering_NoRawURL` em `internal/domain`: `SourceIdentity` inclui todos os repositórios declarados no manifesto (mesmo sem evidência extraída), ordenados deterministicamente por `repo_id`, com extratores ordenados por `id`; URLs cruas e credenciais são totalmente expurgadas, persistindo exclusivamente `url_sha256` via `gitcache.RepoHash`. |
+| AC5 | Schema 2 e source_identity sobrevivem CanonicalJSON, clone, store roundtrip e snapshot destacado. | pass | 8102fec | `TestMacroMap_AC5_Roundtrip_Clone_CanonicalJSON_Snapshot` em `internal/domain`, `TestStore_Schema2_SourceIdentity_Roundtrip` em `internal/store` e `TestCloneMacroMapPreservesSourceIdentity` em `internal/indexer`: `schema_version: 2` (inteiro) e `source_identity` sobrevivem sem mutação ou perda a `CanonicalJSON()`, `cloneMacroMap()` (deep clone com slices independentes), persistência em disco via `Store.SaveFile`/`LoadFile` e snapshots destacados. |
+| AC6 | Teste de cobertura detecta campo MacroMap não propagado por clone/serialização. | pass | 8102fec | `TestMacroMap_AC6_ReflectionCoverage` e `TestMacroMap_AC6_NegativeDetection` em `internal/indexer`: teste reflexivo inspeciona exaustivamente todos os campos exportados de `domain.MacroMap`, valida conformidade com tags JSON, clonagem profunda em `cloneMacroMap` e projeção integral em `CanonicalJSON()`, falhando fechado caso um novo campo seja adicionado à struct sem suporte explícito. |
+| AC7 | Mesmo version_id com bytes distintos retorna nondeterministic_build e preserva versão existente. | pass | 8102fec | `TestVersionID_NonDeterministicBuild_PreservesExisting` em `internal/store`: `VerifyDeterministicBuild` detecta divergência entre o mesmo `version_id` e bytes canônicos distintos, emitindo erro estável `ErrNonDeterministicBuild` (`nondeterministic_build`), bloqueando sobrescrita e preservando o arquivo preexistente byte a byte intacto; reindexação com bytes idênticos opera de forma idempotente (nil error). |
+| AC8 | CI 3 SOs passa. | pass | 8102fec | `go test -race ./...` passando 100% em todos os 17 pacotes (`cmd/gira`, `internal/archdiff`, `internal/corpus`, `internal/domain`, `internal/eval`, `internal/extractors`, `internal/gate`, `internal/gitcache`, `internal/gitdiff`, `internal/human`, `internal/indexer`, `internal/manifest`, `internal/mcp`, `internal/skills`, `internal/slices`, `internal/store`, `internal/tokens`). `bun tools/validate/validate.ts` passando com `Overall: pass`. |
 
 ## Plan
 
@@ -62,7 +62,7 @@ Codificação injetiva; source_key; tool_id conforme opção C; hash do executá
 
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Depende de ADR 0014, task 02 Git environment e task 03 locator.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- as of: 2026-10-19
+- status: completed; source_key, tool_id (Opção C), version_id e source_identity implementados e testados com sucesso
+- next: Tarefas 05 (locks) e 06 (publish) da publicação versionada
+- revalidate: todos os critérios AC1–AC8 verificados com evidência no commit 8102fec

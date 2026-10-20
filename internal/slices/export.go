@@ -19,7 +19,7 @@ func ExportMarkdown(mm *domain.MacroMap) string {
 	var sb strings.Builder
 
 	sb.WriteString(fmt.Sprintf("# Target System Architecture: %s\n\n", mm.TargetSystem))
-	sb.WriteString(fmt.Sprintf("- Schema Version: `%s`\n", mm.SchemaVersion))
+	sb.WriteString(fmt.Sprintf("- Schema Version: `%v`\n", mm.SchemaVersion))
 	sb.WriteString(fmt.Sprintf("- Total Nodes: %d\n", len(mm.Nodes)))
 	sb.WriteString(fmt.Sprintf("- Total Relationships: %d\n", len(mm.Relationships)))
 	sb.WriteString(fmt.Sprintf("- Unsupported Boundaries: %d\n\n", len(mm.UnsupportedFiles())))
@@ -484,7 +484,7 @@ tr:last-child td { border-bottom: none; }
 <header>
   <h1>Target System: ` + html.EscapeString(mm.TargetSystem) + `</h1>
   <div class="meta-bar">
-    <div class="meta-item">Schema: <strong>` + html.EscapeString(mm.SchemaVersion) + `</strong></div>
+    <div class="meta-item">Schema: <strong>` + html.EscapeString(fmt.Sprint(mm.SchemaVersion)) + `</strong></div>
     <div class="meta-item">Nodes: <strong>` + fmt.Sprintf("%d", len(mm.Nodes)) + `</strong></div>
     <div class="meta-item">Relationships: <strong>` + fmt.Sprintf("%d", len(mm.Relationships)) + `</strong></div>
     <div class="meta-item">Unsupported Boundaries: <strong>` + fmt.Sprintf("%d", len(sortedUnsupported)) + `</strong></div>

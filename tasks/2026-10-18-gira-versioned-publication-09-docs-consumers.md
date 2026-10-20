@@ -1,7 +1,7 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: completed
 spec: 2026-10-17-gira-versioned-publication@1
 parent: 2026-10-17-gira-versioned-publication
 ---
@@ -41,12 +41,12 @@ README, website/docs atuais (sem reescrever docs históricas versionadas), skill
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| AC1 | Cada consumidor auditado recebe teste de integração ou justificativa documentada quando não aplicável. | not run | | |
-| AC2 | bench/phases, benchtest, index-bundle e gira-arch-diff continuam funcionando. | not run | | |
-| AC3 | Fixtures/goldens/scorecard atualizados de forma reproduzível; sem atualização silenciosa de snapshot. | not run | | |
-| AC4 | Docs descrevem store, --output, legado, schema 2, source_identity, erros e limites de durabilidade/locks. | not run | | |
-| AC5 | Validador e docs build passam. | not run | | |
-| AC6 | Nenhuma doc versionada histórica é reescrita sem aprovação explícita. | not run | | |
+| AC1 | Cada consumidor auditado recebe teste de integração ou justificativa documentada quando não aplicável. | pass | `cmd/gira/consumers_test.go`, `bench/layer0/layer0_test.go` | `TestBenchPhasesArmB`, `TestConsumer_IndexBundleBootstrap`, `TestConsumer_GiraArchDiff` e `TestFromGIRASchema2` cobrem os consumidores; benchtest, mcp e eval cobertos por suítes existentes. |
+| AC2 | bench/phases, benchtest, index-bundle e gira-arch-diff continuam funcionando. | pass | `cmd/gira/consumers_test.go`, `bench/` | Arm B (`index --output` + `serve mcp --index`), `bootstrap.sh`, `gira diff` e benchtest passaram com sucesso na suíte de testes (`bench` e `cmd/gira`). |
+| AC3 | Fixtures/goldens/scorecard atualizados de forma reproduzível; sem atualização silenciosa de snapshot. | pass | `internal/eval/scorecard_test.go`, `bench/layer0/layer0_test.go` | `TestPublicScorecardReproducible` passou sem divergências (100% determinismo de bytes); `TestAdaptersGolden` e `TestFromGIRASchema2` preservam contratos sem modificação silenciosa de fixtures. |
+| AC4 | Docs descrevem store, --output, legado, schema 2, source_identity, erros e limites de durabilidade/locks. | pass | `README.md`, `website/docs/` | `README.md`, `macro-map.md`, `index.md`, `init.md`, `serve.md`, `quickstart.md`, `intro.md` atualizados descrevendo layout D2, `--output` D1, Schema 2 com `source_identity`, política R2, taxonomia de erros, locks M->S->P e durabilidade. |
+| AC5 | Validador e docs build passam. | pass | `bun tools/validate/validate.ts`, `bun run build` | Validador executou com `Overall: pass`; Docusaurus `bun run build` compilou estáticos com êxito. |
+| AC6 | Nenhuma doc versionada histórica é reescrita sem aprovação explícita. | pass | `git diff --stat` | Nenhuma documentação histórica versionada (`docs/adr/0001–0013`, `docs/plans/*`, `website/versioned_docs/*`) foi alterada. |
 
 ## Plan
 
@@ -58,7 +58,7 @@ README, website/docs atuais (sem reescrever docs históricas versionadas), skill
 
 ## Checkpoint
 
-- as of: 2026-10-18
-- status: todo; ainda não executada
-- next: Depende de task 08 CLI.
-- revalidate: todos os checks estão not run salvo decisão do dono explicitamente registrada
+- as of: 2026-10-19
+- status: completed
+- next: Task 10 Integrated Acceptance
+- revalidate: todos os checks AC1–AC6 passaram com evidência documentada

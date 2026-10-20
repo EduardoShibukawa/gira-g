@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/extractors"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
 	"github.com/EduardoShibukawa/gira-g/internal/human"
@@ -304,103 +306,64 @@ func findProjectManifest() string {
 	return ""
 }
 
+func currentToolID() string {
+	tid, err := store.ComputeToolID(store.ToolIDOptions{
+		Version: version,
+		Commit:  commit,
+	})
+	if err != nil {
+		return ""
+	}
+	return tid
+}
+
 func loadIndex(indexPath string) (*domain.MacroMap, error) {
-	s := store.NewStore("")
+	manifestPath := findProjectManifest()
+	res, err := store.Resolve(context.Background(), store.ResolveOptions{
+		ExplicitPath:   indexPath,
+		ManifestPath:   manifestPath,
+		ExpectedToolID: currentToolID(),
+		WarnWriter:     os.Stderr,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return res.MacroMap, nil
+}
 
-	// 1. Explicit --index path: must exist and be valid.
-	if strings.TrimSpace(indexPath) != "" {
-		fi, err := os.Stat(indexPath)
-		if err != nil || fi.IsDir() {
-			return nil, fmt.Errorf("index_missing: index file not found: %s", indexPath)
-		}
-		return s.LoadFile(indexPath)
-	}
+var (
+	initHookBeforeBuild   func() error
+	initHookBeforePublish func() error
+	initHookBeforeCommit  func() error
+)
 
-	// 2. If gira.yaml exists in the current project (or an ancestor directory),
-	// resolve EXCLUSIVELY the index for its declared target_system.name. Never fall back to another system in cache.
-	if manifestPath := findProjectManifest(); manifestPath != "" {
-		m, err := manifest.ParseFile(manifestPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse project manifest %s: %w", manifestPath, err)
-		}
-		sysName := m.TargetSystem.Name
-		projectRoot := filepath.Dir(manifestPath)
-		var sysCandidates []string
-		sysCandidates = append(sysCandidates, filepath.Join(projectRoot, ".gira", "indexes", sysName, "macro-map.json"))
-		if cwdCandidate := filepath.Join(".gira", "indexes", sysName, "macro-map.json"); cwdCandidate != sysCandidates[0] {
-			sysCandidates = append(sysCandidates, cwdCandidate)
-		}
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
-			sysCandidates = append(sysCandidates, filepath.Join(home, ".cache", "gira", "indexes", sysName, "macro-map.json"))
-		}
-		for _, cand := range sysCandidates {
-			if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
-				return s.LoadFile(cand)
-			}
-		}
-		return nil, fmt.Errorf("index_missing: no index found for target system %q declared in %s (run 'gira index' first)", sysName, manifestPath)
+func writeCompatibilityCopy(compatPath string, mm *domain.MacroMap) error {
+	dir := filepath.Dir(compatPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
 	}
-
-	// 3. No gira.yaml in current directory hierarchy: check explicit local index files in CWD.
-	localFiles := []string{
-		filepath.Join(".gira", "macro-map.json"),
-		filepath.Join(".gira", "index.json"),
-		"macro-map.json",
-		"index.json",
+	canonicalBytes, err := mm.CanonicalJSON()
+	if err != nil {
+		return err
 	}
-	for _, cand := range localFiles {
-		if fi, err := os.Stat(cand); err == nil && !fi.IsDir() {
-			return s.LoadFile(cand)
-		}
+	tmp, err := os.CreateTemp(dir, ".macro-map-compat-*.json")
+	if err != nil {
+		return err
 	}
-
-	// 4. Inspect local and user cache stores. Only auto-select when exactly one system exists.
-	type sysCandidate struct {
-		name string
-		path string
+	tmpName := tmp.Name()
+	defer os.Remove(tmpName)
+	if _, err := tmp.Write(canonicalBytes); err != nil {
+		_ = tmp.Close()
+		return err
 	}
-	var discovered []sysCandidate
-	seenSys := make(map[string]bool)
-
-	sLocal := store.NewStore(filepath.Join(".gira", "indexes"))
-	if systems, err := sLocal.List(); err == nil {
-		for _, sys := range systems {
-			if !seenSys[sys] {
-				seenSys[sys] = true
-				discovered = append(discovered, sysCandidate{
-					name: sys,
-					path: filepath.Join(".gira", "indexes", sys, "macro-map.json"),
-				})
-			}
-		}
+	if err := tmp.Sync(); err != nil {
+		_ = tmp.Close()
+		return err
 	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		sHome := store.NewStore(filepath.Join(home, ".cache", "gira", "indexes"))
-		if systems, err := sHome.List(); err == nil {
-			for _, sys := range systems {
-				if !seenSys[sys] {
-					seenSys[sys] = true
-					discovered = append(discovered, sysCandidate{
-						name: sys,
-						path: filepath.Join(home, ".cache", "gira", "indexes", sys, "macro-map.json"),
-					})
-				}
-			}
-		}
+	if err := tmp.Close(); err != nil {
+		return err
 	}
-
-	if len(discovered) == 1 {
-		return s.LoadFile(discovered[0].path)
-	}
-	if len(discovered) > 1 {
-		names := make([]string, 0, len(discovered))
-		for _, d := range discovered {
-			names = append(names, d.name)
-		}
-		return nil, fmt.Errorf("ambiguous index: multiple systems found in cache (%s); run from a directory with gira.yaml or pass --index <path>", strings.Join(names, ", "))
-	}
-
-	return nil, fmt.Errorf("index_missing: no index found (run 'gira index' first or pass --index <path>)")
+	return os.Rename(tmpName, compatPath)
 }
 
 func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -437,68 +400,119 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 		manifestPath = found
 	}
 
-	// 1. Read manifest
-	m, err := manifest.ParseFile(manifestPath)
+	rawBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("failed to read manifest %s: %w", manifestPath, err)
+	}
+
+	m, err := manifest.Parse(rawBytes)
 	if err != nil {
 		return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
 	}
 
-	return indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
-		AllowSymbolLoss: allowSymbolLoss,
-		RecoverCorrupt:  recoverCorrupt,
-	}, stdout)
-}
-
-// indexManifest builds the MacroMap from an already-parsed manifest and
-// persists it atomically. It is the single indexing path shared by `index`
-// (manifest given) and `init` (manifest generated from a local checkout).
-func indexManifest(m *manifest.Manifest, manifestPath, outputPath string, offline bool, cacheDir string, pubOpts store.PublishOptions, stdout io.Writer) error {
-	// 2. Initialize CacheManager
 	cm, err := gitcache.NewCacheManager(cacheDir)
 	if err != nil {
 		return fmt.Errorf("failed to initialize cache manager: %w", err)
 	}
 
-	// 3–5. Fetch repos, extract, apply overrides (shared with the evaluator)
 	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{
 		Offline:      offline,
 		ManifestPath: manifestPath,
-		AllowShrink:  pubOpts.AllowSymbolLoss,
+		AllowShrink:  allowSymbolLoss,
 	})
 	if err != nil {
 		return err
 	}
 
-	// 6. Atomically publish generated MacroMap (validating previous index and symbol-loss gate)
+	pipe := extractors.DefaultPipeline()
+	var extIdentities []domain.ExtractorIdentity
+	for _, ext := range pipe.Extractors() {
+		extIdentities = append(extIdentities, domain.ExtractorIdentity{
+			ID:      ext.Name(),
+			Version: "1.0.0",
+		})
+	}
+	sourceIdentity := store.BuildSourceIdentityFromManifest(rawBytes, m.Repositories, extIdentities)
+	mm.SchemaVersion = 2
+	mm.SourceIdentity = sourceIdentity
+
+	var manifestLocator string
+	if loc, err := manifest.ResolveManifestLocator(manifestPath); err == nil {
+		manifestLocator = loc
+	} else {
+		manifestLocator = filepath.Base(manifestPath)
+	}
+	sourceKey := store.ComputeSourceKey(store.SourceKeyOptions{
+		SchemaVersion:   2,
+		ManifestLocator: manifestLocator,
+		ManifestBytes:   rawBytes,
+		Sources:         sourceIdentity.Sources,
+	})
+	toolID := currentToolID()
+	versionID := store.ComputeVersionID(sourceKey, toolID)
+
 	if outputPath != "" {
 		s := store.NewStore("")
-		if _, err := s.PublishFile(outputPath, mm, pubOpts); err != nil {
+		pubSnapshotOpts := store.PublishSnapshotOptions{
+			ManifestPath:    manifestPath,
+			AllowSymbolLoss: allowSymbolLoss,
+			RecoverCorrupt:  recoverCorrupt,
+		}
+		res, err := s.PublishSnapshot(context.Background(), outputPath, mm, pubSnapshotOpts)
+		if err != nil {
 			return fmt.Errorf("failed to publish output file: %w", err)
+		}
+		if res != nil && res.Status == store.DurabilityVisibleUnconfirmed && res.Warning != "" {
+			fmt.Fprintln(stderr, res.Warning)
 		}
 		fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
 			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, outputPath)
-	} else {
-		storeDir := filepath.Join(".gira", "indexes")
-		if home, err := os.UserHomeDir(); err == nil && home != "" {
-			storeDir = filepath.Join(home, ".cache", "gira", "indexes")
-		}
-		s := store.NewStore(storeDir)
-		if _, err := s.Publish(m.TargetSystem.Name, mm, pubOpts); err != nil {
-			return fmt.Errorf("failed to persist macro map: %w", err)
-		}
-		dest := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
-		fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
-			len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, dest)
+		fmt.Fprintf(stderr, "notice: %s is a detached snapshot, not the active store index; resolve using --index %s\n",
+			outputPath, outputPath)
+		return nil
 	}
+
+	projectRoot := filepath.Dir(manifestPath)
+	storeDir := store.PrimaryStoreDir(projectRoot)
+	s := store.NewStore(storeDir)
+
+	meta := &store.VersionMeta{
+		Format:        "gira.index.version/v1",
+		SchemaVersion: 2,
+		VersionID:     versionID,
+		SourceKey:     sourceKey,
+		ToolID:        toolID,
+		TargetSystem:  m.TargetSystem.Name,
+		PublishedAt:   time.Now().UTC(),
+		LineageID:     m.TargetSystem.Name,
+	}
+
+	pubVersionOpts := store.PublishVersionOptions{
+		ManifestPath:    manifestPath,
+		AllowSymbolLoss: allowSymbolLoss,
+		RecoverCorrupt:  recoverCorrupt,
+		SourceKey:       sourceKey,
+		ToolID:          toolID,
+	}
+	res, err := s.PublishVersion(context.Background(), m.TargetSystem.Name, versionID, mm, meta, pubVersionOpts)
+	if err != nil {
+		return fmt.Errorf("failed to persist macro map: %w", err)
+	}
+
+	compatPath := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
+	_ = writeCompatibilityCopy(compatPath, mm)
+
+	if res != nil && res.Status == store.DurabilityVisibleUnconfirmed && res.Warning != "" {
+		fmt.Fprintln(stderr, res.Warning)
+	}
+
+	dest := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
+	fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
+		len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, dest)
 
 	return nil
 }
 
-// runInit generates gira.yaml from a local git checkout (HEAD pinned) and
-// indexes it. It is the zero-config entry for a single service alone:
-// `gira init [dir]` writes the manifest only when absent (`--force` repins
-// the SHA), then runs the same indexing path as `gira index`. `index` itself
-// never writes manifests.
 func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	positionals, flagArgs := splitArgs(args)
 
@@ -546,38 +560,56 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	manifestPath := filepath.Join(absDir, "gira.yaml")
-	_, statErr := os.Stat(manifestPath)
-	manifestExists := statErr == nil
-	if statErr != nil && !os.IsNotExist(statErr) {
+	var initialManifestBytes []byte
+	initialStat, statErr := os.Stat(manifestPath)
+	manifestExists := statErr == nil && !initialStat.IsDir()
+	if manifestExists {
+		var readErr error
+		initialManifestBytes, readErr = os.ReadFile(manifestPath)
+		if readErr != nil {
+			return fmt.Errorf("failed to inspect manifest %s: %w", manifestPath, readErr)
+		}
+	} else if statErr != nil && !os.IsNotExist(statErr) {
 		return fmt.Errorf("failed to inspect manifest %s: %w", manifestPath, statErr)
 	}
 
 	stagedNewManifest := !manifestExists
 	stagedRepin := manifestExists && force
-	loadPath := manifestPath
-	if stagedNewManifest {
-		// Build the manifest beside its final destination so relative paths have
-		// the same base, but do not publish it until indexing has succeeded.
-		tmp, err := os.CreateTemp(absDir, ".gira-init-manifest-*.yaml")
-		if err != nil {
-			return fmt.Errorf("failed to stage manifest: %w", err)
-		}
-		loadPath = tmp.Name()
-		if err := tmp.Close(); err != nil {
-			_ = os.Remove(loadPath)
-			return fmt.Errorf("failed to close staged manifest: %w", err)
-		}
-		defer os.Remove(loadPath)
-		if err := writeLocalManifest(loadPath, toplevel, head); err != nil {
-			return err
-		}
-	}
 
-	m, err := manifest.ParseFile(loadPath)
-	if err != nil {
-		return fmt.Errorf("failed to parse manifest %s: %w", loadPath, err)
-	}
-	if stagedRepin {
+	var m *manifest.Manifest
+	var manifestBytes []byte
+
+	if stagedNewManifest {
+		name := filepath.Base(toplevel)
+		if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
+			name = "local-system"
+		}
+		m = &manifest.Manifest{
+			Version:      1,
+			TargetSystem: manifest.TargetSystemMeta{Name: name},
+			Repositories: []manifest.RepositoryDeclaration{
+				{
+					ID:        "local",
+					URL:       "file://" + filepath.ToSlash(toplevel),
+					SHA:       head,
+					PathScope: ".",
+				},
+			},
+		}
+		if err := m.Validate(); err != nil {
+			return fmt.Errorf("failed to build local manifest: %w", err)
+		}
+		data, err := yaml.Marshal(m)
+		if err != nil {
+			return fmt.Errorf("failed to serialize local manifest: %w", err)
+		}
+		manifestBytes = data
+	} else if stagedRepin {
+		var err error
+		m, err = manifest.Parse(initialManifestBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+		}
 		if len(m.Repositories) != 1 {
 			return fmt.Errorf("gira init --force only repins single-repository manifests (found %d repositories in %s)", len(m.Repositories), manifestPath)
 		}
@@ -585,65 +617,200 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 		if err := m.Validate(); err != nil {
 			return fmt.Errorf("failed to validate repinned manifest: %w", err)
 		}
+		data, err := yaml.Marshal(m)
+		if err != nil {
+			return fmt.Errorf("failed to serialize repinned manifest: %w", err)
+		}
+		manifestBytes = data
+	} else {
+		var err error
+		m, err = manifest.Parse(initialManifestBytes)
+		if err != nil {
+			return fmt.Errorf("failed to parse manifest %s: %w", manifestPath, err)
+		}
+		manifestBytes = initialManifestBytes
 	}
 
-	// Capture the indexing output until the manifest is successfully published,
-	// so a failed manifest write does not print a misleading success message.
-	var indexOutput bytes.Buffer
-	if err := indexManifest(m, manifestPath, outputPath, offline, cacheDir, store.PublishOptions{
-		AllowSymbolLoss: allowSymbolLoss,
-		RecoverCorrupt:  recoverCorrupt,
-	}, &indexOutput); err != nil {
+	storeDir := store.PrimaryStoreDir(absDir)
+	lineageDir := filepath.Join(storeDir, m.TargetSystem.Name)
+
+	targets := store.LockTargets{
+		ManifestPath: manifestPath,
+		StoreDir:     lineageDir,
+		SnapshotPath: outputPath,
+	}
+	heldLocks, err := store.AcquireLocks(context.Background(), targets)
+	if err != nil {
+		return err
+	}
+	defer heldLocks.Release()
+
+	checkConflict := func() error {
+		if manifestExists {
+			cur, err := os.ReadFile(manifestPath)
+			if err != nil || !bytes.Equal(cur, initialManifestBytes) {
+				return fmt.Errorf("manifest conflict: %s was modified externally during init; aborting to prevent mixed state", manifestPath)
+			}
+		} else {
+			if _, err := os.Stat(manifestPath); err == nil {
+				return fmt.Errorf("manifest conflict: %s was created externally during init; aborting to prevent mixed state", manifestPath)
+			}
+		}
+		return nil
+	}
+
+	if err := checkConflict(); err != nil {
 		return err
 	}
 
-	if stagedRepin {
-		if err := repinLocalManifest(manifestPath, head); err != nil {
-			return fmt.Errorf("index was published, but repinning manifest %s failed: %w", manifestPath, err)
+	if initHookBeforeBuild != nil {
+		if err := initHookBeforeBuild(); err != nil {
+			return err
 		}
-		fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
-	} else if stagedNewManifest {
-		if err := writeLocalManifest(manifestPath, toplevel, head); err != nil {
+	}
+
+	cm, err := gitcache.NewCacheManager(cacheDir)
+	if err != nil {
+		return fmt.Errorf("failed to initialize cache manager: %w", err)
+	}
+
+	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{
+		Offline:      offline,
+		ManifestPath: manifestPath,
+		AllowShrink:  allowSymbolLoss,
+	})
+	if err != nil {
+		return err
+	}
+
+	pipe := extractors.DefaultPipeline()
+	var extIdentities []domain.ExtractorIdentity
+	for _, ext := range pipe.Extractors() {
+		extIdentities = append(extIdentities, domain.ExtractorIdentity{
+			ID:      ext.Name(),
+			Version: "1.0.0",
+		})
+	}
+	sourceIdentity := store.BuildSourceIdentityFromManifest(manifestBytes, m.Repositories, extIdentities)
+	mm.SchemaVersion = 2
+	mm.SourceIdentity = sourceIdentity
+
+	var manifestLocator string
+	if loc, err := manifest.ResolveManifestLocator(manifestPath); err == nil {
+		manifestLocator = loc
+	} else {
+		manifestLocator = filepath.Base(manifestPath)
+	}
+	sourceKey := store.ComputeSourceKey(store.SourceKeyOptions{
+		SchemaVersion:   2,
+		ManifestLocator: manifestLocator,
+		ManifestBytes:   manifestBytes,
+		Sources:         sourceIdentity.Sources,
+	})
+	toolID := currentToolID()
+	versionID := store.ComputeVersionID(sourceKey, toolID)
+
+	meta := &store.VersionMeta{
+		Format:        "gira.index.version/v1",
+		SchemaVersion: 2,
+		VersionID:     versionID,
+		SourceKey:     sourceKey,
+		ToolID:        toolID,
+		TargetSystem:  m.TargetSystem.Name,
+		PublishedAt:   time.Now().UTC(),
+		LineageID:     m.TargetSystem.Name,
+	}
+
+	if initHookBeforePublish != nil {
+		if err := initHookBeforePublish(); err != nil {
+			return err
+		}
+	}
+
+	if err := checkConflict(); err != nil {
+		return err
+	}
+
+	s := store.NewStore(storeDir)
+	pubVersionOpts := store.PublishVersionOptions{
+		ManifestPath:    manifestPath,
+		AllowSymbolLoss: allowSymbolLoss,
+		RecoverCorrupt:  recoverCorrupt,
+		SourceKey:       sourceKey,
+		ToolID:          toolID,
+		HeldLocks:       heldLocks,
+	}
+	res, err := s.PublishVersion(context.Background(), m.TargetSystem.Name, versionID, mm, meta, pubVersionOpts)
+	if err != nil {
+		return err
+	}
+
+	compatPath := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
+	_ = writeCompatibilityCopy(compatPath, mm)
+
+	if res != nil && res.Status == store.DurabilityVisibleUnconfirmed && res.Warning != "" {
+		fmt.Fprintln(stderr, res.Warning)
+	}
+
+	if outputPath != "" {
+		sSnap := store.NewStore("")
+		pubSnapshotOpts := store.PublishSnapshotOptions{
+			ManifestPath:    manifestPath,
+			AllowSymbolLoss: allowSymbolLoss,
+			RecoverCorrupt:  recoverCorrupt,
+			HeldLocks:       heldLocks,
+		}
+		snapRes, snapErr := sSnap.PublishSnapshot(context.Background(), outputPath, mm, pubSnapshotOpts)
+		if snapErr != nil {
+			fmt.Fprintf(stderr, "warning: partial publication: canonical index (version %s) published to store %s, but writing snapshot copy to %s failed: %v\n",
+				versionID, storeDir, outputPath, snapErr)
+			return fmt.Errorf("partial publication: canonical index (version %s) published, but failed to write snapshot to %s: %w",
+				versionID, outputPath, snapErr)
+		}
+		if snapRes != nil && snapRes.Status == store.DurabilityVisibleUnconfirmed && snapRes.Warning != "" {
+			fmt.Fprintln(stderr, snapRes.Warning)
+		}
+	}
+
+	if initHookBeforeCommit != nil {
+		if err := initHookBeforeCommit(); err != nil {
+			return err
+		}
+	}
+
+	if err := checkConflict(); err != nil {
+		return err
+	}
+
+	if stagedRepin || stagedNewManifest {
+		if err := os.WriteFile(manifestPath, manifestBytes, 0644); err != nil {
 			return fmt.Errorf("index was published, but publishing manifest %s failed: %w", manifestPath, err)
 		}
+	}
+
+	if stagedRepin {
+		fmt.Fprintf(stdout, "Repinned %s to HEAD %s\n", manifestPath, head)
+	} else if stagedNewManifest {
 		fmt.Fprintf(stdout, "Initialized %s from %s (HEAD %s)\n", manifestPath, toplevel, head)
 	} else {
 		fmt.Fprintf(stdout, "Using existing %s\n", manifestPath)
 	}
-	_, err = io.Copy(stdout, &indexOutput)
-	return err
+
+	dest := filepath.Join(storeDir, m.TargetSystem.Name, "macro-map.json")
+	if outputPath != "" {
+		dest = outputPath
+	}
+	fmt.Fprintf(stdout, "Indexed %d nodes and %d relationships for target system %q (saved to %s)\n",
+		len(mm.Nodes), len(mm.Relationships), m.TargetSystem.Name, dest)
+
+	return nil
 }
 
 // gitCommandEnv removes repository-redirection variables inherited from the
 // caller. A hostile or stale GIT_DIR/GIT_WORK_TREE must not redirect local
 // repository probes away from the path explicitly supplied with -C.
 func gitCommandEnv() []string {
-	blocked := map[string]bool{
-		"GIT_DIR": true,
-		"GIT_WORK_TREE": true,
-		"GIT_COMMON_DIR": true,
-		"GIT_INDEX_FILE": true,
-		"GIT_OBJECT_DIRECTORY": true,
-		"GIT_ALTERNATE_OBJECT_DIRECTORIES": true,
-		"GIT_NAMESPACE": true,
-		"GIT_PREFIX": true,
-		"GIT_CEILING_DIRECTORIES": true,
-		"GIT_NO_REPLACE_OBJECTS": true,
-		"GIT_REPLACE_REF_BASE": true,
-		"GIT_CONFIG": true,
-	}
-	env := make([]string, 0, len(os.Environ()))
-	for _, item := range os.Environ() {
-		key, _, ok := strings.Cut(item, "=")
-		// Drop every Git config injection variable, not just the currently
-		// known subset. This keeps future GIT_CONFIG_* controls from becoming
-		// an unreviewed repository-discovery override.
-		if !ok || blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_") {
-			continue
-		}
-		env = append(env, item)
-	}
-	return env
+	return manifest.GitCommandEnv()
 }
 
 func gitToplevel(dir string) string {
@@ -1342,6 +1509,22 @@ func runDiff(args []string, stdout io.Writer, stderr io.Writer) error {
 	return err
 }
 
+func checkLegacyIndexWarning(indexPath string, stderr io.Writer) {
+	data, err := os.ReadFile(indexPath)
+	if err != nil {
+		return
+	}
+	var raw struct {
+		SchemaVersion any `json:"schema_version"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return
+	}
+	if str, ok := raw.SchemaVersion.(string); ok && str == "1.0.0" {
+		fmt.Fprintln(stderr, "warning: legacy index format (schema 1.0.0) is deprecated and read-only; re-index with 'gira index' to upgrade to schema 2")
+	}
+}
+
 func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	if len(args) > 0 && args[0] == "nudge" {
 		return runNudge(args[1:], stdin, stdout, stderr)
@@ -1366,6 +1549,14 @@ func runSkills(args []string, stdin io.Reader, stdout io.Writer, stderr io.Write
 	fs.BoolVar(&hook, "hook", false, "claude host: register the opt-in PreToolUse nudge (never blocks)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
+	}
+	if index != "" {
+		absIndex, err := filepath.Abs(index)
+		if err != nil {
+			return fmt.Errorf("failed to resolve absolute path for --index %q: %w", index, err)
+		}
+		index = absIndex
+		checkLegacyIndexWarning(index, stderr)
 	}
 	rep, err := skills.Install(host, skills.Options{Root: dir, Index: index, Command: command, Hook: hook})
 	if err != nil {
@@ -1431,6 +1622,14 @@ func runSkillsCheck(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.BoolVar(&hook, "hook", false, "claude host: also check the opt-in PreToolUse nudge")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if index != "" {
+		absIndex, err := filepath.Abs(index)
+		if err != nil {
+			return fmt.Errorf("failed to resolve absolute path for --index %q: %w", index, err)
+		}
+		index = absIndex
+		checkLegacyIndexWarning(index, stderr)
 	}
 	rep, err := skills.Check(host, skills.Options{Root: dir, Index: index, Command: command, Hook: hook})
 	if err != nil {
