@@ -80,6 +80,22 @@ func ParseFormat(s string) Format {
 	}
 }
 
+// ParseFormatStrict maps a CLI format flag of the agent-facing commands
+// (slice, impact, locate) to a Format, refusing unknown values instead of
+// falling back silently to JSON. caveman accepts the llm alias (INTENT 0001).
+func ParseFormatStrict(s string) (Format, error) {
+	switch s {
+	case "json":
+		return FormatJSON, nil
+	case "md", "markdown":
+		return FormatMarkdown, nil
+	case "caveman", "llm":
+		return FormatCaveman, nil
+	default:
+		return FormatJSON, fmt.Errorf("invalid --format %q: accepted values are json|md|caveman", s)
+	}
+}
+
 // Emit renders a slice in format exactly as the CLI writes it. A limit > 0 fits it
 // to that hard ceiling first; limit <= 0 renders it unchanged, with no budget.
 func (cs *ContextSlice) Emit(format Format, limit int) ([]byte, error) {
