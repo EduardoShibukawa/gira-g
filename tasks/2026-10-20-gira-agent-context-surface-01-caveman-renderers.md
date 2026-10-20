@@ -1,8 +1,9 @@
 ---
 schema: task/1
 tier: standard
-status: todo
+status: verified
 spec: 2026-10-20-gira-agent-context-surface@1
+verified_at: "2ae7757"
 parent: 2026-10-20-gira-agent-context-surface
 depends_on: []
 ---
@@ -32,14 +33,18 @@ Out of scope: flags da CLI (filho 02), regressão G1 (filho 03), erros de índic
 
 | ID | Check | Result | Ref | Note |
 |---|---|---|---|---|
-| B1 | `go test -race ./...` antes da mudança | not run | | baseline do filho |
-| SC1 | `go test ./internal/slices -run SCAgentCavemanGrammar -v -count=1` | not run | | |
-| SC2 | `go test ./internal/slices -run SCAgentCavemanBudget -v -count=1` | not run | | |
-| R1 | `go test -race ./...` | not run | | |
-| V1 | diff lido contra AC1–AC3 e Interfaces da spec | not run | | |
+| B1 | `go test -race ./...` antes da mudança | pass | 3541cf9 | verde antes do corte |
+| SC1 | `go test ./internal/slices -run SCAgentCavemanGrammar -v -count=1` | pass | 2ae7757 | gramática exata byte-a-byte + determinismo slice/briefing/locate |
+| SC2 | `go test ./internal/slices -run SCAgentCavemanBudget -v -count=1` | pass | 2ae7757 | truncagem por fato inteiro; marker honesto (estimated==bytes); componente médio <400 sem budget estourado |
+| R1 | `go test -race ./...` | pass | 2ae7757 | 17 pacotes ok |
+| V1 | diff lido contra AC1–AC3 e Interfaces da spec | pass | 2ae7757 | aditivo; JSON/MD intocados; ParseFormat legado preservado (D2) |
 
 ## Constraints and budget
 
 - Aditivo: nenhum byte muda em JSON/MD; `ParseFormat` legado intocado para os demais formatos.
 - `fit`, settle do envelope e marker `Budget:` reutilizados sem fork de lógica.
 - Sem mudança em `fixtures/`/`testdata/`; sem push/release.
+
+## Outcome
+
+Renderers caveman (1-fato-por-linha) de ContextSlice/ImpactBriefing/BoundaryResult ligados ao fit existente; FormatCaveman + alias no ParseFormat sem quebrar consumidores legados. Merge local `2ae7757` (--no-ff da branch acs/01-caveman-renderers, 1 commit).
