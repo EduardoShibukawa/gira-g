@@ -933,7 +933,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget; briefing default 1500)")
 	fs.IntVar(&depth, "depth", 1, "Graph traversal depth")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
-	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&format, "format", "json", "Output format (json|md|caveman)")
 	fs.StringVar(&fromDiff, "from-diff", "", "Start from a git revision range <base>..<head> instead of a target id")
 	fs.StringVar(&repoDir, "repo", ".", "Repository the --from-diff range is read from")
 	fs.StringVar(&repoID, "repo-id", "", "Only match locators of this repository id (--from-diff)")
@@ -945,7 +945,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	allPositionals := append(positionals, fs.Args()...)
 	if fromDiff == "" && len(allPositionals) == 0 {
-		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md] or gira impact --from-diff <base>..<head>")
+		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md|caveman] or gira impact --from-diff <base>..<head>")
 	}
 
 	mm, err := loadIndex(indexPath)
@@ -975,7 +975,10 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		}
 	}
 
-	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	emitFormat, err := slices.ParseFormatStrict(strings.ToLower(format))
+	if err != nil {
+		return err
+	}
 	data, err := briefing.Emit(emitFormat, budget)
 	if err != nil {
 		return err
@@ -1002,7 +1005,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	fs.StringVar(&tier, "tier", "summary", "Context slice tier (summary|contracts|deep)")
 	fs.StringVar(&view, "view", "full", "Context slice architectural view (full|architecture|governance; governance keeps only Policy/Task/Skill neighbors)")
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
-	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&format, "format", "json", "Output format (json|md|caveman)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 
 	if err := fs.Parse(flagArgs); err != nil {
@@ -1011,7 +1014,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	allPositionals := append(positionals, fs.Args()...)
 	if len(allPositionals) == 0 {
-		return fmt.Errorf("missing node_id argument. Usage: gira slice <node_id> [--tier summary|contracts|deep] [--view full|architecture|governance] [--format json|md]")
+		return fmt.Errorf("missing node_id argument. Usage: gira slice <node_id> [--tier summary|contracts|deep] [--view full|architecture|governance] [--format json|md|caveman]")
 	}
 	nodeID := allPositionals[0]
 
@@ -1026,7 +1029,10 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	emitFormat, err := slices.ParseFormatStrict(strings.ToLower(format))
+	if err != nil {
+		return err
+	}
 	data, err := slice.Emit(emitFormat, budget)
 	if err != nil {
 		return err
@@ -1126,7 +1132,7 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 	var budget int
 
 	fs.StringVar(&indexPath, "index", "", "Path to macro-map.json")
-	fs.StringVar(&format, "format", "json", "Output format (json|md)")
+	fs.StringVar(&format, "format", "json", "Output format (json|md|caveman)")
 	fs.StringVar(&checkout, "checkout", "", "Local checkout whose HEAD is compared against the indexed commits (staleness)")
 	fs.IntVar(&budget, "budget", 0, "Hard ceiling on estimated output tokens (0 = no budget)")
 
@@ -1136,7 +1142,7 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	allPositionals := append(positionals, fs.Args()...)
 	if len(allPositionals) == 0 {
-		return fmt.Errorf("missing query argument. Usage: gira locate <query> [--format json|md]")
+		return fmt.Errorf("missing query argument. Usage: gira locate <query> [--format json|md|caveman]")
 	}
 	query := allPositionals[0]
 
@@ -1151,7 +1157,10 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	emitFormat := slices.ParseFormat(strings.ToLower(format))
+	emitFormat, err := slices.ParseFormatStrict(strings.ToLower(format))
+	if err != nil {
+		return err
+	}
 	humanBanner(stderr, mm, checkout, emitFormat)
 
 	if budget > 0 {
@@ -1163,8 +1172,14 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 		return emitHuman(stdout, data, emitFormat)
 	}
 
-	switch strings.ToLower(format) {
-	case "md", "markdown":
+	switch emitFormat {
+	case slices.FormatCaveman:
+		data, err := (&slices.BoundaryResult{Matches: matches}).Emit(slices.FormatCaveman, 0)
+		if err != nil {
+			return err
+		}
+		return emitHuman(stdout, data, emitFormat)
+	case slices.FormatMarkdown:
 		if err := emitMarkdownLine(stdout, slices.RenderBoundaryMatches(matches)); err != nil {
 			return err
 		}
