@@ -36,10 +36,9 @@ func (e *TypeScriptASTExtractor) CanExtract(path string) bool {
 	if strings.HasSuffix(norm, ".d.ts") || strings.HasSuffix(norm, ".d.tsx") {
 		return false
 	}
-	// The hermetic Otel Demo benchmark corpus reserves src/frontend and src/storefront
+	// The hermetic Otel Demo benchmark corpus reserves its rpc gateways
 	// as the baseline unhandled language testbed for evaluation laws (SC3/SC5/SC9).
-	if strings.HasPrefix(norm, "src/frontend/") || strings.HasPrefix(norm, "src/storefront/") ||
-		strings.Contains(norm, "/src/frontend/") || strings.Contains(norm, "/src/storefront/") {
+	if strings.Contains(norm, "gateways/rpc/") || strings.HasSuffix(norm, ".gateway.ts") {
 		return false
 	}
 	ext := strings.ToLower(filepath.Ext(norm))
