@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/extractors"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
@@ -105,6 +106,14 @@ func docFixtureIndex(t *testing.T) string {
 	mm, err := extractors.DefaultPipeline().ProcessFiles(context.Background(), "acme-system", files)
 	if err != nil {
 		t.Fatalf("ProcessFiles failed: %v", err)
+	}
+	mm.SchemaVersion = 2
+	mm.SourceIdentity = &domain.SourceIdentity{
+		SchemaVersion:  2,
+		ManifestSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+		Sources: []domain.SourceRepoIdentity{
+			{RepoID: "acme", URLSHA256: "0000000000000000000000000000000000000000000000000000000000000000", SHA: "c0ffee01"},
+		},
 	}
 	data, err := mm.CanonicalJSON()
 	if err != nil {

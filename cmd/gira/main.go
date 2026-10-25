@@ -325,13 +325,17 @@ func currentToolID() string {
 	return tid
 }
 
-func loadIndex(indexPath string) (*domain.MacroMap, error) {
+func loadIndex(indexPath string, warnWriters ...io.Writer) (*domain.MacroMap, error) {
 	manifestPath := findProjectManifest()
+	var warnWriter io.Writer = os.Stderr
+	if len(warnWriters) > 0 {
+		warnWriter = warnWriters[0]
+	}
 	res, err := store.Resolve(context.Background(), store.ResolveOptions{
 		ExplicitPath:   indexPath,
 		ManifestPath:   manifestPath,
 		ExpectedToolID: currentToolID(),
-		WarnWriter:     os.Stderr,
+		WarnWriter:     warnWriter,
 	})
 	if err != nil {
 		return nil, err
@@ -944,7 +948,7 @@ func runServe(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -985,7 +989,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md|caveman] or gira impact --from-diff <base>..<head>")
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1055,7 +1059,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	nodeID := allPositionals[0]
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1115,7 +1119,7 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("either --node or --edge must be provided")
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1183,7 +1187,7 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	query := allPositionals[0]
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1250,7 +1254,7 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1301,7 +1305,7 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1385,7 +1389,7 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1430,7 +1434,7 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	if len(all) == 0 {
 		return fmt.Errorf("missing entry argument. Usage: gira flows <entry> [--format json|md]")
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1496,7 +1500,7 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json, html", format)
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1710,7 +1714,7 @@ func runNudge(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 	if err := fs.Parse(args); err != nil {
 		return nil
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return nil
 	}
