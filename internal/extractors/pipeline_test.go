@@ -498,8 +498,8 @@ func TestPipeline_Wave2Extractors(t *testing.T) {
 
 	// Verify all 13 extractors registered (Data, Dockerfile, Compose, EnvFile, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST, PythonAST)
 	extractors := pipe.Extractors()
-	if len(extractors) != 13 {
-		t.Fatalf("expected 13 extractors in DefaultPipeline, got %d", len(extractors))
+	if len(extractors) != 14 {
+		t.Fatalf("expected 14 extractors in DefaultPipeline, got %d", len(extractors))
 	}
 
 	ghaYaml := `name: CI

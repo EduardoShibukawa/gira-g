@@ -373,13 +373,13 @@ func TestDependsOnNeedsCorroboration(t *testing.T) {
 func TestUnsupportedPostureIsUnknownNotJoined(t *testing.T) {
 	proto := "syntax = \"proto3\";\npackage demo;\nservice PaymentService {\n  rpc Charge(Req) returns (Res) {}\n}\nmessage Req {}\nmessage Res {}\n"
 	js := "const x = 1;\nserver.addService(pkg.PaymentService.service, {});\n"
-	ts := "import { PaymentServiceClient } from './demo';\n"
+	cs := "using Demo.PaymentService;\n"
 	other := "console.log('PaymentServiceX');\n"
 	goSrc := "package main\n\nfunc main() {\n\tstartOpAMPClient()\n}\n"
 	files := []TargetFile{
 		{Repo: "r", CommitSHA: "c", Path: "pb/demo.proto", Content: []byte(proto)},
 		{Repo: "r", CommitSHA: "c", Path: "src/payment/index.js", Content: []byte(js)},
-		{Repo: "r", CommitSHA: "c", Path: "src/web/pay.ts", Content: []byte(ts)},
+		{Repo: "r", CommitSHA: "c", Path: "src/web/pay.cs", Content: []byte(cs)},
 		{Repo: "r", CommitSHA: "c", Path: "src/other/x.js", Content: []byte(other)},
 		{Repo: "r", CommitSHA: "c", Path: "src/catalog/main.go", Content: []byte(goSrc)},
 	}
@@ -393,7 +393,7 @@ func TestUnsupportedPostureIsUnknownNotJoined(t *testing.T) {
 	}
 	want := map[string]string{
 		"src/payment/index.js": "L2 [contract:PaymentService]",
-		"src/web/pay.ts":       "L1 [contract:PaymentService]",
+		"src/web/pay.cs":       "L1 [contract:PaymentService]",
 		"src/other/x.js":       "L0 []",
 		"src/catalog/main.go":  "L4 []",
 	}

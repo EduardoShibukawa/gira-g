@@ -45,6 +45,7 @@ func DefaultPipeline() *Pipeline {
 		NewProtobufExtractor(),
 		NewGoASTExtractor(),
 		NewPythonASTExtractor(),
+		NewTypeScriptASTExtractor(),
 	)
 }
 
