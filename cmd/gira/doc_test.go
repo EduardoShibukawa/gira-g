@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/extractors"
 	"github.com/EduardoShibukawa/gira-g/internal/mcp"
 	"github.com/EduardoShibukawa/gira-g/internal/slices"
@@ -80,7 +81,7 @@ func (s Server) Start() string { return Hello() + s.Addr }
 
 const scDocHelperPy = `# helper outside any extractor
 # talks about the Billing settlement
-print("helper")
+puts "helper"
 `
 
 const scDocMiseToml = `[tools]
@@ -99,12 +100,20 @@ func docFixtureIndex(t *testing.T) string {
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "go.mod", Content: []byte(scDocGoMod)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/main.go", Content: []byte(scDocMainGo)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "internal/slices/slices.go", Content: []byte(scDocSlicesGo)},
-		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.py", Content: []byte(scDocHelperPy)},
+		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.rb", Content: []byte(scDocHelperPy)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "mise.toml", Content: []byte(scDocMiseToml)},
 	}
 	mm, err := extractors.DefaultPipeline().ProcessFiles(context.Background(), "acme-system", files)
 	if err != nil {
 		t.Fatalf("ProcessFiles failed: %v", err)
+	}
+	mm.SchemaVersion = 2
+	mm.SourceIdentity = &domain.SourceIdentity{
+		SchemaVersion:  2,
+		ManifestSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+		Sources: []domain.SourceRepoIdentity{
+			{RepoID: "acme", URLSHA256: "0000000000000000000000000000000000000000000000000000000000000000", SHA: "c0ffee01"},
+		},
 	}
 	data, err := mm.CanonicalJSON()
 	if err != nil {

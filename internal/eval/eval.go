@@ -412,6 +412,14 @@ func (c Corpus) Index(ctx context.Context, workDir string, pipe *extractors.Pipe
 	if err != nil {
 		return nil, err
 	}
+	mm.SchemaVersion = 2
+	mm.SourceIdentity = &domain.SourceIdentity{
+		SchemaVersion:  2,
+		ManifestSHA256: "0000000000000000000000000000000000000000000000000000000000000000",
+		Sources: []domain.SourceRepoIdentity{
+			{RepoID: c.RepoID, URLSHA256: "0000000000000000000000000000000000000000000000000000000000000000", SHA: sha},
+		},
+	}
 	return &Indexed{SHA: sha, MacroMap: mm}, nil
 }
 

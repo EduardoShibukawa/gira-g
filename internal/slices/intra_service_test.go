@@ -71,7 +71,7 @@ func (s Server) Start() string { return Hello() + s.Addr }
 
 const scDocHelperPy = `# helper outside any extractor
 # talks about the Billing settlement
-print("helper")
+puts "helper"
 `
 
 func scDocFiles() []extractors.TargetFile {
@@ -79,7 +79,7 @@ func scDocFiles() []extractors.TargetFile {
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "go.mod", Content: []byte(scDocGoMod)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/main.go", Content: []byte(scDocMainGo)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "internal/slices/slices.go", Content: []byte(scDocSlicesGo)},
-		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.py", Content: []byte(scDocHelperPy)},
+		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.rb", Content: []byte(scDocHelperPy)},
 	}
 }
 
@@ -327,12 +327,12 @@ func TestSCDocIntraService(t *testing.T) {
 		}
 		var found *domain.UnsupportedBoundary
 		for i, u := range doc.KnownUnknowns {
-			if u.Path == "cmd/acme/helper.py" {
+			if u.Path == "cmd/acme/helper.rb" {
 				found = &doc.KnownUnknowns[i]
 			}
 		}
 		if found == nil {
-			t.Fatalf("helper.py missing from Known Unknowns: %+v", doc.KnownUnknowns)
+			t.Fatalf("helper.rb missing from Known Unknowns: %+v", doc.KnownUnknowns)
 		}
 		joined := false
 		for _, j := range found.UnknownJoins {
@@ -341,12 +341,12 @@ func TestSCDocIntraService(t *testing.T) {
 			}
 		}
 		if !joined {
-			t.Errorf("helper.py must keep its unknown join to contract:Billing: %+v", found)
+			t.Errorf("helper.rb must keep its unknown join to contract:Billing: %+v", found)
 		}
 		// Never guessed: no symbol, import, call, contract or entrypoint is
-		// minted from helper.py; only its own Known Unknown row cites it.
+		// minted from helper.rb; only its own Known Unknown row cites it.
 		for _, loc := range collectLocators(doc) {
-			if loc.Path != "cmd/acme/helper.py" {
+			if loc.Path != "cmd/acme/helper.rb" {
 				continue
 			}
 			if loc.String() != found.Locator.String() {

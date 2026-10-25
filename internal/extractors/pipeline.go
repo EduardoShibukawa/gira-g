@@ -44,6 +44,8 @@ func DefaultPipeline() *Pipeline {
 		NewMarkdownExtractor(),
 		NewProtobufExtractor(),
 		NewGoASTExtractor(),
+		NewPythonASTExtractor(),
+		NewTypeScriptASTExtractor(),
 	)
 }
 
@@ -170,6 +172,7 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 			for _, u := range unsupporteds {
 				unsupportedMap[u.Path] = u
 				constructPaths[u.Path] = true
+				unsupportedContent[u.Path] = file.Content
 			}
 
 			if he, ok := ext.(HintEmitter); ok {

@@ -171,6 +171,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "init":
 		return runInit(rest, stdout, stderr)
 
+	case "setup":
+		return runSetup(rest, stdout, stderr)
+
 	case "serve":
 		return runServe(rest, stdin, stdout, stderr)
 
@@ -222,6 +225,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "gate":
 		return runGate(rest, stdout, stderr)
 
+	case "outline":
+		return runOutline(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -236,6 +242,7 @@ Usage:
 Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   init [dir] [--force] [--output <path>] [--offline] [--cache-dir <dir>] Generate gira.yaml from a local repo (HEAD pinned) and index it
+  setup [dir] [--force] [--output <path>]                   One-shot setup: init Macro Map + install agent skills + register MCP
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--budget <tokens>] [--index <path>] Compute impact briefing for target component
   impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>] Impact briefing of the nodes a git diff touches
@@ -248,6 +255,7 @@ Commands:
   skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
   skills check --host claude|cursor|agents [--dir <project>] [--hook] Non-mutating drift check for installed host files
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
+  outline <file> [--format text|json]                       Extract symbols, signatures and line ranges for a file
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
@@ -317,13 +325,17 @@ func currentToolID() string {
 	return tid
 }
 
-func loadIndex(indexPath string) (*domain.MacroMap, error) {
+func loadIndex(indexPath string, warnWriters ...io.Writer) (*domain.MacroMap, error) {
 	manifestPath := findProjectManifest()
+	var warnWriter io.Writer = os.Stderr
+	if len(warnWriters) > 0 {
+		warnWriter = warnWriters[0]
+	}
 	res, err := store.Resolve(context.Background(), store.ResolveOptions{
 		ExplicitPath:   indexPath,
 		ManifestPath:   manifestPath,
 		ExpectedToolID: currentToolID(),
-		WarnWriter:     os.Stderr,
+		WarnWriter:     warnWriter,
 	})
 	if err != nil {
 		return nil, err
@@ -889,6 +901,35 @@ func repinLocalManifest(manifestPath, head string) error {
 	return nil
 }
 
+func runSetup(args []string, stdout io.Writer, stderr io.Writer) error {
+	dir := "."
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") && strings.TrimSpace(arg) != "" {
+			dir = arg
+			break
+		}
+	}
+
+	fmt.Fprintln(stdout, "==> 1/2: Initializing Gira-G architectural index...")
+	if err := runInit(args, stdout, stderr); err != nil {
+		return fmt.Errorf("setup failed during init: %w", err)
+	}
+
+	fmt.Fprintln(stdout, "\n==> 2/2: Installing Gira-G agent skills & MCP registration...")
+	skillsArgs := []string{"install", "--host", "agents", "--dir", dir}
+	if err := runSkills(skillsArgs, nil, stdout, stderr); err != nil {
+		return fmt.Errorf("setup failed during skills install: %w", err)
+	}
+
+	// Also install for Claude if .claude exists
+	if _, err := os.Stat(filepath.Join(dir, ".claude")); err == nil {
+		_ = runSkills([]string{"install", "--host", "claude", "--dir", dir}, nil, io.Discard, io.Discard)
+	}
+
+	fmt.Fprintln(stdout, "\n✓ Gira-G setup complete: Macro Map generated & agent skills active.")
+	return nil
+}
+
 func runServe(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) error {
 	if len(args) == 0 {
 		return fmt.Errorf("missing serve subcommand. Usage: gira serve mcp [--index <path>]")
@@ -907,7 +948,7 @@ func runServe(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -948,7 +989,7 @@ func runImpact(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("missing target_id argument. Usage: gira impact <target_id> [--depth <int>] [--format json|md|caveman] or gira impact --from-diff <base>..<head>")
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1018,7 +1059,7 @@ func runSlice(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	nodeID := allPositionals[0]
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1078,7 +1119,7 @@ func runExplain(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("either --node or --edge must be provided")
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1146,7 +1187,7 @@ func runLocate(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 	query := allPositionals[0]
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1213,7 +1254,7 @@ func runExport(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1264,7 +1305,7 @@ func runView(args []string, stdout io.Writer, stderr io.Writer) error {
 		return err
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1348,7 +1389,7 @@ func runTour(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1393,7 +1434,7 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	if len(all) == 0 {
 		return fmt.Errorf("missing entry argument. Usage: gira flows <entry> [--format json|md]")
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1459,7 +1500,7 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 		return fmt.Errorf("unsupported doc format %q. Supported formats: md, json, html", format)
 	}
 
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return fmt.Errorf("failed to load index: %w", err)
 	}
@@ -1673,7 +1714,7 @@ func runNudge(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 	if err := fs.Parse(args); err != nil {
 		return nil
 	}
-	mm, err := loadIndex(indexPath)
+	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
 		return nil
 	}
@@ -1682,5 +1723,120 @@ func runNudge(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 		root = strings.TrimSpace(string(out))
 	}
 	_ = skills.Nudge(stdin, stdout, mm, root)
+	return nil
+}
+
+func runOutline(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("outline", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var format string
+	fs.StringVar(&format, "format", "text", "Output format (text|json)")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	allPositionals := append(positionals, fs.Args()...)
+	if len(allPositionals) == 0 {
+		return fmt.Errorf("missing file argument. Usage: gira outline <file> [--format text|json]")
+	}
+	filePath := allPositionals[0]
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot read file %s: %w", filePath, err)
+	}
+
+	tf := extractors.TargetFile{
+		Repo:      "local",
+		CommitSHA: "head",
+		Path:      filepath.ToSlash(filePath),
+		Content:   content,
+	}
+
+	pipe := extractors.DefaultPipeline()
+	var matched extractors.Extractor
+	for _, ext := range pipe.Extractors() {
+		if ext.CanExtract(filePath) {
+			matched = ext
+			break
+		}
+	}
+
+	lines := strings.Split(string(content), "\n")
+	totalLines := len(lines)
+
+	if matched == nil {
+		fmt.Fprintf(stdout, "File: %s (%d lines, no AST extractor available)\n", filePath, totalLines)
+		return nil
+	}
+
+	nodes, _, _, err := matched.Extract(context.Background(), tf)
+	if err != nil {
+		return fmt.Errorf("extraction error: %w", err)
+	}
+
+	if format == "json" {
+		data, _ := json.MarshalIndent(nodes, "", "  ")
+		fmt.Fprintln(stdout, string(data))
+		return nil
+	}
+
+	fmt.Fprintf(stdout, "File: %s (%d lines | %s)\n", filePath, totalLines, matched.Name())
+	for _, n := range nodes {
+		meta := n.Metadata
+		startLine := 1
+		endLine := totalLines
+		if len(n.Evidence) > 0 {
+			loc := n.Evidence[0].Locator
+			if loc.StartLine > 0 {
+				startLine = loc.StartLine
+			}
+			if loc.EndLine > 0 {
+				endLine = loc.EndLine
+			}
+		}
+
+		switch n.Kind {
+		case domain.NodeContract:
+			kind := "contract"
+			if k, ok := meta["ts_kind"].(string); ok {
+				kind = k
+			} else if meta["language"] == "python" {
+				kind = "class"
+			}
+			fmt.Fprintf(stdout, "- L%d-L%d: %s %s\n", startLine, endLine, kind, n.Name)
+			if methods, ok := meta["methods"].([]map[string]any); ok {
+				for _, m := range methods {
+					mLine := m["line"]
+					mName := m["name"]
+					mParams := m["parameters"]
+					mRet := m["return_type"]
+					if mRet != nil && mRet != "" {
+						fmt.Fprintf(stdout, "    • L%v: %s(%s): %s\n", mLine, mName, mParams, mRet)
+					} else {
+						fmt.Fprintf(stdout, "    • L%v: %s(%s)\n", mLine, mName, mParams)
+					}
+				}
+			}
+		case domain.NodeLibrary:
+			if funcs, ok := meta["functions"].([]map[string]any); ok {
+				for _, f := range funcs {
+					fLine := f["line"]
+					fName := f["name"]
+					fParams := f["parameters"]
+					fRet := f["return_type"]
+					if fRet != nil && fRet != "" {
+						fmt.Fprintf(stdout, "- L%v: function %s(%s): %s\n", fLine, fName, fParams, fRet)
+					} else {
+						fmt.Fprintf(stdout, "- L%v: function %s(%s)\n", fLine, fName, fParams)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }

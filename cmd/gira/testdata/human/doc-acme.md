@@ -58,5 +58,5 @@
    - consumes `contract:Billing` via `rel:acme-consumes-billing` [acme@c0ffee01:cmd/acme/main.go#L25-L25]
 
 ## Known Unknowns (1)
-- `cmd/acme/helper.py` - no extractor registered for file extension [acme@c0ffee01:cmd/acme/helper.py#L2-L2] (unknown joins: `contract:Billing`)
+- `cmd/acme/helper.rb` - no extractor registered for file extension [acme@c0ffee01:cmd/acme/helper.rb#L2-L2] (unknown joins: `contract:Billing`)
 
