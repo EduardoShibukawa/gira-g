@@ -496,10 +496,10 @@ func TestPipeline_ApplyOverrides_NilAndEdgeCases(t *testing.T) {
 func TestPipeline_Wave2Extractors(t *testing.T) {
 	pipe := DefaultPipeline()
 
-	// Verify all 12 extractors registered (Data, Dockerfile, Compose, EnvFile, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST)
+	// Verify all 13 extractors registered (Data, Dockerfile, Compose, EnvFile, Helm, GoMod, GHA, OpenAPI, Mise, Markdown, Proto, GoAST, PythonAST)
 	extractors := pipe.Extractors()
-	if len(extractors) != 12 {
-		t.Fatalf("expected 12 extractors in DefaultPipeline, got %d", len(extractors))
+	if len(extractors) != 13 {
+		t.Fatalf("expected 13 extractors in DefaultPipeline, got %d", len(extractors))
 	}
 
 	ghaYaml := `name: CI

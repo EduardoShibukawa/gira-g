@@ -171,6 +171,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "init":
 		return runInit(rest, stdout, stderr)
 
+	case "setup":
+		return runSetup(rest, stdout, stderr)
+
 	case "serve":
 		return runServe(rest, stdin, stdout, stderr)
 
@@ -236,6 +239,7 @@ Usage:
 Commands:
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   init [dir] [--force] [--output <path>] [--offline] [--cache-dir <dir>] Generate gira.yaml from a local repo (HEAD pinned) and index it
+  setup [dir] [--force] [--output <path>]                   One-shot setup: init Macro Map + install agent skills + register MCP
   serve mcp [--index <path>]                                Start stdio MCP protocol adapter
   impact <target_id> [--depth <int>] [--budget <tokens>] [--index <path>] Compute impact briefing for target component
   impact --from-diff <base>..<head> [--repo <dir>] [--repo-id <id>] Impact briefing of the nodes a git diff touches
@@ -886,6 +890,35 @@ func repinLocalManifest(manifestPath, head string) error {
 	if err := os.WriteFile(manifestPath, data, 0644); err != nil {
 		return fmt.Errorf("failed to write manifest %s: %w", manifestPath, err)
 	}
+	return nil
+}
+
+func runSetup(args []string, stdout io.Writer, stderr io.Writer) error {
+	dir := "."
+	for _, arg := range args {
+		if !strings.HasPrefix(arg, "-") && strings.TrimSpace(arg) != "" {
+			dir = arg
+			break
+		}
+	}
+
+	fmt.Fprintln(stdout, "==> 1/2: Initializing Gira-G architectural index...")
+	if err := runInit(args, stdout, stderr); err != nil {
+		return fmt.Errorf("setup failed during init: %w", err)
+	}
+
+	fmt.Fprintln(stdout, "\n==> 2/2: Installing Gira-G agent skills & MCP registration...")
+	skillsArgs := []string{"install", "--host", "agents", "--dir", dir}
+	if err := runSkills(skillsArgs, nil, stdout, stderr); err != nil {
+		return fmt.Errorf("setup failed during skills install: %w", err)
+	}
+
+	// Also install for Claude if .claude exists
+	if _, err := os.Stat(filepath.Join(dir, ".claude")); err == nil {
+		_ = runSkills([]string{"install", "--host", "claude", "--dir", dir}, nil, io.Discard, io.Discard)
+	}
+
+	fmt.Fprintln(stdout, "\n✓ Gira-G setup complete: Macro Map generated & agent skills active.")
 	return nil
 }
 

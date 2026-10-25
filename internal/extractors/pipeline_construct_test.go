@@ -14,7 +14,7 @@ import (
 func TestPipelineSeparatesConstructFromFile(t *testing.T) {
 	files := []TargetFile{
 		{Repo: "r", CommitSHA: "c", Path: "src/catalog/main.go", Content: []byte("package main\n\nfunc main() {\n\tstartOpAMPClient()\n}\n")},
-		{Repo: "r", CommitSHA: "c", Path: "src/worker/app.py", Content: []byte("print('hi')\n")},
+		{Repo: "r", CommitSHA: "c", Path: "src/worker/app.rb", Content: []byte("puts 'hi'\n")},
 	}
 	mm, err := DefaultPipeline().ProcessFiles(context.Background(), "t", files)
 	if err != nil {
@@ -32,12 +32,12 @@ func TestPipelineSeparatesConstructFromFile(t *testing.T) {
 		if len(m.Unsupported) != 2 {
 			t.Errorf("both rows stay in Unsupported, got %+v", m.Unsupported)
 		}
-		if !m.IsUnsupportedConstruct("src/catalog/main.go") || m.IsUnsupportedConstruct("src/worker/app.py") {
+		if !m.IsUnsupportedConstruct("src/catalog/main.go") || m.IsUnsupportedConstruct("src/worker/app.rb") {
 			t.Errorf("construct split wrong: %v", m.UnsupportedConstructs)
 		}
 		files := m.UnsupportedFiles()
-		if len(files) != 1 || files[0].Path != "src/worker/app.py" {
-			t.Errorf("UnsupportedFiles = %+v, want only src/worker/app.py", files)
+		if len(files) != 1 || files[0].Path != "src/worker/app.rb" {
+			t.Errorf("UnsupportedFiles = %+v, want only src/worker/app.rb", files)
 		}
 	}
 }
