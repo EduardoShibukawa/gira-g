@@ -225,6 +225,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "gate":
 		return runGate(rest, stdout, stderr)
 
+	case "outline":
+		return runOutline(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -252,6 +255,7 @@ Commands:
   skills manifest [--format json|md] [--output <path>]  Emit the deterministic skills catalog manifest
   skills check --host claude|cursor|agents [--dir <project>] [--hook] Non-mutating drift check for installed host files
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
+  outline <file> [--format text|json]                       Extract symbols, signatures and line ranges for a file
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
@@ -1715,5 +1719,120 @@ func runNudge(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer
 		root = strings.TrimSpace(string(out))
 	}
 	_ = skills.Nudge(stdin, stdout, mm, root)
+	return nil
+}
+
+func runOutline(args []string, stdout io.Writer, stderr io.Writer) error {
+	positionals, flagArgs := splitArgs(args)
+
+	fs := flag.NewFlagSet("outline", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+
+	var format string
+	fs.StringVar(&format, "format", "text", "Output format (text|json)")
+
+	if err := fs.Parse(flagArgs); err != nil {
+		return err
+	}
+
+	allPositionals := append(positionals, fs.Args()...)
+	if len(allPositionals) == 0 {
+		return fmt.Errorf("missing file argument. Usage: gira outline <file> [--format text|json]")
+	}
+	filePath := allPositionals[0]
+
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		return fmt.Errorf("cannot read file %s: %w", filePath, err)
+	}
+
+	tf := extractors.TargetFile{
+		Repo:      "local",
+		CommitSHA: "head",
+		Path:      filepath.ToSlash(filePath),
+		Content:   content,
+	}
+
+	pipe := extractors.DefaultPipeline()
+	var matched extractors.Extractor
+	for _, ext := range pipe.Extractors() {
+		if ext.CanExtract(filePath) {
+			matched = ext
+			break
+		}
+	}
+
+	lines := strings.Split(string(content), "\n")
+	totalLines := len(lines)
+
+	if matched == nil {
+		fmt.Fprintf(stdout, "File: %s (%d lines, no AST extractor available)\n", filePath, totalLines)
+		return nil
+	}
+
+	nodes, _, _, err := matched.Extract(context.Background(), tf)
+	if err != nil {
+		return fmt.Errorf("extraction error: %w", err)
+	}
+
+	if format == "json" {
+		data, _ := json.MarshalIndent(nodes, "", "  ")
+		fmt.Fprintln(stdout, string(data))
+		return nil
+	}
+
+	fmt.Fprintf(stdout, "File: %s (%d lines | %s)\n", filePath, totalLines, matched.Name())
+	for _, n := range nodes {
+		meta := n.Metadata
+		startLine := 1
+		endLine := totalLines
+		if len(n.Evidence) > 0 {
+			loc := n.Evidence[0].Locator
+			if loc.StartLine > 0 {
+				startLine = loc.StartLine
+			}
+			if loc.EndLine > 0 {
+				endLine = loc.EndLine
+			}
+		}
+
+		switch n.Kind {
+		case domain.NodeContract:
+			kind := "contract"
+			if k, ok := meta["ts_kind"].(string); ok {
+				kind = k
+			} else if meta["language"] == "python" {
+				kind = "class"
+			}
+			fmt.Fprintf(stdout, "- L%d-L%d: %s %s\n", startLine, endLine, kind, n.Name)
+			if methods, ok := meta["methods"].([]map[string]any); ok {
+				for _, m := range methods {
+					mLine := m["line"]
+					mName := m["name"]
+					mParams := m["parameters"]
+					mRet := m["return_type"]
+					if mRet != nil && mRet != "" {
+						fmt.Fprintf(stdout, "    • L%v: %s(%s): %s\n", mLine, mName, mParams, mRet)
+					} else {
+						fmt.Fprintf(stdout, "    • L%v: %s(%s)\n", mLine, mName, mParams)
+					}
+				}
+			}
+		case domain.NodeLibrary:
+			if funcs, ok := meta["functions"].([]map[string]any); ok {
+				for _, f := range funcs {
+					fLine := f["line"]
+					fName := f["name"]
+					fParams := f["parameters"]
+					fRet := f["return_type"]
+					if fRet != nil && fRet != "" {
+						fmt.Fprintf(stdout, "- L%v: function %s(%s): %s\n", fLine, fName, fParams, fRet)
+					} else {
+						fmt.Fprintf(stdout, "- L%v: function %s(%s)\n", fLine, fName, fParams)
+					}
+				}
+			}
+		}
+	}
 	return nil
 }

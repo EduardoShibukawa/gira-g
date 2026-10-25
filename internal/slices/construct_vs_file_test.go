@@ -15,7 +15,7 @@ import (
 // miss).
 func TestUnsupportedConstructIsNotUnsupportedFile(t *testing.T) {
 	const goPath = "src/catalog/main.go"
-	const pyPath = "src/worker/app.py"
+	const pyPath = "src/worker/app.rb"
 	files := []extractors.TargetFile{
 		{Repo: "r", CommitSHA: "c", Path: goPath, Content: []byte("package main\n\nfunc main() {\n\tstartOpAMPClient()\n}\n")},
 		{Repo: "r", CommitSHA: "c", Path: pyPath, Content: []byte("print('hi')\n")},
@@ -25,7 +25,7 @@ func TestUnsupportedConstructIsNotUnsupportedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Export (md + html): one Unsupported Boundary (the .py file), never the Go file.
+	// Export (md + html): one Unsupported Boundary (the .rb file), never the Go file.
 	md := slices.ExportMarkdown(mm)
 	if !strings.Contains(md, "- Unsupported Boundaries: 1\n") {
 		t.Errorf("md header must count only unsupported files (1):\n%s", md)
@@ -60,12 +60,12 @@ func TestUnsupportedConstructIsNotUnsupportedFile(t *testing.T) {
 			}
 		}
 	}
-	ms, err := engine.LocateBoundary("app.py")
+	ms, err := engine.LocateBoundary("app.rb")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if len(ms) != 1 || ms[0].Kind != "unsupported" || ms[0].ID != pyPath {
-		t.Errorf("LocateBoundary(app.py) must still find the unsupported file, got %+v", ms)
+		t.Errorf("LocateBoundary(app.rb) must still find the unsupported file, got %+v", ms)
 	}
 
 	// Briefing: the construct keeps its explicit unknown row with a locator.

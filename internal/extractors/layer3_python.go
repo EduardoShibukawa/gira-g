@@ -33,9 +33,10 @@ func (e *PythonASTExtractor) CanExtract(path string) bool {
 	if ext != ".py" {
 		return false
 	}
-	// Ignora caches
+	// Ignora caches e scripts avulsos
 	norm := filepath.ToSlash(path)
-	if strings.Contains(norm, "__pycache__") || strings.Contains(norm, ".pytest_cache") {
+	if strings.Contains(norm, "__pycache__") || strings.Contains(norm, ".pytest_cache") ||
+		strings.HasPrefix(norm, "scripts/") || strings.Contains(norm, "/scripts/") {
 		return false
 	}
 	return true

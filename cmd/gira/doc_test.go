@@ -80,7 +80,7 @@ func (s Server) Start() string { return Hello() + s.Addr }
 
 const scDocHelperPy = `# helper outside any extractor
 # talks about the Billing settlement
-print("helper")
+puts "helper"
 `
 
 const scDocMiseToml = `[tools]
@@ -99,7 +99,7 @@ func docFixtureIndex(t *testing.T) string {
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "go.mod", Content: []byte(scDocGoMod)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/main.go", Content: []byte(scDocMainGo)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "internal/slices/slices.go", Content: []byte(scDocSlicesGo)},
-		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.py", Content: []byte(scDocHelperPy)},
+		{Repo: "acme", CommitSHA: "c0ffee01", Path: "cmd/acme/helper.rb", Content: []byte(scDocHelperPy)},
 		{Repo: "acme", CommitSHA: "c0ffee01", Path: "mise.toml", Content: []byte(scDocMiseToml)},
 	}
 	mm, err := extractors.DefaultPipeline().ProcessFiles(context.Background(), "acme-system", files)
