@@ -160,20 +160,7 @@ func (b *Builder) Build() error {
 func (b *Builder) scanPages(repoRoot string) error {
 	var pages []*Page
 
-	// 1. Overview Page (from README.md)
-	readmePath := filepath.Join(repoRoot, "README.md")
-	if data, err := os.ReadFile(readmePath); err == nil {
-		page, err := ParseMarkdown(data, "Gira-G Architecture Harness")
-		if err == nil {
-			page.ID = "overview"
-			page.URL = "overview.html"
-			page.Section = "Overview"
-			page.SourcePath = readmePath
-			pages = append(pages, page)
-		}
-	}
-
-	// 2. Intro Page (docs/intro.md)
+	// 1. Intro Page (docs/intro.md)
 	introPath := filepath.Join(repoRoot, "docs", "intro.md")
 	if data, err := os.ReadFile(introPath); err == nil {
 		page, err := ParseMarkdown(data, "Introduction")
@@ -181,6 +168,8 @@ func (b *Builder) scanPages(repoRoot string) error {
 			page.ID = "intro"
 			page.URL = "intro.html"
 			page.Section = "Getting Started"
+			page.Title = "Introduction"
+			page.Order = 1
 			page.SourcePath = introPath
 			pages = append(pages, page)
 		}
@@ -249,29 +238,28 @@ func (b *Builder) scanPages(repoRoot string) error {
 func (b *Builder) buildNavGroups() {
 	groupMap := make(map[string][]NavItem)
 	sectionOrders := map[string]int{
-		"Overview":                     1,
-		"Getting Started":              2,
-		"Guides & Workflows":           3,
-		"CLI Reference":                4,
-		"Core Concepts":                5,
-		"Architecture":                 6,
-		"Architecture Decisions (ADR)": 7,
-		"Prior Art & Research":         8,
+		"Getting Started":              1,
+		"Guides & Workflows":           2,
+		"CLI Reference":                3,
+		"Core Concepts":                4,
+		"Architecture":                 5,
+		"Architecture Decisions (ADR)": 6,
+		"Prior Art & Research":         7,
 	}
 
-	// Always add Home to Overview
-	groupMap["Overview"] = append(groupMap["Overview"], NavItem{
-		Title: "Home",
-		URL:   "index.html",
-		Order: 0,
-	})
-
-	// Always add Guided Tour to Getting Started
-	groupMap["Getting Started"] = append(groupMap["Getting Started"], NavItem{
-		Title: "Guided Tour (Topological)",
-		URL:   "tour.html",
-		Order: 1,
-	})
+	// Always add Home and Guided Tour to Getting Started
+	groupMap["Getting Started"] = append(groupMap["Getting Started"],
+		NavItem{
+			Title: "Home",
+			URL:   "index.html",
+			Order: 0,
+		},
+		NavItem{
+			Title: "Guided Tour",
+			URL:   "tour.html",
+			Order: 2,
+		},
+	)
 
 	// Always add the Interactive Visual Explorer to Architecture
 	groupMap["Architecture"] = append(groupMap["Architecture"], NavItem{

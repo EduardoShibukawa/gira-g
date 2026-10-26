@@ -11,8 +11,8 @@ Get from a clean checkout to your first Impact Briefing in three steps.
 Public releases do not require authentication or tokens.
 
 ```bash
-# Option A: Install via mise (native github backend)
-mise use -g github:EduardoShibukawa/gira-g@0.1.0
+# Option A: Install via Go (recommended)
+go install github.com/EduardoShibukawa/gira-g/cmd/gira@latest
 
 # Option B: Install via install.sh (SHA-256 verified; pass --cosign for Sigstore bundle check)
 curl -fsSL https://raw.githubusercontent.com/EduardoShibukawa/gira-g/main/install.sh | sh

@@ -83,8 +83,8 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
               <div style="color: #6b7280;"># 2. Initialize and index your repository</div>
               <div><span style="color: #38bdf8;">gira</span> init .</div>
               <br/>
-              <div style="color: #6b7280;"># 3. Read symbol snippet or inspect impact deterministically</div>
-              <div><span style="color: #38bdf8;">gira</span> read cmd/gira/main.go main</div>
+              <div style="color: #6b7280;"># 3. Explore entrypoints or inspect impact deterministically</div>
+              <div><span style="color: #38bdf8;">gira</span> tour --format md</div>
               <br/>
               <div style="color: #6b7280;"># 4. Generate living documentation suite & interactive Cytoscape graph</div>
               <div><span style="color: #38bdf8;">gira</span> docs --output ./build</div>
@@ -106,7 +106,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
             <div class="scalpel-num">Phase 1</div>
             <div class="scalpel-title">Deterministic AST Extraction</div>
             <p class="scalpel-desc">
-              Native Tree-sitter and Go AST parsers extract symbols, call hierarchies, and cross-file locators without relying on language servers.
+              Native Go AST and multi-layer static parsers extract symbols, call hierarchies, and cross-file locators without relying on language servers.
             </p>
           </div>
           <div class="scalpel-step">

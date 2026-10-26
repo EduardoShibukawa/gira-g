@@ -65,9 +65,9 @@ gira read cmd/gira/main.go main`,
 			KeyFiles: []string{
 				".gira/macro-map.json",
 			},
-			SampleCmd: "gira impact service:storage --depth 2",
-			Snippet: `# Compute impact briefing for target component
-gira impact service:storage --depth 2`,
+			SampleCmd: "gira impact <node_id> --depth 2",
+			Snippet: `# Discover indexed nodes with 'gira tour', then inspect blast radius
+gira impact <node_id> --depth 2`,
 		},
 		{
 			Number:      4,
@@ -98,9 +98,9 @@ gira slice service:storage --tier contracts --budget 1000`,
 				"gira.yaml",
 				".github/workflows/ci.yml",
 			},
-			SampleCmd: "gira gate --strict",
+			SampleCmd: "gira gate-lint --strict",
 			Snippet: `# Enforce architecture contracts and fail CI on drift
-gira gate --strict`,
+gira gate-lint --strict`,
 		},
 		{
 			Number:      6,
