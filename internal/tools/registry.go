@@ -12,6 +12,30 @@ type Tool struct {
 // Both MCP server and tokens package must use this registry.
 var Registry = []Tool{
 	{
+		Name:        "gira_ask",
+		Description: "Query codebase architecture, system purpose, components, entrypoints, and blast radius in natural language. Powered by deterministic AST graph queries with local JEV routing. Supports format: caveman (ultra-compact for agent token budgets), human, mermaid, or json.",
+		Enveloped:   false,
+		InputSchema: map[string]interface{}{
+			"type": "object",
+			"properties": map[string]interface{}{
+				"query": map[string]interface{}{
+					"type":        "string",
+					"description": "Natural language question or architectural intent (e.g. 'Qual o objetivo do projeto?', 'O que quebra se alterar billing?').",
+				},
+				"diagram": map[string]interface{}{
+					"type":        "boolean",
+					"description": "Whether to include a Mermaid architecture diagram in the response.",
+				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'caveman' (dense facts for AI token budget), 'human' (plain text), 'mermaid' (diagram only), or 'json'. Default is 'caveman'.",
+					"enum":        []string{"caveman", "human", "mermaid", "json"},
+				},
+			},
+			"required": []string{"query"},
+		},
+	},
+	{
 		Name:        "get_impact_briefing",
 		Description: "Analyzes upstream services, downstream consumers, mediating contracts, and unsupported boundaries affected by a change to target_id.",
 		Enveloped:   true,
@@ -29,6 +53,11 @@ var Registry = []Tool{
 				"budget": map[string]interface{}{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
 				},
 			},
 			"required": []string{"target_id"},
@@ -65,6 +94,11 @@ var Registry = []Tool{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
+				},
 			},
 			"required": []string{"range"},
 		},
@@ -88,6 +122,11 @@ var Registry = []Tool{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
+				},
 			},
 		},
 	},
@@ -105,6 +144,11 @@ var Registry = []Tool{
 				"budget": map[string]interface{}{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
 				},
 			},
 			"required": []string{"service_id"},
@@ -128,6 +172,11 @@ var Registry = []Tool{
 				"budget": map[string]interface{}{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
 				},
 			},
 			"required": []string{"index_a", "index_b"},
@@ -158,6 +207,11 @@ var Registry = []Tool{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
+				},
 			},
 			"required": []string{"node_id"},
 		},
@@ -181,6 +235,11 @@ var Registry = []Tool{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
 				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
+				},
 			},
 		},
 	},
@@ -198,6 +257,11 @@ var Registry = []Tool{
 				"budget": map[string]interface{}{
 					"type":        "integer",
 					"description": "Optional hard ceiling on estimated output tokens. The output then carries a budget object {limit, estimated, truncated, dropped, escalate_hint}.",
+				},
+				"format": map[string]interface{}{
+					"type":        "string",
+					"description": "Output format: 'json' (default), 'caveman' (dense one-fact-per-line for AI agents, saving 85% tokens), or 'md'.",
+					"enum":        []string{"json", "caveman", "md"},
 				},
 			},
 			"required": []string{"query"},

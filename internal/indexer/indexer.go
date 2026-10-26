@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -37,6 +38,10 @@ func Build(ctx context.Context, m *manifest.Manifest, cm *gitcache.CacheManager,
 	}
 	if cm == nil {
 		return nil, fmt.Errorf("cache manager cannot be nil")
+	}
+
+	if opts.ManifestPath != "" {
+		cm.SetWorkingDir(filepath.Dir(opts.ManifestPath))
 	}
 
 	var overrideLocator string

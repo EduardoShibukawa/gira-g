@@ -505,15 +505,15 @@ func renderSidebarNav(groups []NavGroup, currentURL string) string {
 	}
 
 	for _, g := range groups {
-		isOpen := " open"
-		if g.Title == "Architecture Decisions (ADR)" || g.Title == "Prior Art & Research" {
-			isOpen = ""
-			for _, item := range g.Items {
-				if item.URL == currentURL {
-					isOpen = " open"
-					break
-				}
+		isOpen := ""
+		for _, item := range g.Items {
+			if item.URL == currentURL {
+				isOpen = " open"
+				break
 			}
+		}
+		if isOpen == "" && (currentURL == "index.html" || currentURL == "intro.html" || currentURL == "") && (g.Title == "Getting Started" || g.Title == "Start Here" || g.Title == "Introduction") {
+			isOpen = " open"
 		}
 		sb.WriteString(fmt.Sprintf(`<details class="nav-group-collapsible"%s>`, isOpen))
 		sb.WriteString(fmt.Sprintf(`<summary class="nav-group-summary"><span>%s</span><span class="nav-group-chevron">▶</span></summary>`, g.Title))

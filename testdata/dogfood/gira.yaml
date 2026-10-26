@@ -1,0 +1,23 @@
+version: 1
+target_system:
+  name: dogfood-system
+  description: "Gira-G Architecture Harness Canonical Dogfooding Target System"
+repositories:
+  - id: dogfood-services
+    url: "https://github.com/duh-homelab/gira-dogfood-services.git"
+    ref: "v1.0.0"
+    sha: "ec0f0c489d9adcce80edbaeda37c2002bd527338"
+    path_scope: "."
+  - id: dogfood-charts
+    url: "https://github.com/duh-homelab/gira-dogfood-charts.git"
+    ref: "v1.0.0"
+    sha: "6ae3bc3093fca03418c019e7c25d5825213e5cc2"
+    path_scope: "charts/dogfood"
+overrides:
+  relationships:
+    - source_id: "service:frontend"
+      target_id: "contract:OrderService"
+      verb: "consumes"
+  metadata:
+    "service:frontend":
+      tier: "edge"

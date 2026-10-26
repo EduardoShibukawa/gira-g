@@ -26,7 +26,8 @@ type FileEntry struct {
 
 // CacheManager manages bare repository caches on the local filesystem.
 type CacheManager struct {
-	BaseDir string
+	BaseDir    string
+	WorkingDir string
 }
 
 // gitRedirectEnv contains variables that can redirect repository/object lookup
@@ -61,8 +62,10 @@ func GitEnvForRead() []string {
 
 // GitEnvForNetwork returns an environment for clone/fetch. It strips repository
 // redirection variables but preserves user Git config and credential settings.
+// It also sets GIT_TERMINAL_PROMPT=0 so git never hangs on interactive terminal prompts.
 func GitEnvForNetwork() []string {
-	return gitEnvironment(true)
+	env := gitEnvironment(true)
+	return append(env, "GIT_TERMINAL_PROMPT=0")
 }
 
 func gitEnvironment(allowUserConfig bool) []string {
@@ -103,7 +106,43 @@ func NewCacheManager(baseDir string) (*CacheManager, error) {
 			baseDir = filepath.Join(home, ".cache", "gira", "repos")
 		}
 	}
-	return &CacheManager{BaseDir: baseDir}, nil
+	return &CacheManager{BaseDir: baseDir, WorkingDir: "."}, nil
+}
+
+// SetWorkingDir sets the directory used to resolve relative clone URLs.
+func (cm *CacheManager) SetWorkingDir(dir string) {
+	if dir != "" {
+		cm.WorkingDir = dir
+	}
+}
+
+// ResolveCloneURL converts relative URLs or file://. into absolute filesystem paths
+// suitable for bare git clone.
+func ResolveCloneURL(rawURL, workingDir string) string {
+	u := strings.TrimSpace(rawURL)
+	if workingDir == "" {
+		workingDir = "."
+	}
+
+	if u == "file://." || u == "file://./" {
+		abs, err := filepath.Abs(workingDir)
+		if err == nil {
+			return "file://" + filepath.ToSlash(abs)
+		}
+	} else if strings.HasPrefix(u, "file://./") || strings.HasPrefix(u, "file://../") {
+		rel := strings.TrimPrefix(u, "file://")
+		abs, err := filepath.Abs(filepath.Join(workingDir, rel))
+		if err == nil {
+			return "file://" + filepath.ToSlash(abs)
+		}
+	} else if u == "." || strings.HasPrefix(u, "./") || strings.HasPrefix(u, "../") {
+		abs, err := filepath.Abs(filepath.Join(workingDir, u))
+		if err == nil {
+			return "file://" + filepath.ToSlash(abs)
+		}
+	}
+
+	return u
 }
 
 // NormalizeURL produces a deterministic normalized URL representation.
@@ -128,7 +167,8 @@ func RepoHash(rawURL string) string {
 
 // RepoDir returns the bare repository cache directory path for the given repository.
 func (cm *CacheManager) RepoDir(repo manifest.RepositoryDeclaration) string {
-	hash := RepoHash(repo.URL)
+	resolvedURL := ResolveCloneURL(repo.URL, cm.WorkingDir)
+	hash := RepoHash(resolvedURL)
 	return filepath.Join(cm.BaseDir, hash+".git")
 }
 
@@ -159,7 +199,8 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 		}
 
 		// Clone bare repository
-		cmd := exec.CommandContext(ctx, "git", "clone", "--bare", repo.URL, repoDir)
+		cloneURL := ResolveCloneURL(repo.URL, cm.WorkingDir)
+		cmd := exec.CommandContext(ctx, "git", "clone", "--bare", cloneURL, repoDir)
 		cmd.Env = GitEnvForNetwork()
 		var stderr bytes.Buffer
 		cmd.Stderr = &stderr
@@ -185,7 +226,9 @@ func (cm *CacheManager) EnsureRepo(ctx context.Context, repo manifest.Repository
 		return ErrCommitMissing{RepoID: repo.ID, SHA: repo.SHA}
 	}
 
-	// Fetch updates from origin
+	// Fetch updates from origin (ensuring origin points to resolved clone URL)
+	cloneURL := ResolveCloneURL(repo.URL, cm.WorkingDir)
+	_ = exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "remote", "set-url", "origin", cloneURL).Run()
 	cmd := exec.CommandContext(ctx, "git", "--git-dir="+repoDir, "fetch", "origin")
 	cmd.Env = GitEnvForNetwork()
 	var stderr bytes.Buffer

@@ -268,7 +268,7 @@ func isValidRepoURL(u string) bool {
 	}
 
 	// Relative or absolute filesystem path
-	if strings.HasPrefix(u, "/") || strings.HasPrefix(u, "./") || strings.HasPrefix(u, "../") || filepath.IsAbs(u) {
+	if u == "." || strings.HasPrefix(u, "/") || strings.HasPrefix(u, "./") || strings.HasPrefix(u, "../") || filepath.IsAbs(u) {
 		return true
 	}
 

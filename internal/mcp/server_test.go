@@ -387,3 +387,81 @@ func TestServer_ContentLengthFraming(t *testing.T) {
 		t.Errorf("expected id 42, got %v", resp["id"])
 	}
 }
+
+func TestServer_GiraAsk(t *testing.T) {
+	mm := buildTestMacroMap()
+	engine := slices.NewEngine(mm)
+	server := mcp.NewServer("gira", "0.2.0", engine)
+
+	t.Run("gira_ask default caveman format", func(t *testing.T) {
+		resp := sendRequest(t, server, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      301,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": "gira_ask",
+				"arguments": map[string]any{
+					"query": "Qual o objetivo deste projeto?",
+				},
+			},
+		})
+		res := resp["result"].(map[string]any)
+		content := res["content"].([]any)[0].(map[string]any)
+		text := content["text"].(string)
+
+		if !strings.Contains(text, "QUERY:") || !strings.Contains(text, "INTENT: purpose") || !strings.Contains(text, "FACT:") {
+			t.Fatalf("expected caveman output for gira_ask, got: %s", text)
+		}
+	})
+
+	t.Run("gira_ask human format with diagram", func(t *testing.T) {
+		resp := sendRequest(t, server, map[string]any{
+			"jsonrpc": "2.0",
+			"id":      302,
+			"method":  "tools/call",
+			"params": map[string]any{
+				"name": "gira_ask",
+				"arguments": map[string]any{
+					"query":   "Mostre a arquitetura e componentes",
+					"diagram": true,
+					"format":  "human",
+				},
+			},
+		})
+		res := resp["result"].(map[string]any)
+		content := res["content"].([]any)[0].(map[string]any)
+		text := content["text"].(string)
+
+		if !strings.Contains(text, "```mermaid") {
+			t.Fatalf("expected mermaid block in human format, got: %s", text)
+		}
+	})
+}
+
+func TestServer_ContextSliceCaveman(t *testing.T) {
+	mm := buildTestMacroMap()
+	engine := slices.NewEngine(mm)
+	server := mcp.NewServer("gira", "0.2.0", engine)
+
+	resp := sendRequest(t, server, map[string]any{
+		"jsonrpc": "2.0",
+		"id":      401,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name": "get_context_slice",
+			"arguments": map[string]any{
+				"node_id": "service:frontend",
+				"tier":    "summary",
+				"format":  "caveman",
+			},
+		},
+	})
+	res := resp["result"].(map[string]any)
+	content := res["content"].([]any)[0].(map[string]any)
+	text := content["text"].(string)
+
+	if !strings.Contains(text, "Component:") || !strings.Contains(text, "service:frontend") {
+		t.Fatalf("expected caveman context slice, got: %s", text)
+	}
+}
+

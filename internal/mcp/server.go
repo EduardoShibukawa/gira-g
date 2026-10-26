@@ -14,6 +14,7 @@ import (
 	"sync"
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
+	"github.com/EduardoShibukawa/gira-g/internal/ask"
 	"github.com/EduardoShibukawa/gira-g/internal/eval"
 	gatepkg "github.com/EduardoShibukawa/gira-g/internal/gate"
 	"github.com/EduardoShibukawa/gira-g/internal/gitdiff"
@@ -474,11 +475,51 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 	}
 
 	switch params.Name {
+	case "gira_ask":
+		var args struct {
+			Query   string `json:"query"`
+			Diagram bool   `json:"diagram"`
+			Format  string `json:"format"`
+		}
+		if err := json.Unmarshal(params.Arguments, &args); err != nil {
+			return newStructuredError("invalid_query", fmt.Sprintf("Invalid arguments for gira_ask: %v", err), false, "Check arguments format")
+		}
+		if strings.TrimSpace(args.Query) == "" {
+			return newStructuredError("invalid_query", "Missing required argument 'query'", false, "Provide natural language query")
+		}
+
+		resp := ask.ProcessQuery(args.Query, s.Engine.MacroMap(), args.Diagram)
+
+		fmtChoice := strings.ToLower(strings.TrimSpace(args.Format))
+		var outputText string
+		switch fmtChoice {
+		case "human", "md", "markdown":
+			outputText = resp.RenderMarkdown()
+		case "mermaid":
+			if resp.Diagram != "" {
+				outputText = resp.Diagram
+			} else {
+				outputText = "graph TD\n  None[No diagram generated]"
+			}
+		case "json":
+			data, _ := json.MarshalIndent(resp, "", "  ")
+			outputText = string(data)
+		default: // "caveman" is the default for agent context
+			outputText = resp.RenderCaveman()
+		}
+
+		return CallToolResult{
+			Content: []ToolContent{
+				{Type: "text", Text: outputText},
+			},
+		}
+
 	case "get_impact_briefing":
 		var args struct {
 			TargetID string `json:"target_id"`
 			Depth    int    `json:"depth"`
 			Budget   int    `json:"budget"`
+			Format   string `json:"format"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_impact_briefing: %v", err), false, "Check arguments format")
@@ -495,7 +536,14 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get impact briefing: %v", err), true, "Check target_id")
 		}
 
-		outJSON, err := briefing.Emit(slices.FormatJSON, args.Budget)
+		reqFmt := slices.FormatJSON
+		if strings.ToLower(args.Format) == "caveman" || strings.ToLower(args.Format) == "llm" {
+			reqFmt = slices.FormatCaveman
+		} else if strings.ToLower(args.Format) == "md" || strings.ToLower(args.Format) == "markdown" {
+			reqFmt = slices.FormatMarkdown
+		}
+
+		outJSON, err := briefing.Emit(reqFmt, args.Budget)
 		if err != nil {
 			if errors.Is(err, slices.ErrBudgetExceeded) {
 				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")
@@ -645,6 +693,7 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			Tier   string `json:"tier"`
 			View   string `json:"view"`
 			Budget int    `json:"budget"`
+			Format string `json:"format"`
 		}
 		if err := json.Unmarshal(params.Arguments, &args); err != nil {
 			return newStructuredError("invalid_budget", fmt.Sprintf("Invalid arguments for get_context_slice: %v", err), false, "Check arguments format")
@@ -671,7 +720,14 @@ func (s *Server) handleToolCall(paramsRaw json.RawMessage) CallToolResult {
 			return newStructuredError("envelope_error", fmt.Sprintf("Failed to get context slice: %v", err), true, "Check node_id")
 		}
 
-		outJSON, err := slice.Emit(slices.FormatJSON, args.Budget)
+		reqFmt := slices.FormatJSON
+		if strings.ToLower(args.Format) == "caveman" || strings.ToLower(args.Format) == "llm" {
+			reqFmt = slices.FormatCaveman
+		} else if strings.ToLower(args.Format) == "md" || strings.ToLower(args.Format) == "markdown" {
+			reqFmt = slices.FormatMarkdown
+		}
+
+		outJSON, err := slice.Emit(reqFmt, args.Budget)
 		if err != nil {
 			if errors.Is(err, slices.ErrBudgetExceeded) {
 				return newStructuredError("budget_exceeded", err.Error(), false, "rerun with a larger budget")

@@ -594,6 +594,10 @@ func BuildIncremental(
 		return nil, nil, fmt.Errorf("cache manager cannot be nil")
 	}
 
+	if opts.ManifestPath != "" {
+		cm.SetWorkingDir(filepath.Dir(opts.ManifestPath))
+	}
+
 	var overrideLocator string
 	if m.HasDeclarativeOverrides() {
 		var err error

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/EduardoShibukawa/gira-g/internal/ask"
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
@@ -42,7 +43,7 @@ func TestAskQuery(t *testing.T) {
 	}
 
 	t.Run("purpose question", func(t *testing.T) {
-		resp := processAskQuery("Qual o objetivo desse projeto?", mm, false)
+		resp := ask.ProcessQuery("Qual o objetivo desse projeto?", mm, false)
 		if resp.Intent != "purpose" {
 			t.Fatalf("expected intent 'purpose', got %s", resp.Intent)
 		}
@@ -52,7 +53,7 @@ func TestAskQuery(t *testing.T) {
 	})
 
 	t.Run("quickstart question with diagram", func(t *testing.T) {
-		resp := processAskQuery("Como eu utilizo o sistema?", mm, true)
+		resp := ask.ProcessQuery("Como eu utilizo o sistema?", mm, true)
 		if resp.Intent != "quickstart" {
 			t.Fatalf("expected intent 'quickstart', got %s", resp.Intent)
 		}
@@ -62,7 +63,7 @@ func TestAskQuery(t *testing.T) {
 	})
 
 	t.Run("component impact question", func(t *testing.T) {
-		resp := processAskQuery("O que quebra se alterar docsite?", mm, true)
+		resp := ask.ProcessQuery("O que quebra se alterar docsite?", mm, true)
 		if resp.Intent != "impact" {
 			t.Fatalf("expected intent 'impact', got %s", resp.Intent)
 		}
@@ -74,7 +75,7 @@ func TestAskQuery(t *testing.T) {
 		}
 	})
 
-	t.Run("runAsk CLI invocation", func(t *testing.T) {
+	t.Run("runAsk CLI invocation JSON", func(t *testing.T) {
 		var stdout, stderr bytes.Buffer
 		err := runAsk([]string{"--json", "qual o propósito?"}, strings.NewReader(""), &stdout, &stderr)
 		if err != nil {
@@ -83,6 +84,18 @@ func TestAskQuery(t *testing.T) {
 		outStr := stdout.String()
 		if !strings.Contains(outStr, `"intent": "purpose"`) {
 			t.Errorf("expected json intent purpose, got: %s", outStr)
+		}
+	})
+
+	t.Run("runAsk CLI invocation Caveman format", func(t *testing.T) {
+		var stdout, stderr bytes.Buffer
+		err := runAsk([]string{"--format", "caveman", "qual o propósito?"}, strings.NewReader(""), &stdout, &stderr)
+		if err != nil {
+			t.Fatalf("unexpected error running ask with caveman: %v", err)
+		}
+		outStr := stdout.String()
+		if !strings.Contains(outStr, "QUERY:") || !strings.Contains(outStr, "INTENT: purpose") || !strings.Contains(outStr, "FACT:") {
+			t.Errorf("expected caveman output, got: %s", outStr)
 		}
 	})
 }
