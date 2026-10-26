@@ -451,6 +451,7 @@ func runIndex(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize cache manager: %w", err)
 	}
+	cm.SetWorkingDir(filepath.Dir(manifestPath))
 
 	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{
 		Offline:      offline,
@@ -621,13 +622,17 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 		if strings.TrimSpace(name) == "" || name == "." || name == string(filepath.Separator) {
 			name = "local-system"
 		}
+		repoURL := "file://" + filepath.ToSlash(toplevel)
+		if remote := gitRemoteURL(toplevel); remote != "" {
+			repoURL = remote
+		}
 		m = &manifest.Manifest{
 			Version:      1,
 			TargetSystem: manifest.TargetSystemMeta{Name: name},
 			Repositories: []manifest.RepositoryDeclaration{
 				{
 					ID:        "local",
-					URL:       "file://" + filepath.ToSlash(toplevel),
+					URL:       repoURL,
 					SHA:       head,
 					PathScope: ".",
 				},
@@ -710,6 +715,7 @@ func runInit(args []string, stdout io.Writer, stderr io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("failed to initialize cache manager: %w", err)
 	}
+	cm.SetWorkingDir(filepath.Dir(manifestPath))
 
 	mm, err := indexer.Build(context.Background(), m, cm, indexer.Options{
 		Offline:      offline,
@@ -868,6 +874,16 @@ func gitDirty(toplevel string) bool {
 		return false
 	}
 	return strings.TrimSpace(string(out)) != ""
+}
+
+func gitRemoteURL(toplevel string) string {
+	cmd := exec.Command("git", "-C", toplevel, "remote", "get-url", "origin")
+	cmd.Env = gitCommandEnv()
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }
 
 // writeLocalManifest generates a single-repository manifest pinning head.

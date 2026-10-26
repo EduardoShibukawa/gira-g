@@ -783,3 +783,31 @@ func TestCacheManager_ExportTreeFailsClosedOnUnmaterializableWindowsPath(t *test
 	}
 }
 
+func TestResolveCloneURL(t *testing.T) {
+	workingDir := "/test/dir"
+	absWorking, _ := filepath.Abs(workingDir)
+	expectedPrefix := "file://" + filepath.ToSlash(absWorking)
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"file_dot", "file://.", expectedPrefix},
+		{"file_dot_slash", "file://./", expectedPrefix},
+		{"dot", ".", expectedPrefix},
+		{"remote_https", "https://github.com/org/repo.git", "https://github.com/org/repo.git"},
+		{"remote_ssh", "git@github.com:org/repo.git", "git@github.com:org/repo.git"},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := gitcache.ResolveCloneURL(tc.input, workingDir)
+			if got != tc.expected {
+				t.Fatalf("ResolveCloneURL(%q, %q) = %q; want %q", tc.input, workingDir, got, tc.expected)
+			}
+		})
+	}
+}
+
+

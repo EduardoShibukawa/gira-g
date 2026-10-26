@@ -169,7 +169,7 @@ func setNetworkSandboxEnvironment(t *testing.T) {
 func TestE2E_DogfoodFullLifecycleOffline(t *testing.T) {
 	setNetworkSandboxEnvironment(t)
 
-	manifestPath, err := filepath.Abs(filepath.Join("..", "..", "gira.yaml"))
+	manifestPath, err := filepath.Abs(filepath.Join("..", "..", "testdata", "dogfood", "gira.yaml"))
 	if err != nil {
 		t.Fatalf("failed to resolve manifest path: %v", err)
 	}
@@ -496,7 +496,7 @@ func TestE2E_DogfoodFullLifecycleOffline(t *testing.T) {
 func TestE2E_OfflineStrictZeroNetworkEgress(t *testing.T) {
 	setNetworkSandboxEnvironment(t)
 
-	manifestPath, err := filepath.Abs(filepath.Join("..", "..", "gira.yaml"))
+	manifestPath, err := filepath.Abs(filepath.Join("..", "..", "testdata", "dogfood", "gira.yaml"))
 	if err != nil {
 		t.Fatalf("failed to resolve manifest path: %v", err)
 	}

@@ -45,7 +45,7 @@ func TestCLI_DocsCommand(t *testing.T) {
 		}
 	}
 
-	// Verify index.html contains proper navbar and content
+	// Verify index.html contains proper navbar and full-width landing content
 	indexContent, err := os.ReadFile(filepath.Join(outDir, "index.html"))
 	if err != nil {
 		t.Fatalf("failed to read index.html: %v", err)
@@ -53,7 +53,16 @@ func TestCLI_DocsCommand(t *testing.T) {
 	if !strings.Contains(string(indexContent), "site-header") {
 		t.Errorf("expected site-header in index.html")
 	}
-	if !strings.Contains(string(indexContent), "site-sidebar") {
-		t.Errorf("expected site-sidebar in index.html")
+	if !strings.Contains(string(indexContent), "landing-hero") {
+		t.Errorf("expected landing-hero in full-width index.html")
+	}
+
+	// Verify docs pages contain sidebar navigation
+	introContent, err := os.ReadFile(filepath.Join(outDir, "intro.html"))
+	if err != nil {
+		t.Fatalf("failed to read intro.html: %v", err)
+	}
+	if !strings.Contains(string(introContent), "site-sidebar") {
+		t.Errorf("expected site-sidebar in intro.html")
 	}
 }

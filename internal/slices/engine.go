@@ -228,6 +228,14 @@ func NewEngine(m *domain.MacroMap) *Engine {
 
 // GetImpactBriefing computes upstream dependencies, downstream consumers,
 // mediating contracts, and unsupported boundaries affected by a change.
+// MacroMap returns the underlying MacroMap index.
+func (e *Engine) MacroMap() *domain.MacroMap {
+	if e == nil {
+		return nil
+	}
+	return e.macroMap
+}
+
 func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing, error) {
 	targetNode, ok := e.nodesByID[targetID]
 	if !ok {
