@@ -73,18 +73,31 @@ gira impact service:order --format md --index /tmp/gira-demo/.gira/macro-map.jso
 
 ## 3. Ask architectural questions
 
+You can query the system in plain natural language or inspect discrete components deterministically:
+
 ```bash
-# What breaks if you change a Component?
-gira impact <component-id> --index .gira/macro-map.json
+# Query in plain natural language (local zero-token fallback with Mermaid)
+gira ask "Qual o objetivo desse projeto?"
+gira ask "Como inicializo o sistema?" --diagram
 
-# Or analyze a git revision range diff
-gira impact --from-diff HEAD~1..HEAD --index .gira/macro-map.json
+# Or compute exact blast radius before editing a component
+gira impact <node_id>
 
-# Extract a bounded context slice
-gira slice <component-id> --tier summary --index .gira/macro-map.json
+# Extract a surgical bounded context slice for AI agents (Cursor / Claude)
+gira slice <node_id> --tier summary --budget 1500
 
-# Generate a single-service onboarding document
-gira doc <service-id> --format md --index .gira/macro-map.json
+# Take a guided tour through key entrypoints
+gira tour --format md
+```
+
+### Visual Quickstart Flow
+
+```mermaid
+graph LR
+  classDef step fill:#38bdf8,stroke:#0284c7,stroke-width:2px,color:#0f172a;
+  S1["1. Install<br/>go install"] --> S2["2. Index<br/>gira init ."]
+  S2 --> S3["3. Query<br/>gira ask & gira tour"]
+  class S1,S2,S3 step;
 ```
 
 ## Next steps
