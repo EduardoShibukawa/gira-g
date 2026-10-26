@@ -3,13 +3,15 @@ sidebar_position: 1
 slug: /
 ---
 
-# Gira
+# Introduction to Gira-G
 
-Gira is a CLI tool that builds and maintains an evidence-backed architectural map
-of any software system — from a single repository to many — and serves selected
-slices of it to humans and AI coding agents.
+Gira-G is a deterministic code intelligence harness and living architecture engine.
+It builds and maintains an evidence-backed architectural map of any software system — from a single repository to many — and serves bounded, token-efficient slices to human engineers and AI coding agents.
 
-## Documentation
+> [!NOTE]
+> **Repository Onboarding vs Indexing**: Use `gira init .` for initial zero-config onboarding of a local repository. Use `gira index` to incrementally rebuild or synchronize an existing `gira.yaml` manifest.
+
+## Documentation Structure
 
 This documentation covers:
 
