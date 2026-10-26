@@ -96,4 +96,3 @@ func TestCLISymbolOmitBodyReturnsError(t *testing.T) {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
-

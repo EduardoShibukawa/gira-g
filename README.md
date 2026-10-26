@@ -156,7 +156,14 @@ gira doc <service-id> [--format md|json|html] [--index <path>] [--checkout <dir>
 gira diff <index-a> <index-b> [--format json|md]
 gira locate <query> [--index <path>] [--format json|md]
 
-# Exportação, Visualização e Integração com Agentes (MCP & Skills)
+# Manipulação Cirúrgica de AST e Símbolos
+gira outline <file> [--format text|json]
+gira read <file> <symbol>
+gira write <file> <symbol> [--body <body>]
+gira add <file> <container> [--body <body>]
+
+# Arquitetura Viva, Exportação e Integração com Agentes (MCP & Skills)
+gira architecture [--format md|html|json] [--output <path>] [--index <path>]
 gira export [--format md|html] [--output <path>] [--index <path>]
 gira view [--output <dir>] [--index <path>] [--no-open]
 gira skills install|manifest|check [--host claude|cursor|agents] [--dir <project>] [--index <path>] [--hook]

@@ -214,4 +214,3 @@ services:
 		t.Errorf("expected only service:frontend in updated index, got %+v", mm.Nodes)
 	}
 }
-
