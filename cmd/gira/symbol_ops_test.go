@@ -65,3 +65,35 @@ func TestCLISymbolReadWriteAdd(t *testing.T) {
 		t.Errorf("file missing added member: %s", string(content))
 	}
 }
+
+func TestCLISymbolOmitBodyReturnsError(t *testing.T) {
+	tsSource := `export class TestService {
+  execute(): string {
+    return "original";
+  }
+}
+`
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "service.ts")
+	if err := os.WriteFile(filePath, []byte(tsSource), 0644); err != nil {
+		t.Fatalf("failed to write test file: %v", err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err := runWriteSymbol([]string{filePath, "TestService.execute"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected error when --body is omitted, got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot write empty symbol body") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+
+	err = runAddSymbol([]string{filePath, "TestService"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected error when --body is omitted in add, got nil")
+	}
+	if !strings.Contains(err.Error(), "cannot add empty member body") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+

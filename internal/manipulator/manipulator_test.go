@@ -166,3 +166,87 @@ def standalone_func():
 		t.Errorf("py method not updated: %s", updated)
 	}
 }
+
+func TestSafeBraceCounter(t *testing.T) {
+	code := `
+		// { line comment with open brace
+		/* { multiline
+		   comment } */
+		const str = "}";
+		const char = '{';
+		const template = ` + "`safe { brace } with ${ 1 + 2 }`" + `;
+		const re = /[{}]/;
+		function validFunc() {
+			if (true) {
+				return 42;
+			}
+		}
+	`
+	openB, closeB := CountSafeBraces(code)
+	if openB != 2 || closeB != 2 {
+		t.Fatalf("expected exactly 2 code open braces and 2 code close braces, got %d open, %d close", openB, closeB)
+	}
+
+	// Verify syntax should pass even with unbalanced braces inside comments/strings
+	err := verifySyntax(code, ".ts")
+	if err != nil {
+		t.Fatalf("verifySyntax failed on valid code with comments/strings braces: %v", err)
+	}
+}
+
+func TestTypeScriptBracesInCommentsAndStrings(t *testing.T) {
+	tsCode := `export class ComplexService {
+  firstMethod(): string {
+    // { unclosed brace in comment
+    const jsonStr = "{\"k\": 1}";
+    const regex = /[{}]/;
+    return "first";
+  }
+
+  secondMethod(): number {
+    /* multiline
+       { comment }
+    */
+    return 2;
+  }
+}
+`
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "complex.ts")
+	if err := os.WriteFile(filePath, []byte(tsCode), 0644); err != nil {
+		t.Fatalf("failed to write file: %v", err)
+	}
+
+	symbols, err := FindSymbols(filePath)
+	if err != nil {
+		t.Fatalf("FindSymbols failed: %v", err)
+	}
+
+	var first, second *SymbolRange
+	for i := range symbols {
+		if symbols[i].FullName == "ComplexService.firstMethod" {
+			first = &symbols[i]
+		}
+		if symbols[i].FullName == "ComplexService.secondMethod" {
+			second = &symbols[i]
+		}
+	}
+
+	if first == nil {
+		t.Fatal("ComplexService.firstMethod was not parsed as a symbol")
+	}
+	if second == nil {
+		t.Fatal("ComplexService.secondMethod was not parsed as a symbol")
+	}
+
+	// firstMethod starts at line 2 and ends at line 7
+	if first.StartLine != 2 || first.EndLine != 7 {
+		t.Errorf("expected firstMethod L2-L7, got L%d-L%d", first.StartLine, first.EndLine)
+	}
+
+	// secondMethod starts at line 9 and ends at line 14
+	if second.StartLine != 9 || second.EndLine != 14 {
+		t.Errorf("expected secondMethod L9-L14, got L%d-L%d", second.StartLine, second.EndLine)
+	}
+}
+

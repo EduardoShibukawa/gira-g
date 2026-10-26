@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // SymbolKind represents the architectural classification of a symbol.
@@ -240,12 +241,251 @@ func getIndent(line string) string {
 	return line[:idx]
 }
 
+type parseState int
+
+const (
+	stateNormal parseState = iota
+	stateLineComment
+	stateBlockComment
+	stateStringDouble
+	stateStringSingle
+	stateTemplate
+	stateRegex
+)
+
+// SafeBraceCounter maintains state across lines to count code braces
+// while ignoring braces inside strings, comments, template literals, and regexes.
+type SafeBraceCounter struct {
+	state            parseState
+	templateDepths   []int // stack of braceDepth when entering ${...} inside template strings
+	braceDepth       int   // tracked code brace depth
+	inRegexCharClass bool
+	prevNonSpace     rune
+	lastWord         string
+}
+
+func NewSafeBraceCounter() *SafeBraceCounter {
+	return &SafeBraceCounter{
+		state: stateNormal,
+	}
+}
+
+func isIdentRune(r rune) bool {
+	return (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '$'
+}
+
+func isRegexStart(prev rune, lastWord string) bool {
+	switch lastWord {
+	case "return", "case", "throw", "typeof", "delete", "void", "yield", "await":
+		return true
+	}
+	switch prev {
+	case 0, '(', '[', '{', '=', ':', ',', ';', '!', '?', '&', '|', '^', '~', '*', '+', '-', '<', '>', '%':
+		return true
+	}
+	return false
+}
+
+// CountLine scans a single line and returns the count of structural '{' and '}'
+// while ignoring braces inside comments, strings, template literals, and regexes.
+func (s *SafeBraceCounter) CountLine(line string) (openBraces, closeBraces int) {
+	// States that do not cross line breaks reset at start of line
+	if s.state != stateBlockComment && s.state != stateTemplate {
+		s.state = stateNormal
+		s.inRegexCharClass = false
+	}
+
+	runes := []rune(strings.TrimSuffix(line, "\r"))
+	n := len(runes)
+	i := 0
+
+	for i < n {
+		ch := runes[i]
+
+		switch s.state {
+		case stateBlockComment:
+			if ch == '*' && i+1 < n && runes[i+1] == '/' {
+				s.state = stateNormal
+				i += 2
+				continue
+			}
+			i++
+
+		case stateLineComment:
+			return openBraces, closeBraces
+
+		case stateStringDouble:
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '"' {
+				s.state = stateNormal
+				s.prevNonSpace = '"'
+				s.lastWord = ""
+			}
+			i++
+
+		case stateStringSingle:
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '\'' {
+				s.state = stateNormal
+				s.prevNonSpace = '\''
+				s.lastWord = ""
+			}
+			i++
+
+		case stateTemplate:
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '`' {
+				s.state = stateNormal
+				s.prevNonSpace = '`'
+				s.lastWord = ""
+				i++
+				continue
+			}
+			if ch == '$' && i+1 < n && runes[i+1] == '{' {
+				s.templateDepths = append(s.templateDepths, s.braceDepth)
+				s.state = stateNormal
+				s.prevNonSpace = '{'
+				s.lastWord = ""
+				i += 2
+				continue
+			}
+			i++
+
+		case stateRegex:
+			if ch == '\\' {
+				i += 2
+				continue
+			}
+			if ch == '[' {
+				s.inRegexCharClass = true
+				i++
+				continue
+			}
+			if ch == ']' && s.inRegexCharClass {
+				s.inRegexCharClass = false
+				i++
+				continue
+			}
+			if ch == '/' && !s.inRegexCharClass {
+				s.state = stateNormal
+				s.prevNonSpace = '/'
+				s.lastWord = ""
+				i++
+				continue
+			}
+			i++
+
+		case stateNormal:
+			if ch == '/' && i+1 < n && runes[i+1] == '/' {
+				s.state = stateLineComment
+				return openBraces, closeBraces
+			}
+			if ch == '/' && i+1 < n && runes[i+1] == '*' {
+				s.state = stateBlockComment
+				i += 2
+				continue
+			}
+			if ch == '"' {
+				s.state = stateStringDouble
+				i++
+				continue
+			}
+			if ch == '\'' {
+				s.state = stateStringSingle
+				i++
+				continue
+			}
+			if ch == '`' {
+				s.state = stateTemplate
+				i++
+				continue
+			}
+			if ch == '/' {
+				if isRegexStart(s.prevNonSpace, s.lastWord) {
+					s.state = stateRegex
+					s.inRegexCharClass = false
+					i++
+					continue
+				}
+				s.prevNonSpace = '/'
+				s.lastWord = ""
+				i++
+				continue
+			}
+			if ch == '{' {
+				openBraces++
+				s.braceDepth++
+				s.prevNonSpace = '{'
+				s.lastWord = ""
+				i++
+				continue
+			}
+			if ch == '}' {
+				if len(s.templateDepths) > 0 && s.braceDepth == s.templateDepths[len(s.templateDepths)-1] {
+					s.templateDepths = s.templateDepths[:len(s.templateDepths)-1]
+					s.state = stateTemplate
+					s.prevNonSpace = '}'
+					s.lastWord = ""
+					i++
+					continue
+				}
+				closeBraces++
+				if s.braceDepth > 0 {
+					s.braceDepth--
+				}
+				s.prevNonSpace = '}'
+				s.lastWord = ""
+				i++
+				continue
+			}
+
+			if unicode.IsSpace(ch) {
+				i++
+				continue
+			}
+			if isIdentRune(ch) {
+				s.lastWord += string(ch)
+				s.prevNonSpace = ch
+				i++
+				continue
+			}
+			s.lastWord = ""
+			s.prevNonSpace = ch
+			i++
+		}
+	}
+
+	return openBraces, closeBraces
+}
+
+// CountSafeBraces counts structural braces in code, ignoring strings, comments and regexes.
+func CountSafeBraces(content string) (int, int) {
+	counter := NewSafeBraceCounter()
+	lines := strings.Split(content, "\n")
+	totalOpen := 0
+	totalClose := 0
+	for _, l := range lines {
+		o, c := counter.CountLine(l)
+		totalOpen += o
+		totalClose += c
+	}
+	return totalOpen, totalClose
+}
+
 func verifySyntax(content, ext string) error {
 	switch ext {
 	case ".ts", ".tsx", ".js", ".jsx":
-		// Verifica contagem balanceada de chaves
-		openBraces := strings.Count(content, "{")
-		closeBraces := strings.Count(content, "}")
+		// Verifica contagem balanceada de chaves ignorando comentários, strings e regex
+		openBraces, closeBraces := CountSafeBraces(content)
 		if openBraces != closeBraces {
 			return fmt.Errorf("unbalanced braces: %d '{' vs %d '}'", openBraces, closeBraces)
 		}
@@ -286,15 +526,15 @@ func parseTypeScriptSymbols(source string) ([]SymbolRange, error) {
 	var methodBraceDepth int
 
 	totalBraces := 0
+	counter := NewSafeBraceCounter()
 
 	for idx, line := range lines {
 		lineNum := idx + 1
 		trimmed := strings.TrimSpace(line)
 		lineIndent := getIndent(line)
 
-		// Rastreia chaves
-		openCount := strings.Count(line, "{")
-		closeCount := strings.Count(line, "}")
+		// Rastreia chaves de forma segura (ignora strings, comentários e regex)
+		openCount, closeCount := counter.CountLine(line)
 
 		// Não processa comentários puros
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
@@ -529,7 +769,6 @@ func parseGoSymbols(source string) ([]SymbolRange, error) {
 		closeCount := strings.Count(line, "}")
 
 		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") {
-			totalBraces += (openCount - closeCount)
 			continue
 		}
 

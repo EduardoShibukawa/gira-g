@@ -10,6 +10,14 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/manipulator"
 )
 
+func isStdinPiped() bool {
+	stat, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return (stat.Mode() & os.ModeCharDevice) == 0
+}
+
 func runReadSymbol(args []string, stdout io.Writer, stderr io.Writer) error {
 	positionals, flagArgs := splitArgs(args)
 
@@ -59,7 +67,10 @@ func runWriteSymbol(args []string, stdout io.Writer, stderr io.Writer) error {
 	symbolQuery := allPositionals[1]
 
 	content := body
-	if content == "" || content == "-" {
+	if content == "" && len(allPositionals) > 2 && allPositionals[2] == "-" {
+		content = "-"
+	}
+	if content == "-" || (content == "" && isStdinPiped()) {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed reading from stdin: %w", err)
@@ -101,7 +112,10 @@ func runAddSymbol(args []string, stdout io.Writer, stderr io.Writer) error {
 	containerQuery := allPositionals[1]
 
 	content := body
-	if content == "" || content == "-" {
+	if content == "" && len(allPositionals) > 2 && allPositionals[2] == "-" {
+		content = "-"
+	}
+	if content == "-" || (content == "" && isStdinPiped()) {
 		data, err := io.ReadAll(os.Stdin)
 		if err != nil {
 			return fmt.Errorf("failed reading from stdin: %w", err)
