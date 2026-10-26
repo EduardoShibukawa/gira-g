@@ -19,6 +19,7 @@ type Builder struct {
 	NavGroups []NavGroup
 	MacroMap  *domain.MacroMap
 	Arch      *architecture.ClusteredArchitecture
+	Packages  []architecture.PackageInfo
 }
 
 func NewBuilder(cfg *SiteConfig) *Builder {
@@ -49,6 +50,7 @@ func (b *Builder) Build() error {
 
 	// 1. Scan Go packages and load/generate ClusteredArchitecture
 	pkgs, _ := architecture.ScanRepository(repoRoot)
+	b.Packages = pkgs
 
 	if b.Config.IndexPath != "" {
 		st := store.NewStore(filepath.Dir(b.Config.IndexPath))
@@ -123,8 +125,22 @@ func (b *Builder) Build() error {
 		}
 	}
 
-	// 8. Generate and write Interactive Cytoscape Visual Explorer
-	graphHTML, err := GenerateInteractiveGraphHTML(b.Config, b.MacroMap, b.Arch, b.NavGroups)
+	// 8. Generate and write Modern Landing Page (index.html)
+	landingHTML := GenerateLandingPageHTML(b.Config, b.NavGroups)
+	indexPath := filepath.Join(b.Config.OutputDir, "index.html")
+	if err := os.WriteFile(indexPath, []byte(landingHTML), 0644); err != nil {
+		return fmt.Errorf("failed to write landing index.html: %w", err)
+	}
+
+	// 9. Generate and write Understand-Anything style Guided Tour (tour.html)
+	tourHTML := GenerateTourPageHTML(b.Config, b.NavGroups)
+	tourPath := filepath.Join(b.Config.OutputDir, "tour.html")
+	if err := os.WriteFile(tourPath, []byte(tourHTML), 0644); err != nil {
+		return fmt.Errorf("failed to write tour.html: %w", err)
+	}
+
+	// 10. Generate and write Interactive Cytoscape Visual Explorer
+	graphHTML, err := GenerateInteractiveGraphHTML(b.Config, b.MacroMap, b.Arch, b.Packages, b.NavGroups)
 	if err != nil {
 		return fmt.Errorf("failed to generate graph HTML: %w", err)
 	}
@@ -133,7 +149,7 @@ func (b *Builder) Build() error {
 		return fmt.Errorf("failed to write graph HTML: %w", err)
 	}
 
-	// 9. Generate and write search index
+	// 11. Generate and write search index
 	if err := b.writeSearchIndex(); err != nil {
 		return fmt.Errorf("failed to write search index: %w", err)
 	}
@@ -144,13 +160,13 @@ func (b *Builder) Build() error {
 func (b *Builder) scanPages(repoRoot string) error {
 	var pages []*Page
 
-	// 1. Index Page (from README.md or intro.md)
+	// 1. Overview Page (from README.md)
 	readmePath := filepath.Join(repoRoot, "README.md")
 	if data, err := os.ReadFile(readmePath); err == nil {
 		page, err := ParseMarkdown(data, "Gira-G Architecture Harness")
 		if err == nil {
-			page.ID = "index"
-			page.URL = "index.html"
+			page.ID = "overview"
+			page.URL = "overview.html"
 			page.Section = "Overview"
 			page.SourcePath = readmePath
 			pages = append(pages, page)
@@ -243,6 +259,27 @@ func (b *Builder) buildNavGroups() {
 		"Prior Art & Research":         8,
 	}
 
+	// Always add Home to Overview
+	groupMap["Overview"] = append(groupMap["Overview"], NavItem{
+		Title: "Home",
+		URL:   "index.html",
+		Order: 0,
+	})
+
+	// Always add Guided Tour to Getting Started
+	groupMap["Getting Started"] = append(groupMap["Getting Started"], NavItem{
+		Title: "Guided Tour (Topological)",
+		URL:   "tour.html",
+		Order: 1,
+	})
+
+	// Always add the Interactive Visual Explorer to Architecture
+	groupMap["Architecture"] = append(groupMap["Architecture"], NavItem{
+		Title: "Interactive Graph Explorer",
+		URL:   "architecture/graph.html",
+		Order: 99,
+	})
+
 	for _, p := range b.Pages {
 		sec := p.Section
 		if sec == "" {
@@ -254,13 +291,6 @@ func (b *Builder) buildNavGroups() {
 			Order: p.Order,
 		})
 	}
-
-	// Always add the Interactive Visual Explorer to the Architecture section
-	groupMap["Architecture"] = append(groupMap["Architecture"], NavItem{
-		Title: "Interactive Graph Explorer",
-		URL:   "architecture/graph.html",
-		Order: 99,
-	})
 
 	var groups []NavGroup
 	for sec, items := range groupMap {
@@ -361,6 +391,7 @@ func (b *Builder) renderPageHTML(p *Page) (string, error) {
     </div>
     <nav class="header-nav">
       <a href="%sintro.html" class="header-link">Docs</a>
+      <a href="%stour.html" class="header-link">Guided Tour</a>
       <a href="%sarchitecture/index.html" class="header-link">Architecture</a>
       <a href="%sarchitecture/graph.html" class="header-link">Visual Explorer</a>
       <a href="%scli/index.html" class="header-link">CLI</a>
@@ -411,6 +442,7 @@ func (b *Builder) renderPageHTML(p *Page) (string, error) {
 		prefix,
 		prefix,
 		prefix,
+		prefix,
 		b.Config.GitHubURL,
 		navHTML,
 		breadcrumbsHTML,
@@ -425,6 +457,27 @@ func (b *Builder) renderPageHTML(p *Page) (string, error) {
 
 func (b *Builder) writeSearchIndex() error {
 	var index []SearchDoc
+
+	// Add Landing page to search index
+	index = append(index, SearchDoc{
+		ID:       "index",
+		Title:    "Home & Overview",
+		Section:  "Overview",
+		URL:      "index.html",
+		Excerpt:  "Deterministic Architecture Intelligence & Living Architecture. Zero hallucinations, sub-millisecond AST queries, and surgical editing interfaces.",
+		Keywords: "overview home quickstart install scalpel fast-pass",
+	})
+
+	// Add Guided Tour to search index
+	index = append(index, SearchDoc{
+		ID:       "tour",
+		Title:    "Guided Architectural Tour",
+		Section:  "Getting Started",
+		URL:      "tour.html",
+		Excerpt:  "A curated topological walkthrough of Gira-G's architecture in 6 steps from entrypoints down to storage and governance.",
+		Keywords: "tour guided walkthrough tutorial architecture",
+	})
+
 	for _, p := range b.Pages {
 		index = append(index, SearchDoc{
 			ID:       p.ID,
@@ -464,8 +517,8 @@ func renderSidebarNav(groups []NavGroup, currentURL string) string {
 	}
 
 	for _, g := range groups {
-		sb.WriteString(`<div class="nav-group">`)
-		sb.WriteString(fmt.Sprintf(`<div class="nav-group-title">%s</div>`, g.Title))
+		sb.WriteString(`<details class="nav-group-collapsible" open>`)
+		sb.WriteString(fmt.Sprintf(`<summary class="nav-group-summary"><span>%s</span><span class="nav-group-chevron">▶</span></summary>`, g.Title))
 		sb.WriteString(`<ul class="nav-list">`)
 		for _, item := range g.Items {
 			activeCls := ""
@@ -475,7 +528,7 @@ func renderSidebarNav(groups []NavGroup, currentURL string) string {
 			targetURL := prefix + item.URL
 			sb.WriteString(fmt.Sprintf(`<li class="nav-item%s"><a href="%s">%s</a></li>`, activeCls, targetURL, item.Title))
 		}
-		sb.WriteString(`</ul></div>`)
+		sb.WriteString(`</ul></details>`)
 	}
 	return sb.String()
 }

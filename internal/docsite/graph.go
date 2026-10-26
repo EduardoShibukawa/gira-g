@@ -23,10 +23,11 @@ type GraphNodeData struct {
 }
 
 type GraphEdgeData struct {
-	ID     string `json:"id"`
-	Source string `json:"source"`
-	Target string `json:"target"`
-	Label  string `json:"label"`
+	ID          string `json:"id"`
+	Source      string `json:"source"`
+	Target      string `json:"target"`
+	Label       string `json:"label"`
+	CrossDomain bool   `json:"cross_domain,omitempty"`
 }
 
 type CytoscapeElement struct {
@@ -35,8 +36,8 @@ type CytoscapeElement struct {
 
 // GenerateInteractiveGraphHTML builds an Understand-Anything / Graphify style interactive
 // visual exploration page powered by Cytoscape.js.
-func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch *architecture.ClusteredArchitecture, navGroups []NavGroup) (string, error) {
-	elements := buildGraphElements(mm, arch)
+func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch *architecture.ClusteredArchitecture, pkgs []architecture.PackageInfo, navGroups []NavGroup) (string, error) {
+	elements := buildGraphElements(mm, arch, pkgs)
 	elementsJSON, err := json.Marshal(elements)
 	if err != nil {
 		return "", err
@@ -134,11 +135,11 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
       top: 0;
       right: 0;
       bottom: 0;
-      width: 360px;
-      background: rgba(17, 24, 39, 0.95);
+      width: 380px;
+      background: rgba(17, 24, 39, 0.96);
       backdrop-filter: blur(12px);
       border-left: 1px solid var(--border-color);
-      padding: 1.5rem;
+      padding: 1.75rem;
       z-index: 20;
       overflow-y: auto;
       transform: translateX(100%%);
@@ -162,6 +163,51 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
     .drawer-prop { margin-bottom: 0.85rem; }
     .drawer-prop-label { font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
     .drawer-prop-val { font-size: 0.9rem; color: #e5e7eb; margin-top: 0.15rem; }
+    .drawer-ref-item {
+      display: inline-block;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 0.2rem 0.45rem;
+      margin: 0.2rem 0.2rem 0.2rem 0;
+      font-size: 0.775rem;
+      color: var(--accent);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .drawer-ref-item:hover {
+      background: var(--accent-bg);
+      border-color: var(--accent);
+    }
+    .drawer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border-color);
+    }
+    .drawer-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.825rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+    .drawer-btn:hover {
+      background: var(--accent-bg);
+      color: var(--accent);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
   </style>
 </head>
 <body>
@@ -181,6 +227,7 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
     </div>
     <nav class="header-nav">
       <a href="../intro.html" class="header-link">Docs</a>
+      <a href="../tour.html" class="header-link">Guided Tour</a>
       <a href="index.html" class="header-link">Architecture</a>
       <a href="graph.html" class="header-link active">Visual Explorer</a>
       <a href="../cli/index.html" class="header-link">CLI</a>
@@ -255,15 +302,15 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
             'background-color': 'data(color)',
             'color': '#f9fafb',
             'font-size': '11px',
-            'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            'font-family': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             'text-valign': 'bottom',
             'text-margin-y': 6,
             'text-background-color': '#030712',
-            'text-background-opacity': 0.8,
+            'text-background-opacity': 0.85,
             'text-background-padding': 3,
             'text-background-shape': 'roundrectangle',
-            'width': 'mapData(centrality, 0, 100, 28, 64)',
-            'height': 'mapData(centrality, 0, 100, 28, 64)',
+            'width': 'mapData(centrality, 0, 80, 26, 60)',
+            'height': 'mapData(centrality, 0, 80, 26, 60)',
             'border-width': 2,
             'border-color': '#1f2937'
           }
@@ -287,7 +334,16 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
             'arrow-scale': 0.8,
-            'opacity': 0.6
+            'opacity': 0.65
+          }
+        },
+        {
+          selector: 'edge[?cross_domain]',
+          style: {
+            'line-color': '#60a5fa',
+            'target-arrow-color': '#60a5fa',
+            'line-style': 'dashed',
+            'opacity': 0.8
           }
         },
         {
@@ -302,14 +358,14 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
       ],
       layout: {
         name: 'cose',
-        idealEdgeLength: 100,
-        nodeOverlap: 20,
+        idealEdgeLength: 110,
+        nodeOverlap: 25,
         refresh: 20,
         fit: true,
         padding: 40,
         randomize: false,
-        componentSpacing: 100,
-        nodeRepulsion: 400000,
+        componentSpacing: 120,
+        nodeRepulsion: 450000,
         edgeElasticity: 100,
         nestingFactor: 5
       }
@@ -319,26 +375,69 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
     var drawerContent = document.getElementById('drawer-content');
     var drawerClose = document.getElementById('drawer-close');
 
+    window.selectNodeById = function(nodeId) {
+      var n = cy.$('#' + nodeId);
+      if (n.length > 0) {
+        cy.nodes().unselect();
+        n.select();
+        cy.center(n);
+        openDrawer(n.data());
+      }
+    };
+
+    window.copyCliCmd = function(cmd) {
+      navigator.clipboard.writeText(cmd).then(function() {
+        var btn = document.getElementById('drawer-copy-btn');
+        if (btn) {
+          var orig = btn.innerText;
+          btn.innerText = '✓ Copied!';
+          setTimeout(function() { btn.innerText = orig; }, 2000);
+        }
+      });
+    };
+
     function openDrawer(nodeData) {
       var inbound = cy.edges('[target = "' + nodeData.id + '"]').map(function(e) { return e.data('source'); });
       var outbound = cy.edges('[source = "' + nodeData.id + '"]').map(function(e) { return e.data('target'); });
 
-      var html = '<div class="drawer-title">' + nodeData.label + '</div>' +
+      var cleanName = nodeData.label;
+      var filePath = nodeData.file || '';
+
+      var html = '<div class="drawer-title">' + cleanName + '</div>' +
         '<div class="drawer-kind">' + (nodeData.kind || 'package') + '</div>' +
-        '<div class="drawer-prop"><div class="drawer-prop-label">Community</div><div class="drawer-prop-val" style="color: ' + nodeData.color + ';">' + (nodeData.community || 'General') + '</div></div>' +
+        '<div class="drawer-prop"><div class="drawer-prop-label">Community</div><div class="drawer-prop-val" style="color: ' + nodeData.color + '; font-weight: 600;">' + (nodeData.community || 'General') + '</div></div>' +
         '<div class="drawer-prop"><div class="drawer-prop-label">Centrality Score</div><div class="drawer-prop-val">' + (nodeData.centrality ? nodeData.centrality.toFixed(1) : 'N/A') + '</div></div>' +
         '<div class="drawer-prop"><div class="drawer-prop-label">In-Degree / Out-Degree</div><div class="drawer-prop-val">In: ' + nodeData.in_degree + ' | Out: ' + nodeData.out_degree + '</div></div>';
 
-      if (nodeData.file) {
-        html += '<div class="drawer-prop"><div class="drawer-prop-label">File / Path</div><div class="drawer-prop-val"><code>' + nodeData.file + '</code></div></div>';
+      if (filePath) {
+        html += '<div class="drawer-prop"><div class="drawer-prop-label">File / Locator</div><div class="drawer-prop-val"><code style="font-size:0.8rem;">' + filePath + '</code></div></div>';
       }
 
       if (inbound.length > 0) {
-        html += '<div class="drawer-prop"><div class="drawer-prop-label">Inbound Callers / Consumers (' + inbound.length + ')</div><div class="drawer-prop-val" style="font-size:0.8rem; line-height: 1.5;">' + inbound.join('<br/>') + '</div></div>';
+        html += '<div class="drawer-prop"><div class="drawer-prop-label">Inbound Callers / Consumers (' + inbound.length + ')</div><div class="drawer-prop-val">';
+        inbound.forEach(function(srcId) {
+          var srcNode = cy.$('#' + srcId);
+          var lbl = srcNode.length > 0 ? srcNode.data('label') : srcId;
+          html += '<span class="drawer-ref-item" onclick="selectNodeById(\'' + srcId + '\')">' + lbl + '</span>';
+        });
+        html += '</div></div>';
       }
+
       if (outbound.length > 0) {
-        html += '<div class="drawer-prop"><div class="drawer-prop-label">Outbound Dependencies (' + outbound.length + ')</div><div class="drawer-prop-val" style="font-size:0.8rem; line-height: 1.5;">' + outbound.join('<br/>') + '</div></div>';
+        html += '<div class="drawer-prop"><div class="drawer-prop-label">Outbound Dependencies (' + outbound.length + ')</div><div class="drawer-prop-val">';
+        outbound.forEach(function(tgtId) {
+          var tgtNode = cy.$('#' + tgtId);
+          var lbl = tgtNode.length > 0 ? tgtNode.data('label') : tgtId;
+          html += '<span class="drawer-ref-item" onclick="selectNodeById(\'' + tgtId + '\')">' + lbl + '</span>';
+        });
+        html += '</div></div>';
       }
+
+      var cliCmd = 'gira read --file ' + (filePath || cleanName);
+      html += '<div class="drawer-actions">' +
+        '<button id="drawer-copy-btn" class="drawer-btn" onclick="copyCliCmd(\'' + cliCmd + '\')">📋 Copy Read Command</button>' +
+        '<a href="index.html" class="drawer-btn">🏛️ View Living Architecture Docs</a>' +
+        '</div>';
 
       drawerContent.innerHTML = html;
       drawer.classList.add('open');
@@ -369,8 +468,8 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
     });
 
     document.getElementById('layout-select').addEventListener('change', function(e) {
-      var layoutName = e.target.value;
-      cy.layout({ name: layoutName, fit: true, padding: 40 }).run();
+      var val = e.target.value;
+      cy.layout({ name: val, fit: true, padding: 40 }).run();
     });
 
     document.getElementById('community-filter').addEventListener('change', function(e) {
@@ -394,7 +493,7 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
       var term = e.target.value.toLowerCase().trim();
       if (!term) {
         cy.nodes().style('opacity', 1);
-        cy.edges().style('opacity', 0.6);
+        cy.edges().style('opacity', 0.65);
         return;
       }
       cy.nodes().forEach(function(n) {
@@ -422,7 +521,7 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
 	return html, nil
 }
 
-func buildGraphElements(mm *domain.MacroMap, arch *architecture.ClusteredArchitecture) []CytoscapeElement {
+func buildGraphElements(mm *domain.MacroMap, arch *architecture.ClusteredArchitecture, pkgs []architecture.PackageInfo) []CytoscapeElement {
 	var elements []CytoscapeElement
 	nodeIDs := make(map[string]bool)
 
@@ -437,6 +536,7 @@ func buildGraphElements(mm *domain.MacroMap, arch *architecture.ClusteredArchite
 		architecture.DomainExternal:    "#818cf8",
 	}
 
+	// 1. Ingest Nodes from Clustered Architecture
 	if arch != nil && len(arch.Communities) > 0 {
 		for domainID, comm := range arch.Communities {
 			color := communityColors[domainID]
@@ -464,28 +564,6 @@ func buildGraphElements(mm *domain.MacroMap, arch *architecture.ClusteredArchite
 				nodeIDs[n.ID] = true
 			}
 		}
-
-		// Add cross domain edges
-		for _, comm := range arch.Communities {
-			for _, edge := range comm.CrossDomainEdges {
-				edgeID := fmt.Sprintf("e:%s->%s", edge.SourceDomain, edge.TargetDomain)
-				srcID := string(edge.SourceDomain)
-				tgtID := string(edge.TargetDomain)
-				if edge.MediatorNode != "" && nodeIDs[edge.MediatorNode] {
-					srcID = edge.MediatorNode
-				}
-				if nodeIDs[srcID] && nodeIDs[tgtID] {
-					elements = append(elements, CytoscapeElement{
-						Data: GraphEdgeData{
-							ID:     edgeID,
-							Source: srcID,
-							Target: tgtID,
-							Label:  edge.Verb,
-						},
-					})
-				}
-			}
-		}
 	} else if mm != nil {
 		for _, n := range mm.Nodes {
 			filePath := ""
@@ -504,16 +582,88 @@ func buildGraphElements(mm *domain.MacroMap, arch *architecture.ClusteredArchite
 			})
 			nodeIDs[n.ID] = true
 		}
+	}
+
+	// 2. Add package nodes if scanned and not yet present
+	for _, p := range pkgs {
+		pkgNodeID := "package:" + p.Path
+		if !nodeIDs[pkgNodeID] {
+			color := communityColors[p.Domain]
+			if color == "" {
+				color = "#60a5fa"
+			}
+			elements = append(elements, CytoscapeElement{
+				Data: GraphNodeData{
+					ID:         pkgNodeID,
+					Label:      p.Name,
+					Kind:       "package",
+					Community:  string(p.Domain),
+					Centrality: float64(len(p.Imports) + 2),
+					InDegree:   0,
+					OutDegree:  len(p.Imports),
+					File:       p.Path,
+					Color:      color,
+				},
+			})
+			nodeIDs[pkgNodeID] = true
+		}
+	}
+
+	// 3. Connect Genuine Package Import Edges!
+	addedEdges := make(map[string]bool)
+	for _, p := range pkgs {
+		srcID := "package:" + p.Path
+		for _, imp := range p.Imports {
+			tgtID := "package:" + imp
+			if nodeIDs[srcID] && nodeIDs[tgtID] && srcID != tgtID {
+				edgeKey := fmt.Sprintf("%s->%s", srcID, tgtID)
+				if !addedEdges[edgeKey] {
+					isCrossDomain := false
+					if arch != nil {
+						srcComm := ""
+						tgtComm := ""
+						if srcNode, ok := arch.NodesByID[srcID]; ok {
+							srcComm = string(srcNode.Domain)
+						}
+						if tgtNode, ok := arch.NodesByID[tgtID]; ok {
+							tgtComm = string(tgtNode.Domain)
+						}
+						if srcComm != "" && tgtComm != "" && srcComm != tgtComm {
+							isCrossDomain = true
+						}
+					}
+
+					elements = append(elements, CytoscapeElement{
+						Data: GraphEdgeData{
+							ID:          "e:" + edgeKey,
+							Source:      srcID,
+							Target:      tgtID,
+							Label:       "imports",
+							CrossDomain: isCrossDomain,
+						},
+					})
+					addedEdges[edgeKey] = true
+				}
+			}
+		}
+	}
+
+	// 4. Ingest MacroMap Relationships if present
+	if mm != nil {
 		for idx, rel := range mm.Relationships {
 			if nodeIDs[rel.SourceID] && nodeIDs[rel.TargetID] {
-				elements = append(elements, CytoscapeElement{
-					Data: GraphEdgeData{
-						ID:     fmt.Sprintf("e:%d", idx),
-						Source: rel.SourceID,
-						Target: rel.TargetID,
-						Label:  string(rel.Verb),
-					},
-				})
+				edgeKey := fmt.Sprintf("%s->%s", rel.SourceID, rel.TargetID)
+				if !addedEdges[edgeKey] {
+					elements = append(elements, CytoscapeElement{
+						Data: GraphEdgeData{
+							ID:     fmt.Sprintf("e:rel:%d", idx),
+							Source: rel.SourceID,
+							Target: rel.TargetID,
+							Label:  string(rel.Verb),
+						},
+					})
+					addedEdges[edgeKey] = true
+				}
 			}
 		}
 	}

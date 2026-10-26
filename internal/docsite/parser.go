@@ -2,6 +2,7 @@ package docsite
 
 import (
 	"bytes"
+	"fmt"
 	"html"
 	"html/template"
 	"regexp"
@@ -21,6 +22,9 @@ var (
 	codeFenceRe   = regexp.MustCompile("(?s)```.*?```")
 	htmlTagRe     = regexp.MustCompile(`<[^>]+>`)
 	calloutRe     = regexp.MustCompile(`(?m)^>\s*\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]\s*(.*)$`)
+	tableTagRe    = regexp.MustCompile(`(?s)<table>(.*?)</table>`)
+	mdLinkRe      = regexp.MustCompile(`href="([^"]+?)\.md(#[^"]*)?"`)
+	mermaidCodeRe = regexp.MustCompile(`(?s)<pre><code class="language-mermaid">(.*?)</code></pre>`)
 )
 
 type frontmatter struct {
@@ -84,15 +88,19 @@ func ParseMarkdown(content []byte, fallbackTitle string) (*Page, error) {
 
 	renderedHTML := buf.String()
 
-	// 5. Post-process Mermaid diagrams if present:
-	// goldmark renders ```mermaid as <pre><code class="language-mermaid">...</code></pre>
-	// We convert it to <div class="mermaid">...</div> for crisp client-side rendering.
+	// 5. Post-process Mermaid diagrams into interactive viewports with toolbars
 	renderedHTML = transformMermaidBlocks(renderedHTML)
 
-	// 6. Extract Table of Contents from h2 and h3
+	// 6. Wrap tables for responsive horizontal scrolling
+	renderedHTML = transformTables(renderedHTML)
+
+	// 7. Rewrite internal .md links to .html for static deployment
+	renderedHTML = rewriteMarkdownLinks(renderedHTML)
+
+	// 8. Extract Table of Contents from h2 and h3
 	toc := extractTOC(renderedHTML)
 
-	// 7. Plain text excerpt for search
+	// 9. Plain text excerpt for search
 	plainText := extractPlainText(str)
 	excerpt := plainText
 	if len(excerpt) > 280 {
@@ -123,9 +131,10 @@ func transformCallouts(input string) string {
 			}
 			calloutType = strings.ToLower(match[1])
 			title := strings.ToUpper(calloutType[:1]) + calloutType[1:]
+			icon := getCalloutIcon(calloutType)
 			inCallout = true
 			result = append(result, `<div class="callout callout-`+calloutType+`">`)
-			result = append(result, `<div class="callout-header"><span class="callout-icon"></span><span class="callout-title">`+title+`</span></div>`)
+			result = append(result, `<div class="callout-header"><span class="callout-icon">`+icon+`</span><span class="callout-title">`+title+`</span></div>`)
 			result = append(result, `<div class="callout-body">`)
 			if len(match) > 2 && strings.TrimSpace(match[2]) != "" {
 				result = append(result, match[2])
@@ -157,7 +166,22 @@ func transformCallouts(input string) string {
 	return strings.Join(result, "\n")
 }
 
-var mermaidCodeRe = regexp.MustCompile(`(?s)<pre><code class="language-mermaid">(.*?)</code></pre>`)
+func getCalloutIcon(kind string) string {
+	switch strings.ToLower(kind) {
+	case "note":
+		return "ℹ️"
+	case "tip":
+		return "💡"
+	case "important":
+		return "⚡"
+	case "warning":
+		return "⚠️"
+	case "caution":
+		return "🛑"
+	default:
+		return "📌"
+	}
+}
 
 func transformMermaidBlocks(htmlStr string) string {
 	return mermaidCodeRe.ReplaceAllStringFunc(htmlStr, func(m string) string {
@@ -165,10 +189,35 @@ func transformMermaidBlocks(htmlStr string) string {
 		if len(sub) > 1 {
 			// Unescape standard HTML entities because Mermaid parser needs raw text
 			raw := html.UnescapeString(sub[1])
-			return `<div class="mermaid-diagram"><pre class="mermaid">` + raw + `</pre></div>`
+			escapedRaw := html.EscapeString(raw)
+			return fmt.Sprintf(`<div class="mermaid-wrapper" data-mermaid-src="%s">
+  <div class="mermaid-toolbar">
+    <span class="mermaid-badge">Architecture Diagram</span>
+    <div class="mermaid-actions">
+      <button class="mermaid-btn mermaid-fullscreen-btn" title="Fullscreen Lightbox">⛶ Fullscreen</button>
+      <button class="mermaid-btn mermaid-zoom-in" title="Zoom In">+</button>
+      <button class="mermaid-btn mermaid-zoom-out" title="Zoom Out">-</button>
+      <button class="mermaid-btn mermaid-zoom-reset" title="Reset Zoom">↺</button>
+      <button class="mermaid-btn mermaid-copy-btn" title="Copy Mermaid Source">📋 Copy</button>
+    </div>
+  </div>
+  <div class="mermaid-viewport">
+    <div class="mermaid-inner">
+      <pre class="mermaid">%s</pre>
+    </div>
+  </div>
+</div>`, escapedRaw, raw)
 		}
 		return m
 	})
+}
+
+func transformTables(htmlStr string) string {
+	return tableTagRe.ReplaceAllString(htmlStr, `<div class="table-wrapper"><table>$1</table></div>`)
+}
+
+func rewriteMarkdownLinks(htmlStr string) string {
+	return mdLinkRe.ReplaceAllString(htmlStr, `href="$1.html$2"`)
 }
 
 func extractTOC(htmlStr string) []TOCItem {
