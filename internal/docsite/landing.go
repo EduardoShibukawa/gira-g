@@ -53,19 +53,19 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
         <!-- Hero Section -->
         <div class="hero-container">
           <div class="hero-badge">
-            <span>⚡</span> AST-Grounded Code Intelligence & Living Architecture
+            <span>⚡</span> The Architectural GPS &amp; Surgical Scalpel for Your Codebase
           </div>
-          <h1 class="hero-title">Deterministic Architecture Intelligence</h1>
+          <h1 class="hero-title">Understand Any Codebase in 2 Minutes</h1>
           <p class="hero-desc">
-            Transform monolithic codebases into queryable AST graphs, living architectural contracts, 
-            and surgical editing interfaces. Designed for sub-millisecond execution, zero hallucinations, 
-            and complete parity between software engineers and autonomous AI agents.
+            Know what breaks before you touch a line of code, eliminate onboarding fatigue, 
+            and feed AI agents with zero-hallucination context. Gira-G unites deterministic code reality 
+            with human business intent in a unified living architecture.
           </p>
           <div class="hero-actions">
-            <a href="intro.html" class="btn-primary">🚀 Get Started</a>
+            <a href="intro.html" class="btn-primary">🚀 Quickstart Guide</a>
             <a href="tour.html" class="btn-secondary">🧭 Guided Tour</a>
+            <a href="cli/ask.html" class="btn-secondary">💬 Ask in Plain Language</a>
             <a href="architecture/graph.html" class="btn-secondary">🕸️ Visual Explorer</a>
-            <a href="guides/change-maker-workflow.html" class="btn-secondary">📖 Developer Workflows</a>
           </div>
 
           <!-- Quickstart Terminal Card -->
@@ -74,92 +74,105 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
               <div class="terminal-dot dot-red"></div>
               <div class="terminal-dot dot-yellow"></div>
               <div class="terminal-dot dot-green"></div>
-              <div class="terminal-title">Quickstart in 4 Steps — Terminal</div>
+              <div class="terminal-title">Quickstart in 3 Steps — Terminal</div>
             </div>
             <div class="terminal-body">
               <div style="color: #6b7280;"># 1. Install gira CLI binary</div>
               <div><span style="color: #38bdf8;">go</span> install github.com/EduardoShibukawa/gira-g/cmd/gira@latest</div>
               <br/>
-              <div style="color: #6b7280;"># 2. Initialize and index your repository</div>
+              <div style="color: #6b7280;"># 2. Index your repository (sub-millisecond, zero-token fast pass)</div>
               <div><span style="color: #38bdf8;">gira</span> init .</div>
               <br/>
-              <div style="color: #6b7280;"># 3. Explore entrypoints or inspect impact deterministically</div>
+              <div style="color: #6b7280;"># 3. Explore entrypoints or ask questions in plain language</div>
               <div><span style="color: #38bdf8;">gira</span> tour --format md</div>
-              <br/>
-              <div style="color: #6b7280;"># 4. Generate living documentation suite & interactive Cytoscape graph</div>
-              <div><span style="color: #38bdf8;">gira</span> docs --output ./build</div>
             </div>
           </div>
         </div>
 
         <hr/>
 
-        <!-- The Surgical Scalpel Mental Model -->
-        <h2 class="section-heading-center">The "Surgical Scalpel" Paradigm</h2>
+        <!-- 3 Real Scenarios in Your Daily Workflow -->
+        <h2 class="section-heading-center">3 Real Scenarios in Your Daily Workflow</h2>
         <p class="section-subheading-center">
-          Traditional tools dump whole files into LLM prompts or rely on imprecise regex heuristics. 
-          Gira-G provides exact surgical precision across three distinct phases.
+          Instead of memorizing dozens of CLI commands, here is how Gira-G solves everyday challenges:
         </p>
 
         <div class="scalpel-steps">
           <div class="scalpel-step">
-            <div class="scalpel-num">Phase 1</div>
-            <div class="scalpel-title">Deterministic AST Extraction</div>
+            <div class="scalpel-num">Scenario 1</div>
+            <div class="scalpel-title">Day 1 Onboarding</div>
             <p class="scalpel-desc">
-              Native Go AST and multi-layer static parsers extract symbols, call hierarchies, and cross-file locators without relying on language servers.
+              Don't spend weeks reading 50,000 lines of code. Get an immediate mental model of key domains, 
+              tour entrypoints, and query the architecture in plain language with <code>gira tour</code>.
             </p>
           </div>
           <div class="scalpel-step">
-            <div class="scalpel-num">Phase 2</div>
-            <div class="scalpel-title">Architectural Clustering</div>
+            <div class="scalpel-num">Scenario 2</div>
+            <div class="scalpel-title">Refactoring with Confidence</div>
             <p class="scalpel-desc">
-              Import centrality scoring and graph algorithms partition packages into 6 resilient architectural domains with enforced invariants.
+              Before modifying a shared contract or function, compute its exact blast radius across all packages 
+              with <code>gira impact &lt;node_id&gt;</code> to know what will break before you commit.
             </p>
           </div>
           <div class="scalpel-step">
-            <div class="scalpel-num">Phase 3</div>
-            <div class="scalpel-title">Surgical Action & Verification</div>
+            <div class="scalpel-num">Scenario 3</div>
+            <div class="scalpel-title">AI Pair Programming (Cursor / Claude)</div>
             <p class="scalpel-desc">
-              Subagent context budgets, AST modifications preserving code indentation, and automated quality gates guarantee zero regressions.
+              Deliver byte-exact code slices to AI coding agents via <code>gira slice &lt;node_id&gt;</code>. 
+              Save 95%% of token budget with zero hallucinations and exact line locators.
             </p>
           </div>
         </div>
 
         <hr/>
 
-        <!-- 4 Core Pillars -->
-        <h2 class="section-heading-center">Architectural Pillars</h2>
+        <!-- The 5 Core Pillars -->
+        <h2 class="section-heading-center">The 5 Core Pillars of Gira-G</h2>
         <p class="section-subheading-center">
-          Engineered for cognitive density, machine readability, and navigational clarity.
+          Engineered to bridge deterministic code facts with human business intent.
         </p>
 
         <div class="pillar-grid">
           <div class="pillar-card">
             <div class="pillar-icon">⚡</div>
-            <div class="pillar-title">Zero-Token Fast Pass</div>
+            <div class="pillar-title">1. Deterministic Core</div>
             <p class="pillar-desc">
-              Resolve dependencies, impact radius, callers, and code slices in under 5 milliseconds without expending LLM tokens.
+              Native Go AST and static analyzers extract symbols, callers, and contracts in &lt;5ms with zero token cost.
             </p>
           </div>
           <div class="pillar-card">
-            <div class="pillar-icon">🕸️</div>
-            <div class="pillar-title">Interactive Visual Explorer</div>
+            <div class="pillar-icon">📝</div>
+            <div class="pillar-title">2. Non-Deterministic Context</div>
             <p class="pillar-desc">
-              Cytoscape spring-physics engine visualizing package communities, import topology, and real-time caller/callee inspection drawers.
+              Ingests human specifications, tasks, ADRs, and business goals to explain the "Why" behind the code.
             </p>
           </div>
           <div class="pillar-card">
-            <div class="pillar-icon">🏛️</div>
-            <div class="pillar-title">Living Architecture Suite</div>
+            <div class="pillar-icon">⚖️</div>
+            <div class="pillar-title">3. SYNC &amp; Drift Proofing</div>
             <p class="pillar-desc">
-              Self-updating Mermaid sequence flows and dependency diagrams with responsive viewports, zoom controls, and Fullscreen Lightbox modals.
+              Connects code reality with architectural intent using Merkle proofs, enforcing strict CI gate verification.
             </p>
           </div>
           <div class="pillar-card">
-            <div class="pillar-icon">🤖</div>
-            <div class="pillar-title">Dual-Surface Agent Parity</div>
+            <div class="pillar-icon">📚</div>
+            <div class="pillar-title">4. Triple Surface Docs</div>
             <p class="pillar-desc">
-              Human CLI and AI Model Context Protocol (MCP) share the identical AST facts, token budgets, and governance gate validations.
+              Clean web portal for humans, versioned ARCHITECTURE.md for repos, and surgical MCP slices for AI agents.
+            </p>
+          </div>
+          <div class="pillar-card">
+            <div class="pillar-icon">💬</div>
+            <div class="pillar-title">5. Conversational Query</div>
+            <p class="pillar-desc">
+              Query architecture and blast radius in plain natural language with <code>gira ask</code> and instant Mermaid diagrams.
+            </p>
+          </div>
+          <div class="pillar-card">
+            <div class="pillar-icon">🛡️</div>
+            <div class="pillar-title">CI Governance Guardian</div>
+            <p class="pillar-desc">
+              Run <code>gira gate-lint --strict</code> in automated pipelines to prevent architectural erosion before merging.
             </p>
           </div>
         </div>
@@ -248,10 +261,11 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
         <div style="margin-top: 3rem; padding: 2rem; background: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); text-align: center;">
           <h3 style="margin-top: 0; margin-bottom: 0.75rem;">Ready to explore?</h3>
           <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-            Take the guided tour through the 6 core architectural stages or launch the interactive Visual Explorer.
+            Take the guided tour through key components or query your architecture in plain language.
           </p>
           <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
             <a href="tour.html" class="btn-primary">🧭 Start Guided Tour</a>
+            <a href="cli/ask.html" class="btn-secondary">💬 Try gira ask</a>
             <a href="architecture/graph.html" class="btn-secondary">🕸️ Open Visual Explorer</a>
             <a href="intro.html" class="btn-secondary">📖 Read Documentation</a>
           </div>
@@ -261,8 +275,8 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
       <aside class="site-toc">
         <div class="toc-title">On this page</div>
         <ul class="toc-list">
-          <li class="toc-item level-2"><a href="#the-surgical-scalpel-paradigm" class="toc-link">The Surgical Scalpel</a></li>
-          <li class="toc-item level-2"><a href="#architectural-pillars" class="toc-link">Architectural Pillars</a></li>
+          <li class="toc-item level-2"><a href="#3-real-scenarios-in-your-daily-workflow" class="toc-link">3 Real Scenarios</a></li>
+          <li class="toc-item level-2"><a href="#the-5-core-pillars-of-gira-g" class="toc-link">5 Core Pillars</a></li>
           <li class="toc-item level-2"><a href="#living-architecture-overview" class="toc-link">Living Architecture</a></li>
           <li class="toc-item level-2"><a href="#ready-to-explore" class="toc-link">Next Steps</a></li>
         </ul>
