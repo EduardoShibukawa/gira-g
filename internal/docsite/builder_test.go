@@ -209,4 +209,37 @@ func TestDocsiteBuilder_DynamicProjectAndReadmeFallback(t *testing.T) {
 	if !strings.Contains(indexStr, "LedgerBlock") || !strings.Contains(indexStr, "VerifierEval") {
 		t.Errorf("expected dynamic MacroMap nodes in mermaid diagram, got:\n%s", indexStr)
 	}
+
+	// 4. Verify Landing page does NOT leak Gira-G hardcoded marketing
+	if strings.Contains(indexStr, "The 5 Core Pillars of Gira-G") {
+		t.Errorf("index.html for external target must NOT contain 'The 5 Core Pillars of Gira-G'")
+	}
+	if strings.Contains(indexStr, "3 Real Scenarios in Your Daily Workflow") {
+		t.Errorf("index.html for external target must NOT contain '3 Real Scenarios in Your Daily Workflow'")
+	}
+	if strings.Contains(indexStr, "gira impact") {
+		t.Errorf("index.html for external target must NOT contain 'gira impact'")
+	}
+	if !strings.Contains(indexStr, "System Architecture &amp; Core Domains") {
+		t.Errorf("expected 'System Architecture &amp; Core Domains' in index.html")
+	}
+
+	// 5. Verify Tour page is tailored to external target, not Gira-G internal files
+	tourContent, err := os.ReadFile(filepath.Join(outDir, "tour.html"))
+	if err != nil {
+		t.Fatalf("failed to read tour.html: %v", err)
+	}
+	tourStr := string(tourContent)
+	if strings.Contains(tourStr, "cmd/gira/main.go") {
+		t.Errorf("tour.html for external target must NOT contain 'cmd/gira/main.go'")
+	}
+	if strings.Contains(tourStr, "internal/slices/engine.go") {
+		t.Errorf("tour.html for external target must NOT contain 'internal/slices/engine.go'")
+	}
+	if !strings.Contains(tourStr, "Task Contracts &amp; Formal Proofs") && !strings.Contains(tourStr, "Task Contracts & Formal Proofs") {
+		t.Errorf("expected P-Ingá tour step in tour.html, got:\n%s", tourStr)
+	}
+	if !strings.Contains(tourStr, "Step 1 of 5") {
+		t.Errorf("expected 'Step 1 of 5' in tour.html, got:\n%s", tourStr)
+	}
 }

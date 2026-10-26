@@ -64,11 +64,7 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 	isDogfoodOrSelf := targetName == "gira-g" || strings.Contains(strings.ToLower(targetName), "dogfood")
 
 	if title == "Gira-G Architecture Harness" && targetName != "" && !isDogfoodOrSelf {
-		if targetDesc != "" {
-			title = targetDesc
-		} else {
-			title = targetName
-		}
+		title = docsite.FormatProjectTitle(targetName)
 	}
 
 	tagline := targetDesc

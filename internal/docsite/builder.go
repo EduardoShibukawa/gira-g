@@ -528,12 +528,14 @@ func (b *Builder) writeSearchIndex() error {
 	})
 
 	// Add Guided Tour to search index
+	tourSteps := generateTourSteps(b.Config, b.NavGroups)
+	tourExcerpt := fmt.Sprintf("A curated topological walkthrough of %s's architecture in %d steps.", b.Config.Title, len(tourSteps))
 	index = append(index, SearchDoc{
 		ID:       "tour",
 		Title:    "Guided Architectural Tour",
 		Section:  "Getting Started",
 		URL:      "tour.html",
-		Excerpt:  "A curated topological walkthrough of Gira-G's architecture in 6 steps from entrypoints down to storage and governance.",
+		Excerpt:  tourExcerpt,
 		Keywords: "tour guided walkthrough tutorial architecture",
 	})
 
