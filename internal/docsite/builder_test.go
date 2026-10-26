@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 func TestParseMarkdown(t *testing.T) {
@@ -137,5 +139,74 @@ func TestDocsiteBuilder_Mock(t *testing.T) {
 	}
 	if !strings.Contains(tourStr, "Step 6 of 6") {
 		t.Errorf("tour.html missing Step 6 of 6")
+	}
+}
+
+func TestDocsiteBuilder_DynamicProjectAndReadmeFallback(t *testing.T) {
+	tmpDir := t.TempDir()
+	outDir := filepath.Join(tmpDir, "out")
+
+	// Notice NO docs/intro.md, only README.md
+	_ = os.WriteFile(filepath.Join(tmpDir, "README.md"), []byte("# P-Inga Formal Verification Engine\nWelcome to P-Inga"), 0644)
+	_ = os.MkdirAll(filepath.Join(tmpDir, "specs"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "specs", "invariants.md"), []byte("# Architectural Invariants\nRules"), 0644)
+
+	mm := domain.NewMacroMap("p-inga")
+	mm.Nodes = []domain.Node{
+		{ID: "node:ledger:block", Name: "LedgerBlock", Kind: domain.NodeContract},
+		{ID: "node:verifier:eval", Name: "VerifierEval", Kind: domain.NodeService},
+	}
+	mm.Relationships = []domain.Relationship{
+		{ID: "rel:1", SourceID: "node:verifier:eval", TargetID: "node:ledger:block", Verb: domain.VerbVerifies},
+	}
+
+	cfg := &SiteConfig{
+		Title:      "P-Ingá Engine",
+		Tagline:    "Formal Verification & Deterministic Execution",
+		TargetName: "p-inga",
+		LogoLetter: "P",
+		GitHubURL:  "https://github.com/EduardoShibukawa/p-inga",
+		RepoRoot:   tmpDir,
+		OutputDir:  outDir,
+		MacroMap:   mm,
+	}
+
+	b := NewBuilder(cfg)
+	if err := b.Build(); err != nil {
+		t.Fatalf("b.Build() failed: %v", err)
+	}
+
+	// 1. Verify intro.html was generated from README.md
+	introContent, err := os.ReadFile(filepath.Join(outDir, "intro.html"))
+	if err != nil {
+		t.Fatalf("expected intro.html to be generated from README.md fallback: %v", err)
+	}
+	if !strings.Contains(string(introContent), "P-Inga Formal Verification Engine") {
+		t.Errorf("expected README content in intro.html, got:\n%s", string(introContent))
+	}
+
+	// 2. Verify specs/invariants.html was generated
+	specsContent, err := os.ReadFile(filepath.Join(outDir, "specs", "invariants.html"))
+	if err != nil {
+		t.Fatalf("expected specs/invariants.html to be generated: %v", err)
+	}
+	if !strings.Contains(string(specsContent), "Architectural Invariants") {
+		t.Errorf("expected specs content in specs/invariants.html")
+	}
+
+	// 3. Verify Landing page contains dynamic branding 'P', title, and dynamic mermaid diagram
+	indexContent, err := os.ReadFile(filepath.Join(outDir, "index.html"))
+	if err != nil {
+		t.Fatalf("failed to read index.html: %v", err)
+	}
+	indexStr := string(indexContent)
+	if !strings.Contains(indexStr, `<div class="brand-logo">P</div>`) {
+		t.Errorf("expected brand-logo 'P' in index.html, got:\n%s", indexStr)
+	}
+	if !strings.Contains(indexStr, "P-Ingá Engine") {
+		t.Errorf("expected title 'P-Ingá Engine' in index.html")
+	}
+	if !strings.Contains(indexStr, "LedgerBlock") || !strings.Contains(indexStr, "VerifierEval") {
+		t.Errorf("expected dynamic MacroMap nodes in mermaid diagram, got:\n%s", indexStr)
 	}
 }

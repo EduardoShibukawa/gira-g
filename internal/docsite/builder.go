@@ -58,6 +58,9 @@ func (b *Builder) Build() error {
 			b.MacroMap = mm
 			b.Arch = architecture.ClusterMacroMap(mm)
 		}
+	} else if b.Config.MacroMap != nil {
+		b.MacroMap = b.Config.MacroMap
+		b.Arch = architecture.ClusterMacroMap(b.Config.MacroMap)
 	}
 	if b.Arch == nil {
 		b.Arch = architecture.ClusterLocalRepository(pkgs)
@@ -97,6 +100,12 @@ func (b *Builder) Build() error {
 		return err
 	}
 	if err := os.MkdirAll(filepath.Join(b.Config.OutputDir, "prior-art"), 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(b.Config.OutputDir, "specs"), 0755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(b.Config.OutputDir, "docs"), 0755); err != nil {
 		return err
 	}
 
@@ -160,10 +169,18 @@ func (b *Builder) Build() error {
 func (b *Builder) scanPages(repoRoot string) error {
 	var pages []*Page
 
-	// 1. Intro Page (docs/intro.md)
+	// 1. Intro Page (docs/intro.md with README.md fallback)
 	introPath := filepath.Join(repoRoot, "docs", "intro.md")
-	if data, err := os.ReadFile(introPath); err == nil {
-		page, err := ParseMarkdown(data, "Introduction")
+	introData, err := os.ReadFile(introPath)
+	if err != nil {
+		readmePath := filepath.Join(repoRoot, "README.md")
+		if rData, rErr := os.ReadFile(readmePath); rErr == nil {
+			introData = rData
+			introPath = readmePath
+		}
+	}
+	if len(introData) > 0 {
+		page, err := ParseMarkdown(introData, "Introduction")
 		if err == nil {
 			page.ID = "intro"
 			page.URL = "intro.html"
@@ -231,6 +248,57 @@ func (b *Builder) scanPages(repoRoot string) error {
 		}
 	}
 
+	// 5. Scan specs/ directory if present
+	specsDir := filepath.Join(repoRoot, "specs")
+	if entries, err := os.ReadDir(specsDir); err == nil {
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+				continue
+			}
+			fpath := filepath.Join(specsDir, e.Name())
+			data, err := os.ReadFile(fpath)
+			if err != nil {
+				continue
+			}
+			baseName := strings.TrimSuffix(e.Name(), ".md")
+			fallbackTitle := strings.Title(strings.ReplaceAll(baseName, "-", " "))
+			page, err := ParseMarkdown(data, fallbackTitle)
+			if err != nil {
+				continue
+			}
+			page.ID = "specs/" + baseName
+			page.URL = "specs/" + baseName + ".html"
+			page.Section = "Specifications"
+			page.SourcePath = fpath
+			pages = append(pages, page)
+		}
+	}
+
+	// 6. Scan direct files in docs/ (e.g. SYSTEM_INTEGRATION_SPEC.md)
+	if docsEntries, err := os.ReadDir(filepath.Join(repoRoot, "docs")); err == nil {
+		for _, e := range docsEntries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || e.Name() == "intro.md" {
+				continue
+			}
+			fpath := filepath.Join(repoRoot, "docs", e.Name())
+			data, err := os.ReadFile(fpath)
+			if err != nil {
+				continue
+			}
+			baseName := strings.TrimSuffix(e.Name(), ".md")
+			fallbackTitle := strings.Title(strings.ReplaceAll(baseName, "-", " "))
+			page, err := ParseMarkdown(data, fallbackTitle)
+			if err != nil {
+				continue
+			}
+			page.ID = "docs/" + baseName
+			page.URL = "docs/" + baseName + ".html"
+			page.Section = "Specifications & References"
+			page.SourcePath = fpath
+			pages = append(pages, page)
+		}
+	}
+
 	b.Pages = pages
 	return nil
 }
@@ -238,13 +306,15 @@ func (b *Builder) scanPages(repoRoot string) error {
 func (b *Builder) buildNavGroups() {
 	groupMap := make(map[string][]NavItem)
 	sectionOrders := map[string]int{
-		"Getting Started":              1,
-		"Guides & Workflows":           2,
-		"CLI Reference":                3,
-		"Core Concepts":                4,
-		"Architecture":                 5,
-		"Architecture Decisions (ADR)": 6,
-		"Prior Art & Research":         7,
+		"Getting Started":               1,
+		"Guides & Workflows":            2,
+		"CLI Reference":                 3,
+		"Core Concepts":                 4,
+		"Architecture":                  5,
+		"Architecture Decisions (ADR)":  6,
+		"Specifications":                7,
+		"Specifications & References":   8,
+		"Prior Art & Research":          9,
 	}
 
 	// Always add Home and Guided Tour to Getting Started
@@ -366,7 +436,7 @@ func (b *Builder) renderPageHTML(p *Page) (string, error) {
   <header class="site-header">
     <div style="display: flex; align-items: center; gap: 1rem;">
       <a href="%sindex.html" class="brand">
-        <div class="brand-logo">G</div>
+        <div class="brand-logo">%s</div>
         <span>%s</span>
       </a>
       <span class="version-badge">%s</span>
@@ -424,6 +494,7 @@ func (b *Builder) renderPageHTML(p *Page) (string, error) {
 		p.Description,
 		prefix,
 		prefix,
+		logoLetter(b.Config),
 		b.Config.Title,
 		b.Config.Version,
 		prefix,

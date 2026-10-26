@@ -208,7 +208,7 @@ gira docs --output ./build`,
   <header class="site-header">
     <div style="display: flex; align-items: center; gap: 1rem;">
       <a href="index.html" class="brand">
-        <div class="brand-logo">G</div>
+        <div class="brand-logo">%s</div>
         <span>%s</span>
       </a>
       <span class="version-badge">%s</span>
@@ -242,7 +242,7 @@ gira docs --output ./build`,
 
         <h1 style="border: none; margin-bottom: 0.5rem;">Guided Architectural Tour</h1>
         <p style="font-size: 1.15rem; color: #9ca3af; margin-bottom: 2.5rem;">
-          Welcome to the topological walkthrough of Gira-G. This 6-step tour traverses the codebase 
+          Welcome to the topological walkthrough of %s. This 6-step tour traverses the codebase 
           from entrypoints down to the storage and governance layers, highlighting design invariants 
           and key component implementations.
         </p>
@@ -277,10 +277,12 @@ gira docs --output ./build`,
 </body>
 </html>`,
 		config.Title,
+		logoLetter(config),
 		config.Title,
 		config.Version,
 		config.GitHubURL,
 		navHTML,
+		config.Title,
 		stepsHTML,
 	)
 
