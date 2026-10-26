@@ -211,6 +211,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "architecture":
 		return runArchitecture(rest, stdout, stderr)
 
+	case "docs":
+		return runDocs(rest, stdout, stderr)
+
 	case "view":
 		return runView(rest, stdout, stderr)
 
@@ -274,6 +277,7 @@ Commands:
   add <file> <container> [--body <body>]                    Deterministic insertion of a new member into a class/interface
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   architecture [--format md|html|json] [--output <path>] [--index <p>] Generate living architecture reference (Spring Reference style)
+  docs [--output <dir>] [--index <path>] [--serve <port>]   Generate complete modern project documentation site and interactive visual explorer
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)

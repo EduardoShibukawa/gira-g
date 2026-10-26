@@ -25,11 +25,11 @@ jobs:
       - name: Set up mise toolchain
         uses: jdx/mise-action@v5
 
-      - name: Build living architecture documentation
+      - name: Build living architecture and complete documentation portal
         run: |
           mkdir -p build
           go run ./cmd/gira architecture --output ARCHITECTURE.md
-          go run ./cmd/gira view --no-open --output build
+          go run ./cmd/gira docs --output build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
