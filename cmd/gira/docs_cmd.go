@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/EduardoShibukawa/gira-g/internal/docsite"
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
 func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
@@ -44,14 +49,76 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 		absOutput = outputDir
 	}
 
+	manifestPath := findProjectManifest()
+	var targetName string
+	var targetDesc string
+	if manifestPath != "" {
+		if raw, err := os.ReadFile(manifestPath); err == nil {
+			if m, err := manifest.Parse(raw); err == nil {
+				targetName = m.TargetSystem.Name
+				targetDesc = m.TargetSystem.Description
+			}
+		}
+	}
+
+	isDogfoodOrSelf := targetName == "gira-g" || strings.Contains(strings.ToLower(targetName), "dogfood")
+
+	if title == "Gira-G Architecture Harness" && targetName != "" && !isDogfoodOrSelf {
+		if targetDesc != "" {
+			title = targetDesc
+		} else {
+			title = targetName
+		}
+	}
+
+	tagline := targetDesc
+	if tagline == "" || isDogfoodOrSelf {
+		tagline = "Deterministic Code Intelligence & Living Architecture"
+	}
+
+	logoLetter := "G"
+	if targetName != "" && !isDogfoodOrSelf {
+		runes := []rune(targetName)
+		if len(runes) > 0 {
+			logoLetter = strings.ToUpper(string(runes[0]))
+		}
+	}
+
+	githubURL := "https://github.com/EduardoShibukawa/gira-g"
+	if remote := gitRemoteURL(root); remote != "" {
+		if web := gitToWebURL(remote); web != "" {
+			githubURL = web
+		}
+	}
+
+	var mm *domain.MacroMap
+	if indexPath != "" {
+		st := store.NewStore(filepath.Dir(indexPath))
+		if loaded, err := st.LoadFile(indexPath); err == nil {
+			mm = loaded
+		}
+	} else if manifestPath != "" {
+		res, err := store.Resolve(context.Background(), store.ResolveOptions{
+			ManifestPath: manifestPath,
+			WarnWriter:   io.Discard,
+		})
+		if err == nil && res != nil {
+			mm = res.MacroMap
+		}
+	}
+
 	cfg := &docsite.SiteConfig{
-		Title:     title,
-		Tagline:   "Deterministic Code Intelligence & Living Architecture",
-		Version:   "v0.3.0",
-		GitHubURL: "https://github.com/EduardoShibukawa/gira-g",
-		RepoRoot:  root,
-		OutputDir: absOutput,
-		IndexPath: indexPath,
+		Title:      title,
+		Tagline:    tagline,
+		Version:    "v0.3.0",
+		GitHubURL:  githubURL,
+		LogoLetter: logoLetter,
+		TargetName: targetName,
+		TargetDesc: targetDesc,
+		RepoRoot:   root,
+		OutputDir:  absOutput,
+		IndexPath:  indexPath,
+		MacroMap:   mm,
 	}
 
 	builder := docsite.NewBuilder(cfg)
@@ -75,4 +142,13 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	return nil
+}
+
+func gitToWebURL(raw string) string {
+	u := strings.TrimSpace(raw)
+	if strings.HasPrefix(u, "git@github.com:") {
+		u = "https://github.com/" + strings.TrimPrefix(u, "git@github.com:")
+	}
+	u = strings.TrimSuffix(u, ".git")
+	return u
 }

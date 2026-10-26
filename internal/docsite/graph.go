@@ -214,7 +214,7 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
   <header class="site-header">
     <div style="display: flex; align-items: center; gap: 1rem;">
       <a href="../index.html" class="brand">
-        <div class="brand-logo">G</div>
+        <div class="brand-logo">%s</div>
         <span>%s</span>
       </a>
       <span class="version-badge">%s</span>
@@ -511,6 +511,7 @@ func GenerateInteractiveGraphHTML(config *SiteConfig, mm *domain.MacroMap, arch 
 </body>
 </html>`,
 		config.Title,
+		logoLetter(config),
 		config.Title,
 		config.Version,
 		config.GitHubURL,

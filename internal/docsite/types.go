@@ -2,6 +2,8 @@ package docsite
 
 import (
 	"html/template"
+
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // Page represents a rendered documentation page.
@@ -56,12 +58,16 @@ type SearchDoc struct {
 
 // SiteConfig holds site-wide configuration.
 type SiteConfig struct {
-	Title       string
-	Tagline     string
-	Version     string
-	GitHubURL   string
-	BaseURL     string
-	RepoRoot    string
-	OutputDir   string
-	IndexPath   string
+	Title      string
+	Tagline    string
+	Version    string
+	GitHubURL  string
+	LogoLetter string
+	TargetName string
+	TargetDesc string
+	BaseURL    string
+	RepoRoot   string
+	OutputDir  string
+	IndexPath  string
+	MacroMap   *domain.MacroMap
 }

@@ -2,10 +2,19 @@ package docsite
 
 import (
 	"fmt"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
 // GenerateLandingPageHTML renders a modern, human-centric, full-width landing page for index.html.
 func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
+	letter := logoLetter(config)
+	heroTitle, heroDesc, terminalBody := buildHeroContent(config)
+	mermaidSrc := buildMermaidArchitectureDiagram(config)
+
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,7 +29,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
   <header class="site-header">
     <div style="display: flex; align-items: center; gap: 1rem;">
       <a href="index.html" class="brand">
-        <div class="brand-logo">G</div>
+        <div class="brand-logo">%s</div>
         <span>%s</span>
       </a>
       <span class="version-badge">%s</span>
@@ -47,11 +56,9 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
       <div class="hero-badge">
         <span>⚡</span> The Architectural GPS &amp; Surgical Scalpel for Your Codebase
       </div>
-      <h1 class="landing-title hero-title">Understand Any Codebase in 2 Minutes</h1>
+      <h1 class="landing-title hero-title">%s</h1>
       <p class="landing-subtitle">
-        Know what breaks before you touch a line of code, eliminate onboarding fatigue, 
-        and feed AI agents with zero-hallucination context. Gira-G unites deterministic AST reality 
-        with human business intent into a unified living architecture.
+        %s
       </p>
       <div class="hero-actions">
         <a href="intro.html" class="btn-primary">🚀 Quickstart Guide</a>
@@ -69,14 +76,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
           <div class="terminal-title">Get Started in 3 Steps — Zero Egress, Local First</div>
         </div>
         <div class="terminal-body">
-          <div style="color: #6b7280;"># 1. Install gira CLI binary</div>
-          <div><span style="color: #38bdf8;">go</span> install github.com/EduardoShibukawa/gira-g/cmd/gira@latest</div>
-          <br/>
-          <div style="color: #6b7280;"># 2. Index your repository (sub-millisecond, zero-token local AST pass)</div>
-          <div><span style="color: #38bdf8;">gira</span> init .</div>
-          <br/>
-          <div style="color: #6b7280;"># 3. Explore entrypoints or query architecture in plain language</div>
-          <div><span style="color: #38bdf8;">gira</span> ask &quot;Qual o objetivo deste microsserviço?&quot; --format caveman</div>
+%s
         </div>
       </div>
     </section>
@@ -105,58 +105,55 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
           <div class="scenario-badge">Scenario 2</div>
           <h3 class="scenario-title">Refactoring with Confidence</h3>
           <p class="scenario-text">
-            Before modifying a shared contract or function, compute its exact blast radius across all packages 
-            to know what will break before you commit. Zero surprises in production.
+            Before touching shared code, calculate its exact blast radius across callers and downstream packages. 
+            Know what will break before committing.
           </p>
           <div class="scenario-command">gira impact &lt;node_id&gt;</div>
         </div>
 
         <div class="scenario-card">
           <div class="scenario-badge">Scenario 3</div>
-          <h3 class="scenario-title">AI Pair Programming (Cursor / Claude)</h3>
+          <h3 class="scenario-title">AI Agent Pair Programming</h3>
           <p class="scenario-text">
-            Feed coding agents pure AST structural facts with <code>--format caveman</code>. 
-            Reduce prompt token overhead by 85%%, eliminate LLM hallucinations, and keep agents laser-focused on actual code boundaries.
+            Give Cursor, Claude, or Hermes surgical AST slices instead of bloating context windows. 
+            Save 85%% token budget with deterministic line locators.
           </p>
-          <div class="scenario-command">gira slice &lt;node_id&gt; --format caveman</div>
+          <div class="scenario-command">gira ask "query" --format caveman</div>
         </div>
       </div>
     </section>
 
-    <!-- The 5 Core Pillars of Gira-G -->
+    <!-- The 5 Core Pillars -->
     <section class="landing-section">
       <div class="section-header-center">
         <h2 class="section-title">The 5 Core Pillars of Gira-G</h2>
         <p class="section-desc">
-          Bridging compiler precision with human intent and AI agent execution.
+          Engineered to bridge deterministic code reality with human business intent.
         </p>
       </div>
 
       <div class="pillars-grid">
         <div class="pillar-card">
-          <div class="pillar-icon">🔬</div>
-          <h3 class="pillar-title">1. Deterministic Truth</h3>
+          <div class="pillar-icon">⚡</div>
+          <h3 class="pillar-title">1. Deterministic Core</h3>
           <p class="pillar-text">
-            Compiler-grade AST extraction (Go, Python, TypeScript) maps actual imports, calls, HTTP routes, and contracts. 
-            100%% reproducible, zero hallucinations, zero token cost.
+            Native Go AST analysis indexes symbols, callers, and contracts in &lt;5ms. Zero external dependencies, zero LLM hallucination risk.
           </p>
         </div>
 
         <div class="pillar-card">
           <div class="pillar-icon">🧠</div>
-          <h3 class="pillar-title">2. Non-Deterministic Understanding</h3>
+          <h3 class="pillar-title">2. Context Synthesis</h3>
           <p class="pillar-text">
-            Extracts business context beyond raw code: ADRs, design specs, OpenAPI contracts, and task plans. 
-            Local JEV routing provides semantic classification without requiring external API keys.
+            Ingests specifications, architecture decisions (ADRs), and business context to explain the structural "Why" behind the code.
           </p>
         </div>
 
         <div class="pillar-card">
-          <div class="pillar-icon">🔄</div>
-          <h3 class="pillar-title">3. Continuous Reconciliation</h3>
+          <div class="pillar-icon">⚖️</div>
+          <h3 class="pillar-title">3. Drift Prevention</h3>
           <p class="pillar-text">
-            Detects architectural drift between code reality and declared specs before merging. 
-            Automated CI gatekeeper (<code>gira gate-lint --strict</code>) blocks illegal cross-domain imports.
+            Cryptographic SHA-256 Merkle proofs ensure architecture documentation never diverges from code reality. Strict CI gatekeeper (<code>gira gate-lint --strict</code>) blocks illegal cross-domain imports.
           </p>
         </div>
 
@@ -185,7 +182,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
       <div class="section-header-center">
         <h2 class="section-title">Living Architecture Overview</h2>
         <p class="section-desc">
-          Deterministic 4-layer pipeline turning raw source code into high-fidelity architectural intelligence.
+          Deterministic architectural topology extracted directly from this codebase.
         </p>
       </div>
 
@@ -202,39 +199,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
         </div>
         <div class="mermaid-viewport">
           <div class="mermaid-inner">
-            <pre class="mermaid">graph TD
-  subgraph Entrypoints["Layer 1: Entrypoints"]
-    CLI["CLI Interface (cmd/gira)"]
-    MCP["MCP JSON-RPC Server (internal/mcp)"]
-    ASK["Plain Language Ask (internal/ask)"]
-  end
-
-  subgraph Engine["Layer 2: Engine & Slices"]
-    ENG["Slices Engine (internal/slices)"]
-    ARCH["Architecture Engine (internal/architecture)"]
-    JEV["Semantic Classifier (internal/jev)"]
-  end
-
-  subgraph AST["Layer 3: AST & Extraction"]
-    MANIP["AST Manipulator (internal/manipulator)"]
-    EXT["Language Extractors (internal/extractors)"]
-  end
-
-  subgraph Store["Layer 4: Storage & Persistence"]
-    DOM["MacroMap Graph (internal/domain)"]
-    ST["Deterministic Store (internal/store)"]
-  end
-
-  CLI --> ENG
-  CLI --> MANIP
-  CLI --> ASK
-  MCP --> ENG
-  ASK --> JEV
-  ASK --> DOM
-  ENG --> DOM
-  ARCH --> DOM
-  EXT --> DOM
-  ST --> DOM</pre>
+            <pre class="mermaid">%s</pre>
           </div>
         </div>
       </div>
@@ -279,10 +244,187 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
 		config.Title,
 		config.Tagline,
 		config.Tagline,
+		letter,
 		config.Title,
 		config.Version,
 		config.GitHubURL,
+		heroTitle,
+		heroDesc,
+		terminalBody,
+		mermaidSrc,
 	)
 
 	return html
+}
+
+func logoLetter(config *SiteConfig) string {
+	if config != nil && config.LogoLetter != "" {
+		return config.LogoLetter
+	}
+	return "G"
+}
+
+func buildHeroContent(config *SiteConfig) (string, string, string) {
+	isDogfoodOrSelf := config == nil || config.TargetName == "" || config.TargetName == "gira-g" || strings.Contains(strings.ToLower(config.TargetName), "dogfood")
+	if !isDogfoodOrSelf {
+		title := config.Title
+		if title == "" {
+			title = config.TargetName
+		}
+		desc := config.Tagline
+		if desc == "" {
+			desc = "Living architecture and deterministic contract intelligence powered by Gira-G."
+		} else {
+			desc = fmt.Sprintf("%s. Living architecture and deterministic contract intelligence powered by Gira-G.", desc)
+		}
+		terminal := `          <div style="color: #6b7280;"># 1. Explore system entrypoints and architecture tour</div>
+          <div><span style="color: #38bdf8;">gira</span> tour --format md</div>
+          <br/>
+          <div style="color: #6b7280;"># 2. Ask architectural questions in natural language</div>
+          <div><span style="color: #38bdf8;">gira</span> ask &quot;How does this system operate?&quot;</div>
+          <br/>
+          <div style="color: #6b7280;"># 3. Verify architectural invariants and boundaries</div>
+          <div><span style="color: #38bdf8;">gira</span> gate-lint --strict</div>`
+		return title, desc, terminal
+	}
+
+	title := "Understand Any Codebase in 2 Minutes"
+	desc := "Know what breaks before you touch a line of code, eliminate onboarding fatigue, and feed AI agents with zero-hallucination context. Gira-G unites deterministic AST reality with human business intent into a unified living architecture."
+	terminal := `          <div style="color: #6b7280;"># 1. Install gira CLI binary</div>
+          <div><span style="color: #38bdf8;">go</span> install github.com/EduardoShibukawa/gira-g/cmd/gira@latest</div>
+          <br/>
+          <div style="color: #6b7280;"># 2. Index your repository (sub-millisecond, zero-token local AST pass)</div>
+          <div><span style="color: #38bdf8;">gira</span> init .</div>
+          <br/>
+          <div style="color: #6b7280;"># 3. Explore entrypoints or query architecture in plain language</div>
+          <div><span style="color: #38bdf8;">gira</span> ask &quot;Qual o objetivo deste microsserviço?&quot; --format caveman</div>`
+	return title, desc, terminal
+}
+
+func buildMermaidArchitectureDiagram(config *SiteConfig) string {
+	isDogfoodOrSelf := config == nil || config.TargetName == "" || config.TargetName == "gira-g" || strings.Contains(strings.ToLower(config.TargetName), "dogfood")
+	if isDogfoodOrSelf || config.MacroMap == nil || len(config.MacroMap.Nodes) == 0 {
+		return `graph TD
+  subgraph Entrypoints["Layer 1: Entrypoints"]
+    CLI["CLI Interface (cmd/gira)"]
+    MCP["MCP JSON-RPC Server (internal/mcp)"]
+    ASK["Plain Language Ask (internal/ask)"]
+  end
+
+  subgraph Engine["Layer 2: Engine & Slices"]
+    ENG["Slices Engine (internal/slices)"]
+    ARCH["Architecture Engine (internal/architecture)"]
+    JEV["Semantic Classifier (internal/jev)"]
+  end
+
+  subgraph AST["Layer 3: AST & Extraction"]
+    MANIP["AST Manipulator (internal/manipulator)"]
+    EXT["Language Extractors (internal/extractors)"]
+  end
+
+  subgraph Store["Layer 4: Storage & Persistence"]
+    DOM["MacroMap Graph (internal/domain)"]
+    ST["Deterministic Store (internal/store)"]
+  end
+
+  CLI --> ENG
+  CLI --> MANIP
+  CLI --> ASK
+  MCP --> ENG
+  ASK --> JEV
+  ASK --> DOM
+  ENG --> DOM
+  ARCH --> DOM
+  EXT --> DOM
+  ST --> DOM`
+	}
+
+	mm := config.MacroMap
+	var sb strings.Builder
+	sb.WriteString("graph TD\n")
+
+	groups := make(map[string][]domain.Node)
+	for _, n := range mm.Nodes {
+		grp := string(n.Kind)
+		if len(n.Evidence) > 0 && n.Evidence[0].Locator.Path != "" {
+			parts := strings.Split(filepath.ToSlash(n.Evidence[0].Locator.Path), "/")
+			if len(parts) > 1 {
+				grp = parts[0]
+			}
+		}
+		groups[grp] = append(groups[grp], n)
+	}
+
+	groupKeys := make([]string, 0, len(groups))
+	for k := range groups {
+		groupKeys = append(groupKeys, k)
+	}
+	sort.Strings(groupKeys)
+
+	sanitizedIDs := make(map[string]string)
+	sanitizeID := func(raw string) string {
+		if s, ok := sanitizedIDs[raw]; ok {
+			return s
+		}
+		clean := strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+				return r
+			}
+			return '_'
+		}, raw)
+		if len(clean) > 24 {
+			clean = clean[:24]
+		}
+		sanitizedIDs[raw] = clean
+		return clean
+	}
+
+	shownNodes := make(map[string]bool)
+	maxGroups := 5
+	if len(groupKeys) < maxGroups {
+		maxGroups = len(groupKeys)
+	}
+
+	for i := 0; i < maxGroups; i++ {
+		grp := groupKeys[i]
+		nodes := groups[grp]
+		grpID := sanitizeID("grp_" + grp)
+		sb.WriteString(fmt.Sprintf("  subgraph %s[\"%s\"]\n", grpID, escapeMermaid(grp)))
+		maxN := 4
+		if len(nodes) < maxN {
+			maxN = len(nodes)
+		}
+		for j := 0; j < maxN; j++ {
+			node := nodes[j]
+			nID := sanitizeID(node.ID)
+			shownNodes[node.ID] = true
+			label := node.Name
+			if label == "" {
+				label = node.ID
+			}
+			sb.WriteString(fmt.Sprintf("    %s[\"%s\"]\n", nID, escapeMermaid(label)))
+		}
+		sb.WriteString("  end\n\n")
+	}
+
+	edgeCount := 0
+	for _, rel := range mm.Relationships {
+		if shownNodes[rel.SourceID] && shownNodes[rel.TargetID] && rel.SourceID != rel.TargetID {
+			sID := sanitizeID(rel.SourceID)
+			tID := sanitizeID(rel.TargetID)
+			sb.WriteString(fmt.Sprintf("  %s --> %s\n", sID, tID))
+			edgeCount++
+			if edgeCount >= 15 {
+				break
+			}
+		}
+	}
+
+	return strings.TrimSpace(sb.String())
+}
+
+func escapeMermaid(s string) string {
+	s = strings.ReplaceAll(s, `"`, `'`)
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s
 }
