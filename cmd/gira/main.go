@@ -158,6 +158,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	rest := args[1:]
 
 	switch cmd {
+	case "ask", "query":
+		return runAsk(rest, stdin, stdout, stderr)
+
 	case "version", "--version", "-v":
 		fmt.Fprintf(stdout, "gira %s (commit: %s, date: %s)\n", version, commit, date)
 		return nil
@@ -256,6 +259,7 @@ Usage:
   gira <command> [options] [arguments]
 
 Commands:
+  ask "<question>" [--diagram] [--json] [--index <path>] Query architecture in plain language with local zero-token fallback & Mermaid
   index [manifest] [--output <path>] [--offline] [--cache-dir <dir>] Build Macro Map index from manifest
   init [dir] [--force] [--output <path>] [--offline] [--cache-dir <dir>] Generate gira.yaml from a local repo (HEAD pinned) and index it
   setup [dir] [--force] [--output <path>]                   One-shot setup: init Macro Map + install agent skills + register MCP
