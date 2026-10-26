@@ -228,6 +228,15 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "outline":
 		return runOutline(rest, stdout, stderr)
 
+	case "read":
+		return runReadSymbol(rest, stdout, stderr)
+
+	case "write":
+		return runWriteSymbol(rest, stdout, stderr)
+
+	case "add":
+		return runAddSymbol(rest, stdout, stderr)
+
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
 	}
@@ -256,6 +265,9 @@ Commands:
   skills check --host claude|cursor|agents [--dir <project>] [--hook] Non-mutating drift check for installed host files
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   outline <file> [--format text|json]                       Extract symbols, signatures and line ranges for a file
+  read <file> <symbol>                                      Deterministic reading of a single symbol/function definition
+  write <file> <symbol> [--body <body>]                     Deterministic surgical replacement of a symbol/function AST node
+  add <file> <container> [--body <body>]                    Deterministic insertion of a new member into a class/interface
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
