@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/jev"
 )
 
 // AskResponse represents the structured answer to a human natural language query.
@@ -78,19 +79,19 @@ Exemplos de Perguntas:
 }
 
 func processAskQuery(query string, mm *domain.MacroMap, forceDiagram bool) AskResponse {
+	classification := jev.ClassifyIntent(query)
 	qLower := strings.ToLower(query)
+
 	resp := AskResponse{
-		Query: query,
-		Mode:  "local_deterministic_zero_token",
+		Query:  query,
+		Intent: string(classification.Intent),
+		Mode:   classification.Engine,
 	}
 
-	wantDiagram := forceDiagram || strings.Contains(qLower, "diagram") || strings.Contains(qLower, "fluxo") || strings.Contains(qLower, "flow")
+	wantDiagram := forceDiagram || classification.WantDiagram
 
 	// 1. Purpose / Objective Query
-	if strings.Contains(qLower, "objetivo") || strings.Contains(qLower, "propósito") || strings.Contains(qLower, "proposito") ||
-		strings.Contains(qLower, "purpose") || strings.Contains(qLower, "o que faz") || strings.Contains(qLower, "what is") ||
-		strings.Contains(qLower, "sobre") || strings.Contains(qLower, "visao") || strings.Contains(qLower, "visão") {
-		resp.Intent = "purpose"
+	if classification.Intent == jev.IntentPurpose {
 		resp.Answer = buildPurposeAnswer(mm)
 		if wantDiagram {
 			resp.Diagram = buildOverviewDiagram(mm)
@@ -99,12 +100,7 @@ func processAskQuery(query string, mm *domain.MacroMap, forceDiagram bool) AskRe
 	}
 
 	// 2. Setup / Quickstart Query
-	if strings.Contains(qLower, "utiliz") || strings.Contains(qLower, "usar") || strings.Contains(qLower, " uso") ||
-		strings.Contains(qLower, "inicializ") || strings.Contains(qLower, "iniciar") || strings.Contains(qLower, "inicio") ||
-		strings.Contains(qLower, "início") || strings.Contains(qLower, "setup") || strings.Contains(qLower, "quickstart") ||
-		strings.Contains(qLower, "começar") || strings.Contains(qLower, "começo") || strings.Contains(qLower, "rodar") ||
-		strings.Contains(qLower, "start") || strings.Contains(qLower, "run") || strings.Contains(qLower, "execut") {
-		resp.Intent = "quickstart"
+	if classification.Intent == jev.IntentQuickstart {
 		resp.Answer = buildQuickstartAnswer(mm)
 		if wantDiagram {
 			resp.Diagram = buildQuickstartDiagram()
@@ -113,10 +109,7 @@ func processAskQuery(query string, mm *domain.MacroMap, forceDiagram bool) AskRe
 	}
 
 	// 3. Impact / Blast Radius Query
-	if strings.Contains(qLower, "impacto") || strings.Contains(qLower, "impact") || strings.Contains(qLower, "o que quebra") ||
-		strings.Contains(qLower, "quebrar") || strings.Contains(qLower, "alterar") || strings.Contains(qLower, "mudar") ||
-		strings.Contains(qLower, "blast radius") {
-		resp.Intent = "impact"
+	if classification.Intent == jev.IntentImpact {
 		targetNode := findBestMatchingNode(qLower, mm)
 		if targetNode != nil {
 			resp.MatchedNodes = []string{targetNode.ID}
