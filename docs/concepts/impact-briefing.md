@@ -9,7 +9,6 @@ sidebar_position: 13
 The step, before any edit, in which a person or coding agent works out what a
 proposed change touches.
 
-**Avoid**: pre-change context, analysis, planning
 
 ## Related
 

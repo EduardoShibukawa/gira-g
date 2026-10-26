@@ -93,13 +93,15 @@ func GenerateArchitectureMarkdown(repoRoot string, arch *ClusteredArchitecture, 
 	sb.WriteString("AST nodes, contracts, and packages are clustered into cohesive architectural communities. Within each community, components are classified by graph centrality as **Core Abstractions** (high in-degree hubs) or **Utilities / Leaf Nodes**.\n\n")
 
 	if arch != nil && len(arch.Communities) > 0 {
+		commIdx := 1
 		for _, did := range arch.Domains {
 			comm, ok := arch.Communities[did]
 			if !ok || (len(comm.CoreAbstractions) == 0 && len(comm.Utilities) == 0) {
 				continue
 			}
 
-			sb.WriteString(fmt.Sprintf("### 3.%d %s\n\n", len(sb.String())%5+1, comm.Title))
+			sb.WriteString(fmt.Sprintf("### 3.%d %s\n\n", commIdx, comm.Title))
+			commIdx++
 			sb.WriteString(fmt.Sprintf("**Mission**: %s\n\n", comm.Description))
 
 			if len(comm.Invariants) > 0 {
@@ -119,8 +121,12 @@ func GenerateArchitectureMarkdown(repoRoot string, arch *ClusteredArchitecture, 
 				sb.WriteString("| :--- | :---: | :---: | :---: | :--- |\n")
 				for _, n := range comm.CoreAbstractions {
 					cit := formatCitationLink(repoRoot, n.FileLocator)
-					sb.WriteString(fmt.Sprintf("| [`%s`](%s) | `%s` | **%d** | in:%d / out:%d | %s |\n",
-						n.Name, cit, n.Kind, n.Centrality, n.InDegree, n.OutDegree, cit))
+					locText := n.FileLocator.Path
+					if locText == "" {
+						locText = "locator"
+					}
+					sb.WriteString(fmt.Sprintf("| [`%s`](%s) | `%s` | **%d** | in:%d / out:%d | [`%s`](%s) |\n",
+						n.Name, cit, n.Kind, n.Centrality, n.InDegree, n.OutDegree, locText, cit))
 				}
 				sb.WriteString("\n")
 			}
@@ -144,7 +150,13 @@ func GenerateArchitectureMarkdown(repoRoot string, arch *ClusteredArchitecture, 
 			// Cross-Domain relations
 			if len(comm.CrossDomainEdges) > 0 {
 				sb.WriteString("#### Cross-Domain Mediation\n\n")
+				seenRels := make(map[string]bool)
 				for _, rel := range comm.CrossDomainEdges {
+					key := fmt.Sprintf("%s->%s->%s(%s)", rel.SourceDomain, rel.Verb, rel.TargetDomain, rel.MediatorNode)
+					if seenRels[key] {
+						continue
+					}
+					seenRels[key] = true
 					sb.WriteString(fmt.Sprintf("- `%s` &rarr; **%s** &rarr; `%s` (via `%s`)\n",
 						rel.SourceDomain, rel.Verb, rel.TargetDomain, rel.MediatorNode))
 				}
@@ -202,8 +214,12 @@ func GenerateArchitectureMarkdown(repoRoot string, arch *ClusteredArchitecture, 
 					if tDoc == "" {
 						tDoc = "-"
 					}
-					sb.WriteString(fmt.Sprintf("| [`%s`](%s) | `%s` | %s | %s |\n",
-						t.Name, tCit, t.Kind, tDoc, tCit))
+					locText := t.Locator.Path
+					if locText == "" {
+						locText = "locator"
+					}
+					sb.WriteString(fmt.Sprintf("| [`%s`](%s) | `%s` | %s | [`%s`](%s) |\n",
+						t.Name, tCit, t.Kind, tDoc, locText, tCit))
 				}
 				sb.WriteString("\n")
 			}
@@ -224,21 +240,28 @@ func GenerateArchitectureMarkdown(repoRoot string, arch *ClusteredArchitecture, 
 	return sb.String()
 }
 
+const githubRepoBase = "https://github.com/EduardoShibukawa/gira-g/blob/main"
+
 func formatCitationLink(repoRoot string, loc domain.Locator) string {
 	if loc.Path == "" {
 		return "#"
 	}
-	abs := filepath.Join(repoRoot, loc.Path)
-	slash := filepath.ToSlash(abs)
-	if loc.StartLine > 0 && loc.EndLine > 0 {
-		return fmt.Sprintf("file://%s#L%d-L%d", slash, loc.StartLine, loc.EndLine)
-	} else if loc.StartLine > 0 {
-		return fmt.Sprintf("file://%s#L%d", slash, loc.StartLine)
+	cleanPath := filepath.ToSlash(loc.Path)
+	cleanPath = strings.TrimPrefix(cleanPath, "/")
+
+	if (loc.StartLine > 1 || loc.EndLine > 1) && loc.StartLine > 0 && loc.EndLine >= loc.StartLine {
+		if loc.StartLine == loc.EndLine {
+			return fmt.Sprintf("%s/%s#L%d", githubRepoBase, cleanPath, loc.StartLine)
+		}
+		return fmt.Sprintf("%s/%s#L%d-L%d", githubRepoBase, cleanPath, loc.StartLine, loc.EndLine)
+	} else if loc.StartLine > 1 {
+		return fmt.Sprintf("%s/%s#L%d", githubRepoBase, cleanPath, loc.StartLine)
 	}
-	return "file://" + slash
+	return fmt.Sprintf("%s/%s", githubRepoBase, cleanPath)
 }
 
 func formatFileLink(repoRoot, relPath string) string {
-	abs := filepath.Join(repoRoot, relPath)
-	return "file://" + filepath.ToSlash(abs)
+	cleanPath := filepath.ToSlash(relPath)
+	cleanPath = strings.TrimPrefix(cleanPath, "/")
+	return fmt.Sprintf("%s/%s", githubRepoBase, cleanPath)
 }

@@ -33,7 +33,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainEntrypoints),
 					Action:      "Parses CLI arguments (--body or piped stdin) and verifies target file existence.",
 					Artifact:    "Invocation Parameters",
-					CodeLocator: "file:///cmd/gira/symbol_ops.go#L48-L91",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/cmd/gira/symbol_ops.go#L48-L91",
 				},
 				{
 					Order:       2,
@@ -41,7 +41,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainManipulator),
 					Action:      "Invokes FindSymbols to detect all class, interface, function, and method ranges.",
 					Artifact:    "[]SymbolRange",
-					CodeLocator: "file:///internal/manipulator/manipulator.go#L36-L54",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/manipulator/manipulator.go#L36-L54",
 				},
 				{
 					Order:       3,
@@ -49,7 +49,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainManipulator),
 					Action:      "Tokenizes code boundaries with string literals and comment escapes to identify true block termination.",
 					Artifact:    "Matched SymbolRange",
-					CodeLocator: "file:///internal/manipulator/manipulator.go#L430-L500",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/manipulator/manipulator.go#L430-L500",
 				},
 				{
 					Order:       4,
@@ -57,7 +57,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainManipulator),
 					Action:      "Slices exact lines, adjusts indentation to preserve container style, and performs atomic string join.",
 					Artifact:    "Updated File Content",
-					CodeLocator: "file:///internal/manipulator/manipulator.go#L85-L140",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/manipulator/manipulator.go#L85-L140",
 				},
 				{
 					Order:       5,
@@ -65,7 +65,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainStorage),
 					Action:      "Writes updated buffer back to disk with original permissions (0644).",
 					Artifact:    "Written File on Disk",
-					CodeLocator: "file:///internal/manipulator/manipulator.go#L135-L139",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/manipulator/manipulator.go#L135-L139",
 				},
 			},
 		},
@@ -99,7 +99,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainEntrypoints),
 					Action:      "Receives target_id, depth, and budget parameters via CLI flag or MCP JSON-RPC call.",
 					Artifact:    "Query Request",
-					CodeLocator: "file:///cmd/gira/main.go#L973-L1041",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/cmd/gira/main.go#L973-L1041",
 				},
 				{
 					Order:       2,
@@ -107,7 +107,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainStorage),
 					Action:      "Loads macro-map.json, validates schema version, and inspects repository HEAD freshness.",
 					Artifact:    "domain.MacroMap",
-					CodeLocator: "file:///internal/store/store.go#L30-L75",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/store/store.go#L30-L75",
 				},
 				{
 					Order:       3,
@@ -115,7 +115,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainCore),
 					Action:      "Executes breadth-first traversal across provides and consumes mediation edges.",
 					Artifact:    "Impact Subgraph",
-					CodeLocator: "file:///internal/slices/engine.go#L231-L320",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/slices/engine.go#L231-L320",
 				},
 				{
 					Order:       4,
@@ -123,7 +123,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainCore),
 					Action:      "Appends unhandled files and unknown language constructs to preserve known unknowns.",
 					Artifact:    "[]UnsupportedBoundary",
-					CodeLocator: "file:///internal/domain/models.go#L112-L120",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/domain/models.go#L112-L120",
 				},
 				{
 					Order:       5,
@@ -131,7 +131,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainCore),
 					Action:      "Applies deterministic token-fitting drops if requested budget is exceeded.",
 					Artifact:    "Budget Envelope (JSON or Markdown)",
-					CodeLocator: "file:///internal/slices/budget.go#L80-L150",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/slices/budget.go#L80-L150",
 				},
 			},
 		},
@@ -171,7 +171,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainEntrypoints),
 					Action:      "Parses gira.yaml path and configuration options.",
 					Artifact:    "Run Options",
-					CodeLocator: "file:///cmd/gira/main.go#L393-L440",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/cmd/gira/main.go#L393-L440",
 				},
 				{
 					Order:       2,
@@ -179,7 +179,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainCore),
 					Action:      "Parses manifest YAML, validating repository URLs, pinned commit SHAs, and path scopes.",
 					Artifact:    "manifest.ProjectManifest",
-					CodeLocator: "file:///internal/manifest/manifest.go#L30-L80",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/manifest/manifest.go#L30-L80",
 				},
 				{
 					Order:       3,
@@ -187,7 +187,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainStorage),
 					Action:      "Clones or updates local bare mirrors and pins worktrees to specified commit SHAs.",
 					Artifact:    "Local Worktrees",
-					CodeLocator: "file:///internal/gitcache/gitcache.go#L40-L110",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/gitcache/gitcache.go#L40-L110",
 				},
 				{
 					Order:       4,
@@ -195,7 +195,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainExtractors),
 					Action:      "Executes Layer 1 (Data), Layer 2 (Compose/Docker/Mise), and Layer 3 (Language ASTs: Go, TS, Py, Proto).",
 					Artifact:    "Extracted Nodes & Evidence",
-					CodeLocator: "file:///internal/extractors/extractor.go#L45-L95",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/extractors/extractor.go#L45-L95",
 				},
 				{
 					Order:       5,
@@ -203,7 +203,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainCore),
 					Action:      "Synthesizes mediated edges, resolves contract providers and consumers, and tags intra-service metadata.",
 					Artifact:    "domain.MacroMap",
-					CodeLocator: "file:///internal/indexer/indexer.go#L50-L160",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/indexer/indexer.go#L50-L160",
 				},
 				{
 					Order:       6,
@@ -211,7 +211,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainStorage),
 					Action:      "Generates cryptographic SHA256 Merkle source identity and writes sorted, indented JSON under a cross-platform lock.",
 					Artifact:    "macro-map.json",
-					CodeLocator: "file:///internal/store/store.go#L80-L140",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/store/store.go#L80-L140",
 				},
 			},
 		},
@@ -242,7 +242,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainEntrypoints),
 					Action:      "Initializes gate flags (--status, --reverify, --strict, --fail-on-ci).",
 					Artifact:    "Gate Config",
-					CodeLocator: "file:///cmd/gira/gate.go#L20-L70",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/cmd/gira/gate.go#L20-L70",
 				},
 				{
 					Order:       2,
@@ -250,7 +250,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainGovernance),
 					Action:      "Loads policy rules and evaluates current MacroMap against baseline snapshot.",
 					Artifact:    "Evaluation Context",
-					CodeLocator: "file:///internal/gate/gate.go#L30-L90",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/gate/gate.go#L30-L90",
 				},
 				{
 					Order:       3,
@@ -258,7 +258,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainGovernance),
 					Action:      "Calculates structural differences: node renames, removed contracts, and newly unhandled boundaries.",
 					Artifact:    "archdiff.DiffResult",
-					CodeLocator: "file:///internal/archdiff/archdiff.go#L25-L95",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/archdiff/archdiff.go#L25-L95",
 				},
 				{
 					Order:       4,
@@ -266,7 +266,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainGovernance),
 					Action:      "Computes objective scorecards and checks against regression floor guards.",
 					Artifact:    "eval.Scorecard",
-					CodeLocator: "file:///internal/eval/scorecard.go#L40-L115",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/internal/eval/scorecard.go#L40-L115",
 				},
 				{
 					Order:       5,
@@ -274,7 +274,7 @@ func DefaultLifecycles() []LifecycleFlow {
 					Domain:      string(DomainEntrypoints),
 					Action:      "Emits human-readable or JSON findings report; fails closed if strict gate criteria fail.",
 					Artifact:    "Gate Report",
-					CodeLocator: "file:///cmd/gira/gate.go#L75-L120",
+					CodeLocator: "https://github.com/EduardoShibukawa/gira-g/blob/main/cmd/gira/gate.go#L75-L120",
 				},
 			},
 		},

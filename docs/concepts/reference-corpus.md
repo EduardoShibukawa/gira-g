@@ -11,7 +11,6 @@ repos, used for repeatable, shareable benchmarks that never require sending
 private code anywhere. It is evaluated both as published and as a Perturbed
 Variant.
 
-**Avoid**: test repo, demo app, sample system
 
 ## Related
 

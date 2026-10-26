@@ -8,7 +8,6 @@ sidebar_position: 3
 
 A Component that is independently deployable.
 
-**Avoid**: app, microservice, deployable
 
 ## Notes
 
