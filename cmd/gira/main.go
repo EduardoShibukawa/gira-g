@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/EduardoShibukawa/gira-g/internal/archdiff"
+	"github.com/EduardoShibukawa/gira-g/internal/architecture"
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 	"github.com/EduardoShibukawa/gira-g/internal/extractors"
 	"github.com/EduardoShibukawa/gira-g/internal/gitcache"
@@ -207,6 +208,12 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "export":
 		return runExport(rest, stdout, stderr)
 
+	case "architecture":
+		return runArchitecture(rest, stdout, stderr)
+
+	case "docs":
+		return runDocs(rest, stdout, stderr)
+
 	case "view":
 		return runView(rest, stdout, stderr)
 
@@ -227,6 +234,15 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 
 	case "outline":
 		return runOutline(rest, stdout, stderr)
+
+	case "read":
+		return runReadSymbol(rest, stdout, stderr)
+
+	case "write":
+		return runWriteSymbol(rest, stdout, stderr)
+
+	case "add":
+		return runAddSymbol(rest, stdout, stderr)
 
 	default:
 		return fmt.Errorf("unknown command %q. Run 'gira --help' for usage", cmd)
@@ -256,7 +272,12 @@ Commands:
   skills check --host claude|cursor|agents [--dir <project>] [--hook] Non-mutating drift check for installed host files
   flows <entry> [--index <path>]                            Deterministic chains from an entry through consumes edges to infrastructure
   outline <file> [--format text|json]                       Extract symbols, signatures and line ranges for a file
+  read <file> <symbol>                                      Deterministic reading of a single symbol/function definition
+  write <file> <symbol> [--body <body>]                     Deterministic surgical replacement of a symbol/function AST node
+  add <file> <container> [--body <body>]                    Deterministic insertion of a new member into a class/interface
   locate <query> [--index <path>]                           Search boundaries, methods, and unhandled files
+  architecture [--format md|html|json] [--output <path>] [--index <p>] Generate living architecture reference (Spring Reference style)
+  docs [--output <dir>] [--index <path>] [--serve <port>]   Generate complete modern project documentation site and interactive visual explorer
   export [--format md|html] [--output <path>] [--index <p>] Export standalone architecture document
   view [--output <dir>] [--index <path>]                    Export HTML and view in browser
   eval [--artifact-verified] [--no-artifact-verified]       Eval stub ending with ARTIFACT-VERIFIED closing line (F1)
@@ -1434,15 +1455,55 @@ func runFlows(args []string, stdout io.Writer, stderr io.Writer) error {
 	if len(all) == 0 {
 		return fmt.Errorf("missing entry argument. Usage: gira flows <entry> [--format json|md]")
 	}
+	flowsFormat := slices.ParseFormat(strings.ToLower(format))
 	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
+		if lc := architecture.QueryFlows(all[0]); lc != nil {
+			root := gitToplevel(".")
+			if root == "" {
+				root = "."
+			}
+			if flowsFormat == slices.FormatMarkdown {
+				return emitMarkdownLine(stdout, architecture.RenderFlowMarkdown(root, lc))
+			}
+			data, mErr := architecture.MarshalCompactJSON(lc)
+			if mErr != nil {
+				return mErr
+			}
+			_, err = stdout.Write(data)
+			return err
+		}
 		return fmt.Errorf("failed to load index: %w", err)
 	}
 	flows, err := slices.NewEngine(mm).GetFlows(all[0])
 	if err != nil {
-		return err
+		if lc := architecture.QueryFlows(all[0]); lc != nil {
+			root := gitToplevel(".")
+			if root == "" {
+				root = "."
+			}
+			humanBanner(stderr, mm, checkout, flowsFormat)
+			if flowsFormat == slices.FormatMarkdown {
+				return emitMarkdownLine(stdout, architecture.RenderFlowMarkdown(root, lc))
+			}
+			data, mErr := architecture.MarshalCompactJSON(lc)
+			if mErr != nil {
+				return mErr
+			}
+			_, err = stdout.Write(data)
+			return err
+		}
+		for _, prefix := range []string{"service:", "contract:"} {
+			if f, pErr := slices.NewEngine(mm).GetFlows(prefix + all[0]); pErr == nil {
+				flows = f
+				err = nil
+				break
+			}
+		}
+		if err != nil {
+			return err
+		}
 	}
-	flowsFormat := slices.ParseFormat(strings.ToLower(format))
 	humanBanner(stderr, mm, checkout, flowsFormat)
 	if budget > 0 {
 		data, err := flows.Emit(flowsFormat, budget)
@@ -1502,12 +1563,70 @@ func runDoc(args []string, stdout io.Writer, stderr io.Writer) error {
 
 	mm, err := loadIndex(indexPath, stderr)
 	if err != nil {
+		root := gitToplevel(".")
+		if root == "" {
+			root = "."
+		}
+		modDoc, symDoc, qErr := architecture.QueryDoc(root, all[0])
+		if qErr == nil && modDoc != nil {
+			if docFormat == slices.FormatJSON {
+				data, mErr := architecture.MarshalCompactJSON(modDoc)
+				if mErr != nil {
+					return mErr
+				}
+				_, err = stdout.Write(data)
+				return err
+			}
+			rendered := architecture.RenderModuleDocMarkdown(root, modDoc)
+			return emitMarkdownLine(stdout, rendered)
+		} else if qErr == nil && symDoc != nil {
+			if docFormat == slices.FormatJSON {
+				data, mErr := architecture.MarshalCompactJSON(symDoc)
+				if mErr != nil {
+					return mErr
+				}
+				_, err = stdout.Write(data)
+				return err
+			}
+			rendered := architecture.RenderSymbolDocMarkdown(root, symDoc)
+			return emitMarkdownLine(stdout, rendered)
+		}
 		return fmt.Errorf("failed to load index: %w", err)
 	}
 
 	engine := slices.NewEngine(mm)
 	doc, err := engine.GetDoc(all[0])
 	if err != nil {
+		root := gitToplevel(".")
+		if root == "" {
+			root = "."
+		}
+		modDoc, symDoc, qErr := architecture.QueryDoc(root, all[0])
+		if qErr == nil && modDoc != nil {
+			humanBanner(stderr, mm, checkout, docFormat)
+			if docFormat == slices.FormatJSON {
+				data, mErr := architecture.MarshalCompactJSON(modDoc)
+				if mErr != nil {
+					return mErr
+				}
+				_, err = stdout.Write(data)
+				return err
+			}
+			rendered := architecture.RenderModuleDocMarkdown(root, modDoc)
+			return emitMarkdownLine(stdout, rendered)
+		} else if qErr == nil && symDoc != nil {
+			humanBanner(stderr, mm, checkout, docFormat)
+			if docFormat == slices.FormatJSON {
+				data, mErr := architecture.MarshalCompactJSON(symDoc)
+				if mErr != nil {
+					return mErr
+				}
+				_, err = stdout.Write(data)
+				return err
+			}
+			rendered := architecture.RenderSymbolDocMarkdown(root, symDoc)
+			return emitMarkdownLine(stdout, rendered)
+		}
 		return err
 	}
 

@@ -32,5 +32,5 @@ description = "Build snapshot release artifacts using GoReleaser"
 run = "goreleaser release --snapshot --clean --skip=sign"
 
 [tasks."docs:build"]
-description = "Build the documentation website"
-run = "cd website && bun install --frozen-lockfile && bun run build"
+description = "Build the living architecture documentation"
+run = "go run ./cmd/gira architecture --output ARCHITECTURE.md"

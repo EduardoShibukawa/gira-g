@@ -652,7 +652,6 @@ repositories:
 	}
 }
 
-
 func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 	repoDir := t.TempDir()
 	runGit := func(args ...string) {
@@ -674,22 +673,22 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 	runGit("commit", "-m", "initial")
 
 	for key, value := range map[string]string{
-		"GIT_DIR": "/definitely/not/a/repository",
-		"GIT_WORK_TREE": "/elsewhere",
-		"GIT_COMMON_DIR": "/elsewhere/.git",
-		"GIT_INDEX_FILE": "/tmp/redirected-index",
-		"GIT_OBJECT_DIRECTORY": "/tmp/redirected-objects",
+		"GIT_DIR":                          "/definitely/not/a/repository",
+		"GIT_WORK_TREE":                    "/elsewhere",
+		"GIT_COMMON_DIR":                   "/elsewhere/.git",
+		"GIT_INDEX_FILE":                   "/tmp/redirected-index",
+		"GIT_OBJECT_DIRECTORY":             "/tmp/redirected-objects",
 		"GIT_ALTERNATE_OBJECT_DIRECTORIES": "/tmp/redirected-alternates",
-		"GIT_NAMESPACE": "redirected",
-		"GIT_PREFIX": "redirected-prefix/",
-		"GIT_CEILING_DIRECTORIES": filepath.Dir(repoDir),
-		"GIT_NO_REPLACE_OBJECTS": "0",
-		"GIT_CONFIG_GLOBAL": filepath.Join(repoDir, "missing-global-config"),
-		"GIT_CONFIG_SYSTEM": filepath.Join(repoDir, "missing-system-config"),
-		"GIT_CONFIG_NOSYSTEM": "0",
-		"GIT_CONFIG_COUNT": "1",
-		"GIT_CONFIG_KEY_0": "core.worktree",
-		"GIT_CONFIG_VALUE_0": "/elsewhere",
+		"GIT_NAMESPACE":                    "redirected",
+		"GIT_PREFIX":                       "redirected-prefix/",
+		"GIT_CEILING_DIRECTORIES":          filepath.Dir(repoDir),
+		"GIT_NO_REPLACE_OBJECTS":           "0",
+		"GIT_CONFIG_GLOBAL":                filepath.Join(repoDir, "missing-global-config"),
+		"GIT_CONFIG_SYSTEM":                filepath.Join(repoDir, "missing-system-config"),
+		"GIT_CONFIG_NOSYSTEM":              "0",
+		"GIT_CONFIG_COUNT":                 "1",
+		"GIT_CONFIG_KEY_0":                 "core.worktree",
+		"GIT_CONFIG_VALUE_0":               "/elsewhere",
 	} {
 		t.Setenv(key, value)
 	}
@@ -718,7 +717,6 @@ func TestGitProbesIgnoreRepositoryRedirectEnvironment(t *testing.T) {
 		t.Fatal("gitDirty() reported clean repository as dirty due to redirected environment")
 	}
 }
-
 
 func TestInitDoesNotPublishManifestWhenIndexingFails(t *testing.T) {
 	repoDir := t.TempDir()

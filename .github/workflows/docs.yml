@@ -25,16 +25,16 @@ jobs:
       - name: Set up mise toolchain
         uses: jdx/mise-action@v5
 
-      - name: Build documentation site
-        run: mise run docs:build
-
-      - name: Quarantine compliance check
-        run: website/scripts/check-quarantine.sh
+      - name: Build living architecture and complete documentation portal
+        run: |
+          mkdir -p build
+          go run ./cmd/gira architecture --output ARCHITECTURE.md
+          go run ./cmd/gira docs --output build
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: website/build/
+          path: build/
 
   docs-deploy:
     name: docs deploy

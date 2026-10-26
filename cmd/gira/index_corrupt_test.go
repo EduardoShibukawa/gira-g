@@ -15,7 +15,7 @@ func TestSCIndexCorruptErrorCLI(t *testing.T) {
 	xdg := t.TempDir()
 	storeRoot := filepath.Join(xdg, "gira", "indexes")
 	writeTree(t, storeRoot, map[string]string{
-		"clitest/.head": ver,
+		"clitest/.head":                          ver,
 		"clitest/versions/" + ver + "/meta.json": "{not json",
 	})
 	proj := t.TempDir()

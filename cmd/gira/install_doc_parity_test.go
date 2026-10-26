@@ -104,8 +104,7 @@ func TestInstallDocParity(t *testing.T) {
 		}
 
 		for _, cliDirRel := range []string{
-			filepath.Join("website", "docs", "cli"),
-			filepath.Join("website", "versioned_docs", "version-0.1.0", "cli"),
+			filepath.Join("docs", "cli"),
 		} {
 			cliDir := filepath.Join(root, cliDirRel)
 			entries, err := os.ReadDir(cliDir)
@@ -135,7 +134,7 @@ func TestInstallDocParity(t *testing.T) {
 	})
 
 	t.Run("ServeDocsCoverAllMCPToolsAndScorecardExists", func(t *testing.T) {
-		serveDoc, err := os.ReadFile(filepath.Join(root, "website", "docs", "cli", "serve.md"))
+		serveDoc, err := os.ReadFile(filepath.Join(root, "docs", "cli", "serve.md"))
 		if err != nil {
 			t.Fatalf("read serve.md: %v", err)
 		}
@@ -157,18 +156,18 @@ func TestInstallDocParity(t *testing.T) {
 		}
 		for _, tool := range mcpTools {
 			if !strings.Contains(serveText, tool) {
-				t.Errorf("website/docs/cli/serve.md missing MCP tool %q", tool)
+				t.Errorf("docs/cli/serve.md missing MCP tool %q", tool)
 			}
 		}
 
-		scorecardDoc, err := os.ReadFile(filepath.Join(root, "website", "docs", "concepts", "scorecard.md"))
+		scorecardDoc, err := os.ReadFile(filepath.Join(root, "docs", "concepts", "scorecard.md"))
 		if err != nil {
 			t.Fatalf("read scorecard.md: %v", err)
 		}
 		scText := string(scorecardDoc)
 		for _, want := range []string{"otel-demo-3.1.0-mini", "100.0%", "82.4%", "81.2%"} {
 			if !strings.Contains(scText, want) {
-				t.Errorf("website/docs/concepts/scorecard.md missing metric %q", want)
+				t.Errorf("docs/concepts/scorecard.md missing metric %q", want)
 			}
 		}
 	})

@@ -2,13 +2,13 @@ package main
 
 import (
 	"bytes"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
+	"github.com/EduardoShibukawa/gira-g/internal/store"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-	"github.com/EduardoShibukawa/gira-g/internal/manifest"
-	"github.com/EduardoShibukawa/gira-g/internal/store"
 )
 
 func createTestRepo(t *testing.T) (string, string) {

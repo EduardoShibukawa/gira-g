@@ -1,5 +1,7 @@
 # Binaries and build artifacts
 bin/
+build/
+dist/
 *.exe
 *.exe~
 *.dll
@@ -32,7 +34,3 @@ run.log
 dist/
 skills-manifest.json
 
-# Docs website
-website/node_modules/
-website/build/
-website/.docusaurus/
