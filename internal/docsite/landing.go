@@ -65,7 +65,7 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
             <a href="intro.html" class="btn-primary">🚀 Get Started</a>
             <a href="tour.html" class="btn-secondary">🧭 Guided Tour</a>
             <a href="architecture/graph.html" class="btn-secondary">🕸️ Visual Explorer</a>
-            <a href="architecture/index.html" class="btn-secondary">🏛️ Living Architecture</a>
+            <a href="guides/change-maker-workflow.html" class="btn-secondary">📖 Developer Workflows</a>
           </div>
 
           <!-- Quickstart Terminal Card -->
@@ -80,11 +80,11 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
               <div style="color: #6b7280;"># 1. Install gira CLI binary</div>
               <div><span style="color: #38bdf8;">go</span> install github.com/EduardoShibukawa/gira-g/cmd/gira@latest</div>
               <br/>
-              <div style="color: #6b7280;"># 2. Index your repository in milliseconds (<150ms)</div>
-              <div><span style="color: #38bdf8;">gira</span> index .</div>
+              <div style="color: #6b7280;"># 2. Initialize and index your repository</div>
+              <div><span style="color: #38bdf8;">gira</span> init .</div>
               <br/>
-              <div style="color: #6b7280;"># 3. Inspect symbols, callers, and AST boundaries deterministically</div>
-              <div><span style="color: #38bdf8;">gira</span> read --symbol Engine</div>
+              <div style="color: #6b7280;"># 3. Read symbol snippet or inspect impact deterministically</div>
+              <div><span style="color: #38bdf8;">gira</span> read cmd/gira/main.go main</div>
               <br/>
               <div style="color: #6b7280;"># 4. Generate living documentation suite & interactive Cytoscape graph</div>
               <div><span style="color: #38bdf8;">gira</span> docs --output ./build</div>

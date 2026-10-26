@@ -9,7 +9,6 @@ sidebar_position: 8
 The default view of a Target System: its Components, their interfaces, and the
 relationships between them.
 
-**Avoid**: graph, code graph, architecture diagram
 
 ## Schema 2 and Provenance (`source_identity`)
 

@@ -251,10 +251,10 @@ func (b *Builder) buildNavGroups() {
 	sectionOrders := map[string]int{
 		"Overview":                     1,
 		"Getting Started":              2,
-		"Architecture":                 3,
+		"Guides & Workflows":           3,
 		"CLI Reference":                4,
 		"Core Concepts":                5,
-		"Guides & Workflows":           6,
+		"Architecture":                 6,
 		"Architecture Decisions (ADR)": 7,
 		"Prior Art & Research":         8,
 	}
@@ -517,7 +517,17 @@ func renderSidebarNav(groups []NavGroup, currentURL string) string {
 	}
 
 	for _, g := range groups {
-		sb.WriteString(`<details class="nav-group-collapsible" open>`)
+		isOpen := " open"
+		if g.Title == "Architecture Decisions (ADR)" || g.Title == "Prior Art & Research" {
+			isOpen = ""
+			for _, item := range g.Items {
+				if item.URL == currentURL {
+					isOpen = " open"
+					break
+				}
+			}
+		}
+		sb.WriteString(fmt.Sprintf(`<details class="nav-group-collapsible"%s>`, isOpen))
 		sb.WriteString(fmt.Sprintf(`<summary class="nav-group-summary"><span>%s</span><span class="nav-group-chevron">▶</span></summary>`, g.Title))
 		sb.WriteString(`<ul class="nav-list">`)
 		for _, item := range g.Items {

@@ -10,7 +10,6 @@ The unit of the Macro Map: a deployable Service, or a module/package boundary
 declared in a manifest or workspace. Never an arbitrary directory, class, or
 function.
 
-**Avoid**: module, node, unit. Not a C4 Component (an in-process part) — a
 Service maps to a C4 Container.
 
 ## Kinds

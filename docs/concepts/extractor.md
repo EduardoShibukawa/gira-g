@@ -11,7 +11,6 @@ tool's files (a CI workflow, a deployment manifest), or a programming
 language — and emits facts with evidence for the Macro Map. Anything no
 Extractor covers is reported as unsupported, never guessed.
 
-**Avoid**: parser, plugin, scanner, analyzer
 
 ## Notes
 

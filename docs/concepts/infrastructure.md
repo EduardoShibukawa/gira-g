@@ -9,7 +9,6 @@ sidebar_position: 5
 A shared stateful datastore, message broker, or middleware (e.g. PostgreSQL,
 Kafka, Valkey) used by Components.
 
-**Avoid**: resource, backend
 
 ## Notes
 

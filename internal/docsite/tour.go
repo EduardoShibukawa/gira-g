@@ -21,127 +21,103 @@ func GenerateTourPageHTML(config *SiteConfig, navGroups []NavGroup) string {
 	steps := []TourStep{
 		{
 			Number:      1,
-			Title:       "Entrypoint & Protocol Dispatch",
-			Domain:      "CLI & MCP Entrypoints",
-			Description: "The system begins with strict separation between human terminal execution and autonomous AI agent communication. The CLI orchestrates commands while the MCP server exposes JSON-RPC tools.",
+			Title:       "Repository Onboarding & AST Indexing",
+			Domain:      "Getting Started",
+			Description: "Initialize Gira-G on your codebase. It scans Go modules, parses AST symbols deterministically, and creates the pinned manifest and Macro Map knowledge graph in milliseconds without requiring language servers.",
 			Invariants: []string{
-				"Dual-Surface Parity: Human CLI and Agent MCP resolve the exact same deterministic AST facts.",
-				"Zero Uncaught Panics: All errors return structured exit codes and error envelopes.",
+				"Zero Probabilistic Guessing: All symbol bounds and package relations are exact byte locators.",
+				"Sub-150ms Cold Execution: Deterministic scanning runs natively without JVM or background daemons.",
 			},
 			KeyFiles: []string{
-				"cmd/gira/main.go",
-				"internal/cli/root.go",
-				"internal/mcp/server.go",
+				"gira.yaml",
+				".gira/macro-map.json",
 			},
-			SampleCmd: "gira --help",
-			Snippet: `// cmd/gira/main.go
-func main() {
-    if err := cli.Execute(); err != nil {
-        os.Exit(1)
-    }
-}`,
+			SampleCmd: "gira init .",
+			Snippet: `# Initialize and index the current project
+gira init .`,
 		},
 		{
 			Number:      2,
-			Title:       "Deterministic AST Parsing & Extraction",
-			Domain:      "Extractors Pipeline",
-			Description: "Gira-G extracts AST symbols without spinning up heavyweight language servers. It uses native Go parsers and tree-sitter to build precise function signatures, struct layouts, and imports.",
+			Title:       "Surgical Symbol Reading & AST Inspection",
+			Domain:      "Deterministic Code Reading",
+			Description: "Read exact functions, interfaces, or structs from your codebase without dumping whole files into prompts. Gira extracts precise AST boundaries with surrounding documentation.",
 			Invariants: []string{
-				"Zero Probabilistic Guessing: Symbol bounds and lines are exact byte locators.",
-				"Fail-Closed Boundaries: Unsupported languages are explicitly recorded in UnsupportedBoundary.",
+				"Token-Efficient Extraction: Return only the target AST declaration rather than multi-thousand-line source files.",
+				"Line & Byte Fidelity: Exact coordinates preserved for automated tooling and human inspection.",
 			},
 			KeyFiles: []string{
-				"internal/parser/parser.go",
-				"internal/extractors/layer3_treesitter.go",
-				"internal/domain/evidence.go",
+				"cmd/gira/main.go",
+				"internal/domain/models.go",
 			},
-			SampleCmd: "gira read --file internal/parser/parser.go",
-			Snippet: `// internal/parser/parser.go
-func ParseFile(fset *token.FileSet, path string) (*ast.File, error) {
-    return parser.ParseFile(fset, path, nil, parser.ParseComments)
-}`,
+			SampleCmd: "gira read cmd/gira/main.go main",
+			Snippet: `# Read the exact 'main' function declaration
+gira read cmd/gira/main.go main`,
 		},
 		{
 			Number:      3,
-			Title:       "MacroMap & Cryptographic Evidence Store",
-			Domain:      "Storage & Knowledge Graph",
-			Description: "Parsed symbols and relationships are collected into a unified MacroMap knowledge graph. The store computes cryptographic SHA256 hashes of repository trees to ensure cache reproducibility.",
+			Title:       "Blast Radius & Impact Analysis",
+			Domain:      "Change Safety",
+			Description: "Before modifying a component, query its downstream consumers and callers. Gira calculates transitive call graphs and contractual impact briefings in <5ms.",
 			Invariants: []string{
-				"Append-Only Merkle Integrity: Manifests track exact git tree SHAs.",
-				"Zero-Token Cache Hits: Subsequent index reads load directly from serialized JSON.",
+				"Transitive Graph Traversal: Surface callers, callees, and cross-domain dependencies before making edits.",
+				"Zero Token Overhead: Graph queries resolve against the pre-computed in-memory Macro Map in <5ms.",
 			},
 			KeyFiles: []string{
-				"internal/domain/macro_map.go",
-				"internal/store/store.go",
-				"internal/store/identity.go",
+				".gira/macro-map.json",
 			},
-			SampleCmd: "gira index . --output .gira/macro-map.json",
-			Snippet: `// internal/domain/macro_map.go
-type MacroMap struct {
-    Version       string         ` + "`json:\"version\"`" + `
-    Nodes         []Node         ` + "`json:\"nodes\"`" + `
-    Relationships []Relationship ` + "`json:\"relationships\"`" + `
-}`,
+			SampleCmd: "gira impact service:storage --depth 2",
+			Snippet: `# Compute impact briefing for target component
+gira impact service:storage --depth 2`,
 		},
 		{
 			Number:      4,
-			Title:       "Architectural Clustering & Centrality",
-			Domain:      "Core Engine",
-			Description: "The clustering engine analyzes the import topology, computing in-degree, out-degree, and centrality scores. It groups packages into 6 resilient architectural domains with verified contracts.",
+			Title:       "Bounded Context Slicing",
+			Domain:      "Agent & Human Context",
+			Description: "Extract bounded context slices with strict token budgets (summary, contracts, or deep) to fit directly into AI agent prompts or developer reviews without context window overflows.",
 			Invariants: []string{
-				"Bounded Cross-Domain Coupling: Cycles between architectural domains are flagged.",
-				"Centrality-Aware Surfacing: Hub packages receive higher prominence in diagrams and searches.",
+				"Budget Enforcement: Slices return token-bounded envelopes to prevent LLM context overflows.",
+				"Multi-Tier Views: Choose between summary, contracts, or full architectural views.",
 			},
 			KeyFiles: []string{
-				"internal/architecture/clustering.go",
-				"internal/architecture/generator.go",
-				"internal/architecture/types.go",
+				"internal/slices/engine.go",
 			},
-			SampleCmd: "gira arch query \"storage engine\"",
-			Snippet: `// internal/architecture/clustering.go
-func ClusterMacroMap(mm *domain.MacroMap) *ClusteredArchitecture {
-    // Calculates inDegree, outDegree and partitions into 6 domains
-}`,
+			SampleCmd: "gira slice service:storage --tier contracts --budget 1000",
+			Snippet: `# Extract contract-tier slice within 1000 tokens
+gira slice service:storage --tier contracts --budget 1000`,
 		},
 		{
 			Number:      5,
-			Title:       "Surgical AST Manipulation & Slicing",
-			Domain:      "AST Manipulator",
-			Description: "The manipulator allows automated agents to add members, replace methods, or extract bounded sub-slices without disturbing surrounding code formatting or comments.",
+			Title:       "Architecture Governance & CI Gates",
+			Domain:      "Drift Prevention",
+			Description: "Enforce architectural contracts in your CI pipeline. Gira detects unauthorized cross-domain coupling, circular dependencies, and symbol drifts before pull requests merge.",
 			Invariants: []string{
-				"Formatting Preservation: SafeBraceCounter balances braces while retaining original indentation.",
-				"Budget Enforcement: Slices return token-bounded envelopes to prevent LLM context overflows.",
+				"Fail-Closed CI Verification: Architectural boundary breaches exit with non-zero status in CI.",
+				"Diff Verification: Compare Macro Maps across git commits to prevent structural decay.",
 			},
 			KeyFiles: []string{
-				"internal/manipulator/manipulator.go",
-				"internal/slices/engine.go",
-				"internal/tokens/budget.go",
+				"gira.yaml",
+				".github/workflows/ci.yml",
 			},
-			SampleCmd: "gira slice --symbol Engine --budget 500",
-			Snippet: `// internal/manipulator/manipulator.go
-func (m *Manipulator) InsertStructField(structName, fieldDecl string) error {
-    // Exact token-balanced insertion
-}`,
+			SampleCmd: "gira gate --strict",
+			Snippet: `# Enforce architecture contracts and fail CI on drift
+gira gate --strict`,
 		},
 		{
 			Number:      6,
-			Title:       "Governance Gates & Living Documentation",
-			Domain:      "Governance & Gate",
-			Description: "The final layer runs automated architecture rules, computes health scorecards, and compiles this very living documentation site with interactive Cytoscape graphs and Mermaid diagrams.",
+			Title:       "Living Documentation & Interactive Visuals",
+			Domain:      "Living Architecture",
+			Description: "Generate self-updating documentation with interactive Cytoscape dependency graphs, zoomable Mermaid diagrams, and searchable CLI reference.",
 			Invariants: []string{
-				"Fail-Closed CI Verification: Architectural regressions fail pull requests immediately.",
-				"Living Documentation Parity: Documentation self-updates upon every git commit.",
+				"Self-Updating Parity: Documentation regenerates automatically from code facts without manual wiki syncing.",
+				"Interactive Visual Exploration: Explore community clustering and cross-domain relations in Cytoscape.",
 			},
 			KeyFiles: []string{
-				"internal/gate/gate.go",
-				"internal/docsite/builder.go",
-				"internal/docsite/graph.go",
+				"build/index.html",
+				"build/architecture/graph.html",
 			},
-			SampleCmd: "gira docs --output build",
-			Snippet: `// internal/gate/gate.go
-func EvaluateArchitecture(arch *ClusteredArchitecture) (*Scorecard, error) {
-    // Enforces architectural invariants
-}`,
+			SampleCmd: "gira docs --output ./build",
+			Snippet: `# Build full static documentation site with interactive explorer
+gira docs --output ./build`,
 		},
 	}
 

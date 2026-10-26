@@ -8,7 +8,6 @@ sidebar_position: 1
 
 Any software system the harness maps, whether it lives in one repository or spans many.
 
-**Avoid**: the codebase, the project, the estate
 
 ## Notes
 

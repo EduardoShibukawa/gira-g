@@ -9,7 +9,6 @@ sidebar_position: 6
 A boundary specification representing an interface, endpoint, RPC method, or
 message schema (e.g. gRPC service/method, HTTP route, Kafka topic definition).
 
-**Avoid**: endpoint, spec, interface (when unqualified)
 
 ## Notes
 
