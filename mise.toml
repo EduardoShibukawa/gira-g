@@ -34,3 +34,16 @@ run = "goreleaser release --snapshot --clean --skip=sign"
 [tasks."docs:build"]
 description = "Build the living architecture documentation"
 run = "go run ./cmd/gira architecture --output ARCHITECTURE.md"
+
+[tasks.install]
+description = "Build gira with version ldflags and install to ${GIRA_INSTALL_DIR:-~/.local/bin}"
+run = '''
+set -eu
+dir="${GIRA_INSTALL_DIR:-$HOME/.local/bin}"
+mkdir -p "$dir"
+v="$(git describe --tags --always --dirty)"
+c="$(git rev-parse --short HEAD)"
+d="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+go build -ldflags "-X main.version=$v -X main.commit=$c -X main.date=$d" -o "$dir/gira" ./cmd/gira
+echo "installed $dir/gira ($v)"
+'''
