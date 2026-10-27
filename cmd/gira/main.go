@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"io"
 	"os"
 	"os/exec"
@@ -1925,6 +1929,9 @@ func runOutline(args []string, stdout io.Writer, stderr io.Writer) error {
 	}
 
 	fmt.Fprintf(stdout, "File: %s (%d lines | %s)\n", filePath, totalLines, matched.Name())
+	if strings.EqualFold(filepath.Ext(filePath), ".go") {
+		return writeGoOutline(filePath, content, stdout)
+	}
 	for _, n := range nodes {
 		meta := n.Metadata
 		startLine := 1
@@ -1972,6 +1979,39 @@ func runOutline(args []string, stdout io.Writer, stderr io.Writer) error {
 						fmt.Fprintf(stdout, "- L%v: function %s(%s): %s\n", fLine, fName, fParams, fRet)
 					} else {
 						fmt.Fprintf(stdout, "- L%v: function %s(%s)\n", fLine, fName, fParams)
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// writeGoOutline lists top-level Go declarations (funcs, methods with
+// receiver, types, consts, vars) with their line ranges via go/parser.
+func writeGoOutline(filePath string, content []byte, stdout io.Writer) error {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filePath, content, parser.SkipObjectResolution)
+	if f == nil {
+		return fmt.Errorf("go parse error: %w", err)
+	}
+	line := func(p token.Pos) int { return fset.Position(p).Line }
+	for _, decl := range f.Decls {
+		switch d := decl.(type) {
+		case *ast.FuncDecl:
+			if d.Recv != nil && len(d.Recv.List) > 0 {
+				fmt.Fprintf(stdout, "- L%d-L%d: method (%s) %s\n", line(d.Pos()), line(d.End()), types.ExprString(d.Recv.List[0].Type), d.Name.Name)
+			} else {
+				fmt.Fprintf(stdout, "- L%d-L%d: func %s\n", line(d.Pos()), line(d.End()), d.Name.Name)
+			}
+		case *ast.GenDecl:
+			for _, spec := range d.Specs {
+				switch sp := spec.(type) {
+				case *ast.TypeSpec:
+					fmt.Fprintf(stdout, "- L%d-L%d: type %s\n", line(sp.Pos()), line(sp.End()), sp.Name.Name)
+				case *ast.ValueSpec:
+					for _, n := range sp.Names {
+						fmt.Fprintf(stdout, "- L%d: %s %s\n", line(n.Pos()), d.Tok.String(), n.Name)
 					}
 				}
 			}
