@@ -1,5 +1,5 @@
 ---
-mode: bugfix
+mode: padrao
 goal: gira outline lists Go funcs, methods (receiver), types, top-level consts/vars with lines; impact error names accepted ID format
 done_when: mise exec -- go test ./cmd/gira/ ./internal/slices/ -run 'TestOutlineGoSymbols|TestImpactUnknownTargetHint' -count=1
 touch:
