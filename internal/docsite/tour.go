@@ -102,10 +102,7 @@ func GenerateTourPageHTML(config *SiteConfig, navGroups []NavGroup) string {
 		tocItems.WriteString(fmt.Sprintf(`          <li class="toc-item level-2"><a href="#step-%d" class="toc-link">%d. %s</a></li>`+"\n", s.Number, s.Number, html.EscapeString(s.Title)))
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
-	}
+	target := siteTitle(config)
 
 	html := fmt.Sprintf(`<!DOCTYPE html>
 <html lang="en">
@@ -196,6 +193,24 @@ func GenerateTourPageHTML(config *SiteConfig, navGroups []NavGroup) string {
 }
 
 func generateTourSteps(config *SiteConfig, navGroups []NavGroup) []TourStep {
+	// Configured tour from the target repo's `docsite:` section in gira.yaml.
+	if config != nil && config.Docsite != nil && len(config.Docsite.Tour) > 0 {
+		steps := make([]TourStep, 0, len(config.Docsite.Tour))
+		for i, s := range config.Docsite.Tour {
+			steps = append(steps, TourStep{
+				Number:      i + 1,
+				Title:       s.Title,
+				Domain:      s.Domain,
+				Description: s.Description,
+				Invariants:  s.Invariants,
+				KeyFiles:    s.KeyFiles,
+				SampleCmd:   s.SampleCmd,
+				Snippet:     s.Snippet,
+			})
+		}
+		return steps
+	}
+
 	if isDogfoodOrSelf(config) {
 		return []TourStep{
 			{
@@ -301,105 +316,7 @@ gira docs --output ./build`,
 		}
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
-	}
-
-	if config.TargetName == "p-inga" || config.TargetName == "pinga" {
-		return []TourStep{
-			{
-				Number:      1,
-				Title:       "Harness Validation & System Health",
-				Domain:      "Getting Started",
-				Description: "Audit local harnesses, toolchain prerequisites, and sandbox configurations for P-Ingá. Runs the comprehensive health doctor to verify dependencies and ledger state.",
-				Invariants: []string{
-					"Hermetic Toolchain: Mise-managed runtimes ensure identical Bun and TypeScript execution environments.",
-					"Sandbox Isolation: Git worktree boundaries prevent accidental host pollution or untracked changes.",
-				},
-				KeyFiles: []string{
-					"README.md",
-					"gira.yaml",
-					"package.json",
-					"mise.toml",
-				},
-				SampleCmd: "bun .pinga/pinga-stable doctor",
-				Snippet: `# Verify local toolchain and environment health
-bun .pinga/pinga-stable doctor`,
-			},
-			{
-				Number:      2,
-				Title:       "Task Contracts & Formal Proofs",
-				Domain:      "Contract Verification",
-				Description: "Every operational change is defined as a formal PLAN.md contract with strict done_when verification criteria and 25-line limits under RED-then-EXEC proofing.",
-				Invariants: []string{
-					"25-Line Bound: PLAN.md contracts must remain concise to enforce single-responsibility tasks.",
-					"RED-then-EXEC Proofing: Tasks must prove failure against baseline before code changes are verified.",
-				},
-				KeyFiles: []string{
-					"src/verify.ts",
-					"src/plan.ts",
-					"tasks/T33/PLAN.md",
-				},
-				SampleCmd: "bun .pinga/pinga-stable verify tasks/T33/PLAN.md",
-				Snippet: `# Verify task contract with RED-then-EXEC proofing
-bun .pinga/pinga-stable verify tasks/T33/PLAN.md`,
-			},
-			{
-				Number:      3,
-				Title:       "Cryptographic Ledger & Block Receipts",
-				Domain:      "Audit & Integrity",
-				Description: "Seals verified execution receipts into an append-only, SHA-256 hash-chained SQLite ledger. Prevents retroactive tampering and guarantees reproducibility.",
-				Invariants: []string{
-					"Immutable Hash Chain: Historical blocks cannot be modified or truncated without invalidating hashes.",
-					"Cryptographic Provenance: Records exact stdout/stderr digests, exit status, and timestamps.",
-				},
-				KeyFiles: []string{
-					"src/ledger.ts",
-					"src/receipt.ts",
-					"ledger.db",
-				},
-				SampleCmd: "bun .pinga/pinga-stable ledger verify",
-				Snippet: `# Verify cryptographic integrity of the entire ledger chain
-bun .pinga/pinga-stable ledger verify`,
-			},
-			{
-				Number:      4,
-				Title:       "Operational Observability & Discord Bridge",
-				Domain:      "Integration & Surfaces",
-				Description: "Delivers verified receipts directly to Discord #hermes and serves interactive telemetry and control via web dashboard.",
-				Invariants: []string{
-					"Real-Time Telemetry: Execution events and audit proofs are broadcast to Discord #hermes.",
-					"Fail-Safe Isolation: Network delivery failures do not compromise core task verification.",
-				},
-				KeyFiles: []string{
-					"src/discord.ts",
-					"web/server.ts",
-					"web/index.html",
-				},
-				SampleCmd: "bun test tests/discord.test.ts",
-				Snippet: `# Run Discord telemetry integration test suite
-bun test tests/discord.test.ts`,
-			},
-			{
-				Number:      5,
-				Title:       "Living Architecture & Visual Topology",
-				Domain:      "Living Architecture",
-				Description: "Explore the live dependency graph and architectural communities extracted deterministically from source code.",
-				Invariants: []string{
-					"Continuous Parity: Living documentation updates automatically on every push to main.",
-					"Deterministic AST Extraction: Node topology reflects exact TypeScript symbol declarations.",
-				},
-				KeyFiles: []string{
-					"build/architecture/graph.html",
-					"build/architecture/index.html",
-				},
-				SampleCmd: "open build/architecture/graph.html",
-				Snippet: `# Explore interactive Cytoscape topology
-open build/architecture/graph.html`,
-			},
-		}
-	}
+	target := siteTitle(config)
 
 	// Generic external project tour steps
 	return []TourStep{

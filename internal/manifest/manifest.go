@@ -20,6 +20,41 @@ type Manifest struct {
 	TargetSystem TargetSystemMeta        `yaml:"target_system"`
 	Repositories []RepositoryDeclaration `yaml:"repositories"`
 	Overrides    *OverridesDeclaration   `yaml:"overrides,omitempty"`
+	Docsite      *DocsiteConfig          `yaml:"docsite,omitempty"`
+}
+
+// DocsiteConfig declares per-project docsite content (title, guided tour,
+// core workflows and pillars). Absent, the docsite falls back to generic pages.
+type DocsiteConfig struct {
+	Title     string            `yaml:"title,omitempty"`
+	Tour      []DocsiteTourStep `yaml:"tour,omitempty"`
+	Workflows []DocsiteWorkflow `yaml:"workflows,omitempty"`
+	Pillars   []DocsitePillar   `yaml:"pillars,omitempty"`
+}
+
+// DocsiteTourStep is one stage of the configured guided architectural tour.
+type DocsiteTourStep struct {
+	Title       string   `yaml:"title"`
+	Domain      string   `yaml:"domain,omitempty"`
+	Description string   `yaml:"description,omitempty"`
+	Invariants  []string `yaml:"invariants,omitempty"`
+	KeyFiles    []string `yaml:"key_files,omitempty"`
+	SampleCmd   string   `yaml:"sample_cmd,omitempty"`
+	Snippet     string   `yaml:"snippet,omitempty"`
+}
+
+// DocsiteWorkflow is one core operational workflow card on the landing page.
+type DocsiteWorkflow struct {
+	Title       string `yaml:"title"`
+	Description string `yaml:"description,omitempty"`
+	Command     string `yaml:"command,omitempty"`
+}
+
+// DocsitePillar is one system-domain pillar card on the landing page.
+type DocsitePillar struct {
+	Icon        string `yaml:"icon,omitempty"`
+	Title       string `yaml:"title"`
+	Description string `yaml:"description,omitempty"`
 }
 
 // TargetSystemMeta describes the target system identity and context.
