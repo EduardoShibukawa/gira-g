@@ -52,11 +52,13 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 	manifestPath := findProjectManifest()
 	var targetName string
 	var targetDesc string
+	var docsiteCfg *manifest.DocsiteConfig
 	if manifestPath != "" {
 		if raw, err := os.ReadFile(manifestPath); err == nil {
 			if m, err := manifest.Parse(raw); err == nil {
 				targetName = m.TargetSystem.Name
 				targetDesc = m.TargetSystem.Description
+				docsiteCfg = m.Docsite
 			}
 		}
 	}
@@ -64,7 +66,11 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 	isDogfoodOrSelf := targetName == "gira-g" || strings.Contains(strings.ToLower(targetName), "dogfood")
 
 	if title == "Gira-G Architecture Harness" && targetName != "" && !isDogfoodOrSelf {
-		title = docsite.FormatProjectTitle(targetName)
+		if docsiteCfg != nil && docsiteCfg.Title != "" {
+			title = docsiteCfg.Title
+		} else {
+			title = docsite.FormatProjectTitle(targetName)
+		}
 	}
 
 	tagline := targetDesc
@@ -115,6 +121,7 @@ func runDocs(args []string, stdout io.Writer, stderr io.Writer) error {
 		OutputDir:  absOutput,
 		IndexPath:  indexPath,
 		MacroMap:   mm,
+		Docsite:    docsiteCfg,
 	}
 
 	builder := docsite.NewBuilder(cfg)

@@ -11,12 +11,10 @@ import (
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
 )
 
-// FormatProjectTitle turns machine identifiers (e.g. "p-inga", "gira-g") into human titles.
+// FormatProjectTitle turns machine identifiers (e.g. "gira-g", "some-service") into human titles.
 func FormatProjectTitle(name string) string {
 	lower := strings.ToLower(strings.TrimSpace(name))
 	switch lower {
-	case "p-inga", "pinga":
-		return "P-Ingá"
 	case "gira-g", "gira":
 		return "Gira-G"
 	default:
@@ -157,11 +155,11 @@ func GenerateLandingPageHTML(config *SiteConfig, navGroups []NavGroup) string {
   <script src="assets/app.js"></script>
 </body>
 </html>`,
-		config.Title,
+		headerTitle(config),
 		config.Tagline,
 		config.Tagline,
 		letter,
-		config.Title,
+		headerTitle(config),
 		config.Version,
 		headerNav,
 		heroBadge,
@@ -337,10 +335,7 @@ func buildHeroContent(config *SiteConfig) (string, string, string, string) {
 	}
 
 	badge := `<span>🏛️</span> Living Architecture &amp; System Knowledge Base`
-	title := config.Title
-	if title == "" {
-		title = FormatProjectTitle(config.TargetName)
-	}
+	title := siteTitle(config)
 
 	desc := config.Tagline
 	if desc == "" {
@@ -413,20 +408,16 @@ func buildScenariosSection(config *SiteConfig, navGroups []NavGroup) string {
     </section>`
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
+	target := siteTitle(config)
+
+	// Workflows declared in the target repo's `docsite:` section.
+	if config != nil && config.Docsite != nil && len(config.Docsite.Workflows) > 0 {
+		return buildConfiguredWorkflowsSection(config, target)
 	}
 
-	cmd1 := "bun .pinga/pinga-stable verify tasks/T33/PLAN.md"
-	cmd2 := "bun .pinga/pinga-stable ledger verify"
+	cmd1 := "cat docs/guides/quickstart.md"
+	cmd2 := "cat docs/concepts/invariants.md"
 	cmd3 := "open architecture/graph.html"
-
-	if config.TargetName != "p-inga" && config.TargetName != "pinga" {
-		cmd1 = "cat docs/guides/quickstart.md"
-		cmd2 = "cat docs/concepts/invariants.md"
-		cmd3 = "open architecture/graph.html"
-	}
 
 	return fmt.Sprintf(`    <!-- Core Architectural Workflows -->
     <section class="landing-section">
@@ -466,6 +457,75 @@ func buildScenariosSection(config *SiteConfig, navGroups []NavGroup) string {
         </div>
       </div>
     </section>`, html.EscapeString(target), html.EscapeString(cmd1), html.EscapeString(cmd2), html.EscapeString(cmd3))
+}
+
+// buildConfiguredWorkflowsSection renders the workflow cards declared in the
+// target repo's `docsite:` section (gira.yaml).
+func buildConfiguredWorkflowsSection(config *SiteConfig, target string) string {
+	var cards strings.Builder
+	for i, w := range config.Docsite.Workflows {
+		command := w.Command
+		if command == "" {
+			command = "See documentation"
+		}
+		cards.WriteString(fmt.Sprintf(`        <div class="scenario-card">
+          <div class="scenario-badge">Workflow %d</div>
+          <h3 class="scenario-title">%s</h3>
+          <p class="scenario-text">
+            %s
+          </p>
+          <div class="scenario-command">%s</div>
+        </div>
+
+`, i+1, html.EscapeString(w.Title), html.EscapeString(w.Description), html.EscapeString(command)))
+	}
+
+	return fmt.Sprintf(`    <!-- Core Architectural Workflows -->
+    <section class="landing-section">
+      <div class="section-header-center">
+        <h2 class="section-title">Core Architectural Workflows &amp; Operations</h2>
+        <p class="section-desc">
+          Essential operational workflows, contract enforcement, and verification pipelines across %s.
+        </p>
+      </div>
+
+      <div class="scenarios-grid">
+%s      </div>
+    </section>`, html.EscapeString(target), strings.TrimRight(cards.String(), "\n")+"\n")
+}
+
+// buildConfiguredPillarsSection renders the pillar cards declared in the
+// target repo's `docsite:` section (gira.yaml).
+func buildConfiguredPillarsSection(config *SiteConfig, target string) string {
+	var cards strings.Builder
+	for i, p := range config.Docsite.Pillars {
+		icon := p.Icon
+		if icon == "" {
+			icon = "◆"
+		}
+		cards.WriteString(fmt.Sprintf(`        <div class="pillar-card">
+          <div class="pillar-icon">%s</div>
+          <h3 class="pillar-title">%d. %s</h3>
+          <p class="pillar-text">
+            %s
+          </p>
+        </div>
+
+`, html.EscapeString(icon), i+1, html.EscapeString(p.Title), html.EscapeString(p.Description)))
+	}
+
+	return fmt.Sprintf(`    <!-- System Architecture & Core Domains -->
+    <section class="landing-section">
+      <div class="section-header-center">
+        <h2 class="section-title">System Architecture &amp; Core Domains</h2>
+        <p class="section-desc">
+          Key architectural domains, contracts, and components indexed across %s.
+        </p>
+      </div>
+
+      <div class="pillars-grid">
+%s      </div>
+    </section>`, html.EscapeString(target), strings.TrimRight(cards.String(), "\n")+"\n")
 }
 
 func buildPillarsSection(config *SiteConfig) string {
@@ -525,63 +585,11 @@ func buildPillarsSection(config *SiteConfig) string {
     </section>`
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
-	}
+	target := siteTitle(config)
 
-	if config.TargetName == "p-inga" || config.TargetName == "pinga" {
-		return fmt.Sprintf(`    <!-- System Architecture & Core Domains -->
-    <section class="landing-section">
-      <div class="section-header-center">
-        <h2 class="section-title">System Architecture &amp; Core Domains</h2>
-        <p class="section-desc">
-          Key architectural domains, governance rules, and core components indexed across %s.
-        </p>
-      </div>
-
-      <div class="pillars-grid">
-        <div class="pillar-card">
-          <div class="pillar-icon">⚖️</div>
-          <h3 class="pillar-title">1. Contract Prover &amp; Verification</h3>
-          <p class="pillar-text">
-            Enforces formal PLAN.md task specifications, 25-line contracts, and RED-then-EXEC validation runs before sealing receipts.
-          </p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-icon">🔒</div>
-          <h3 class="pillar-title">2. Cryptographic Ledger &amp; Audit</h3>
-          <p class="pillar-text">
-            Append-only SQLite ledger storing hash-chained block receipts with SHA-256 signatures for tamper-evident reproducibility.
-          </p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-icon">🛡️</div>
-          <h3 class="pillar-title">3. Safety Breakers &amp; Diagnostics</h3>
-          <p class="pillar-text">
-            Circuit breakers protecting against runaway execution loops, uncommitted workspace pollution, and unverified mutations.
-          </p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-icon">📡</div>
-          <h3 class="pillar-title">4. Discord Bridge &amp; Observability</h3>
-          <p class="pillar-text">
-            Live notification pipeline delivering verified task receipts and execution alerts directly to #hermes Discord channels.
-          </p>
-        </div>
-
-        <div class="pillar-card">
-          <div class="pillar-icon">📊</div>
-          <h3 class="pillar-title">5. Interactive Operations Dashboard</h3>
-          <p class="pillar-text">
-            Web dashboard and control plane for monitoring system state, live metrics, and ledger blocks in real time.
-          </p>
-        </div>
-      </div>
-    </section>`, html.EscapeString(target))
+	// Pillars declared in the target repo's `docsite:` section.
+	if config != nil && config.Docsite != nil && len(config.Docsite.Pillars) > 0 {
+		return buildConfiguredPillarsSection(config, target)
 	}
 
 	// Generic external project pillars
@@ -655,10 +663,7 @@ func buildCTASection(config *SiteConfig, navGroups []NavGroup) string {
     </section>`
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
-	}
+	target := siteTitle(config)
 
 	quickstartURL := "intro.html"
 	for _, g := range navGroups {
@@ -697,10 +702,7 @@ func buildFooter(config *SiteConfig) string {
   </footer>`
 	}
 
-	target := config.Title
-	if target == "" {
-		target = FormatProjectTitle(config.TargetName)
-	}
+	target := siteTitle(config)
 
 	return fmt.Sprintf(`  <footer class="site-footer">
     <div class="footer-inner">

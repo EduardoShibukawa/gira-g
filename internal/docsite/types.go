@@ -4,6 +4,7 @@ import (
 	"html/template"
 
 	"github.com/EduardoShibukawa/gira-g/internal/domain"
+	"github.com/EduardoShibukawa/gira-g/internal/manifest"
 )
 
 // Page represents a rendered documentation page.
@@ -70,4 +71,41 @@ type SiteConfig struct {
 	OutputDir  string
 	IndexPath  string
 	MacroMap   *domain.MacroMap
+	// Docsite carries the target repo's `docsite:` section from gira.yaml.
+	// When nil, tour and landing render the generic no-special-case path.
+	Docsite *manifest.DocsiteConfig
+}
+
+// siteTitle resolves the human-facing site title: the explicit site Title
+// first, then the target manifest's docsite title. With neither set it uses
+// a name-agnostic phrase — per-project naming happens where the title is
+// configured (the `docsite:` section or the `gira docs -title` flag), never
+// by special-casing the target's identifier.
+func siteTitle(config *SiteConfig) string {
+	if config == nil {
+		return "the project"
+	}
+	if config.Title != "" {
+		return config.Title
+	}
+	if config.Docsite != nil && config.Docsite.Title != "" {
+		return config.Docsite.Title
+	}
+	return "the project"
+}
+
+// headerTitle layers the explicit site Title over the manifest docsite title
+// without any name formatting fallback, so empty stays empty for targets
+// that carry no configuration at all.
+func headerTitle(config *SiteConfig) string {
+	if config == nil {
+		return ""
+	}
+	if config.Title != "" {
+		return config.Title
+	}
+	if config.Docsite != nil {
+		return config.Docsite.Title
+	}
+	return ""
 }

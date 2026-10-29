@@ -6,6 +6,8 @@ touch:
   - internal/docsite/tour.go
   - internal/docsite/landing.go
   - internal/docsite/types.go
+  - internal/docsite/builder_test.go
+  - tasks/T04/PLAN.md
   - internal/manifest/manifest.go
   - cmd/gira/docs_cmd.go
   - internal/docsite/no_special_case_test.go
