@@ -245,6 +245,9 @@ func Run(args []string, stdin io.Reader, stdout io.Writer, stderr io.Writer) err
 	case "read":
 		return runReadSymbol(rest, stdout, stderr)
 
+	case "capabilities":
+		return runCapabilities(rest, stdout, stderr)
+
 	case "write":
 		return runWriteSymbol(rest, stdout, stderr)
 
