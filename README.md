@@ -19,6 +19,10 @@ Ou no `mise.toml` do projeto:
 "github:EduardoShibukawa/gira-g" = "0.1.0"
 ```
 
+### Local versionado (from source)
+
+`mise run install` compila com a versão do `git describe --tags` e instala em `~/.local/bin/gira` (ou `$GIRA_INSTALL_DIR`).
+
 ### Via `install.sh` (`curl`)
 
 ```bash

@@ -236,10 +236,12 @@ func TestDocsiteBuilder_DynamicProjectAndReadmeFallback(t *testing.T) {
 	if strings.Contains(tourStr, "internal/slices/engine.go") {
 		t.Errorf("tour.html for external target must NOT contain 'internal/slices/engine.go'")
 	}
-	if !strings.Contains(tourStr, "Task Contracts &amp; Formal Proofs") && !strings.Contains(tourStr, "Task Contracts & Formal Proofs") {
-		t.Errorf("expected P-Ingá tour step in tour.html, got:\n%s", tourStr)
+	// TASK-01 (A3): no per-name special case. Without docsite config the tour is
+	// the generic one — it must NOT carry the old P-Ingá steps or leak the name.
+	if strings.Contains(tourStr, "Task Contracts &amp; Formal Proofs") || strings.Contains(tourStr, "Task Contracts & Formal Proofs") {
+		t.Errorf("tour.html must NOT contain the removed p-inga special-case step, got:\n%s", tourStr)
 	}
-	if !strings.Contains(tourStr, "Step 1 of 5") {
-		t.Errorf("expected 'Step 1 of 5' in tour.html, got:\n%s", tourStr)
+	if !strings.Contains(tourStr, "Step 1 of") {
+		t.Errorf("expected a generic 'Step 1 of N' tour in tour.html, got:\n%s", tourStr)
 	}
 }

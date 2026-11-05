@@ -239,7 +239,7 @@ func (e *Engine) MacroMap() *domain.MacroMap {
 func (e *Engine) GetImpactBriefing(targetID string, depth int) (*ImpactBriefing, error) {
 	targetNode, ok := e.nodesByID[targetID]
 	if !ok {
-		return nil, fmt.Errorf("target node not found: %s", targetID)
+		return nil, fmt.Errorf("target node not found: %s (expected a node ID from the index, e.g. service:<repo>/<name>; file paths are not node IDs, use `gira locate <query>` to find one)", targetID)
 	}
 
 	if depth <= 0 {

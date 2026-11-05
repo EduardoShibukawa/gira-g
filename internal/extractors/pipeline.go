@@ -3,6 +3,7 @@ package extractors
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -126,6 +127,17 @@ func (p *Pipeline) ProcessFiles(ctx context.Context, targetSystem string, files 
 		// Run all matching extractors (ordered by layer)
 		for _, ext := range matched {
 			nodes, rels, unsupporteds, err := ext.Extract(ctx, file)
+			if err != nil && ext.Layer() == LayerDataFormat {
+				// A malformed data file must not abort the whole index: skip it
+				// with a warning and an explicit UnsupportedBoundary diagnostic.
+				fmt.Fprintf(os.Stderr, "warning: skipping %s: %v\n", file.Path, err)
+				unsupportedMap[file.Path] = domain.UnsupportedBoundary{
+					Path:    file.Path,
+					Reason:  "malformed data file: " + err.Error(),
+					Locator: domain.Locator{Repo: file.Repo, CommitSHA: file.CommitSHA, Path: file.Path},
+				}
+				continue
+			}
 			if err != nil {
 				return nil, fmt.Errorf("extractor %s failed on file %s: %w", ext.Name(), file.Path, err)
 			}
